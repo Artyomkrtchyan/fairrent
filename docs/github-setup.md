@@ -12,9 +12,7 @@
 - fairrent selected as the default repository for new project issues.
 - Repository invitations sent to alisamanukyann, Lazr22, and manemazmand.
 - All three teammates granted Write access to the project board.
-- Three area owners documented in [team responsibilities](team.md).
-
-Individual tasks have not been created. Backend/Automation/Deployment ownership is awaiting confirmation.
+- All four area owners documented in [team responsibilities](team.md).
 
 Repository name: `fairrent`. Visibility: private.
 
@@ -27,7 +25,3 @@ Repository name: `fairrent`. Visibility: private.
 - Proposed main protection: require pull requests, one independent review, and resolved conversations. Add required CI checks when meaningful checks exist. Protection availability depends on the GitHub plan and repository visibility.
 
 The By Area view, suggested labels, milestones, and main protection have not been configured. Do not mark settings complete without verifying them on GitHub.
-
-## Language
-
-Use English for documentation, issues, pull requests, comments, and commit messages.

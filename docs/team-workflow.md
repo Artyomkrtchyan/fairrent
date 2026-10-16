@@ -4,7 +4,7 @@
 | --- | --- | --- |
 | A: Data + DB | [alisamanukyann](https://github.com/alisamanukyann) | Normalized data, database, price history, geographic features |
 | B: ML + Ontology | [Lazr22](https://github.com/Lazr22) | Baseline, model, knowledge representation, evaluation |
-| C: Backend + Automation + Deployment | To be confirmed | API, risk rules, review queue, application setup |
+| C: Backend + Automation + Deployment | [Artyomkrtchyan](https://github.com/Artyomkrtchyan) | API, risk rules, review queue, application setup |
 | D: Frontend + UX + Analytics | [manemazmand](https://github.com/manemazmand) | Catalogue, map, valuation interface, analytics |
 
 ## Phases

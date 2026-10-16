@@ -1,6 +1,5 @@
 # Contributing
 
-- Use English for documentation, issues, pull requests, comments, and commit messages.
 - Give each task one owner and use a short-lived branch from the latest `main`.
 - Branch names: `feat/<topic>`, `fix/<topic>`, `docs/<topic>`, `chore/<topic>`.
 - Submit changes through a pull request reviewed by at least one other teammate.
