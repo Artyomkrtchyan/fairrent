@@ -2,7 +2,7 @@
 
 ## MVP
 
-One city and long-term apartment rentals. Before implementation, the team must select the city, currency, treatment of utility costs, and permitted sources.
+Long-term apartment rentals in Yerevan, Armenia, sourced from list.am. Report comparable prices and valuations in USD while preserving original listing amounts and currencies.
 
 Flow: collection → normalization → deduplication → geographic enrichment → valuation → signals → API → interface → manual review.
 
