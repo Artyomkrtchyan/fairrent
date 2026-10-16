@@ -1,8 +1,20 @@
 # План настройки GitHub
 
-Статус: локальная заготовка. Репозиторий и GitHub Project ещё не созданы.
+## Выполнено 16 октября 2026
 
-Предлагаемое имя репозитория: `fairrent`. Начальная видимость — private, если команда не выберет другую.
+- Приватный репозиторий: https://github.com/Artyomkrtchyan/fairrent
+- Приватный связанный проект: https://github.com/users/Artyomkrtchyan/projects/4
+- Подготовленные документы, структура модулей и шаблоны отправлены в main.
+- Board: Backlog → Ready → In Progress → Review → Done.
+- Planning: таблица с исполнителями, статусом, Area, Priority и Phase.
+- Area: Data / DB, ML / Ontology, Backend, Frontend, Infra, Docs / QA.
+- Priority: P0, P1, P2. Phase: Foundation, MVP, Intelligence, Release.
+- Репозиторий fairrent выбран по умолчанию для новых задач проекта.
+- Доска пустая: задачи и назначения ожидают распределения ролей командой.
+
+Ниже сохранён план дальнейших настроек. Отдельное представление By Area, labels, milestones и защита main пока не настроены. Доступ команды будет настроен после получения usernames.
+
+Имя репозитория: `fairrent`. Видимость: private.
 
 ## Доска FairRent
 
