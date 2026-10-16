@@ -1,0 +1,38 @@
+name: Project task
+description: Задача с результатом и критериями приёмки
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Цель и границы
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Направление
+      options:
+        - Data / DB
+        - ML / Ontology
+        - Backend
+        - Frontend
+        - Infra
+        - Docs / QA
+    validations:
+      required: true
+  - type: textarea
+    id: deliverable
+    attributes:
+      label: Результат и критерии приёмки
+      description: Что должно появиться и как проверить готовность
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Зависимости
+      description: Ссылки на блокирующие задачи и необходимые контракты
+  - type: textarea
+    id: validation
+    attributes:
+      label: Способ проверки
