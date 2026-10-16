@@ -2,10 +2,10 @@
 
 | Направление | Владелец | Результат |
 | --- | --- | --- |
-| A: Data + DB | Не выбран | Нормализованные данные, БД, история и география |
-| B: ML + онтология | Не выбран | Baseline, модель, знания, оценка качества |
+| A: Data + DB | [alisamanukyann](https://github.com/alisamanukyann) | Нормализованные данные, БД, история и география |
+| B: ML + онтология | [Lazr22](https://github.com/Lazr22) | Baseline, модель, знания, оценка качества |
 | C: Backend + Automation + Deployment | Не выбран | API, правила риска, очередь, запуск |
-| D: Frontend + UX + Analytics | Не выбран | Каталог, карта, оценка, аналитика |
+| D: Frontend + UX + Analytics | [manemazmand](https://github.com/manemazmand) | Каталог, карта, оценка, аналитика |
 
 ## Этапы
 

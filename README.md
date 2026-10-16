@@ -8,6 +8,8 @@
 
 Командная доска: https://github.com/users/Artyomkrtchyan/projects/4
 
+Team roles: [Responsibilities and GitHub accounts](docs/team.md).
+
 ## Результат для пользователя
 
 - Каталог и карта объявлений с фильтрами.
@@ -39,4 +41,4 @@
 4. [Настройка GitHub Project](docs/github-setup.md).
 5. [Правила участия](CONTRIBUTING.md).
 
-Город, источники, технологический стек, сроки и владельцы направлений пока не выбраны. Решения фиксируются в `docs/decisions.md`.
+Город, источники, технологический стек и сроки пока не выбраны. Три направления распределены; владелец Backend/Automation/Deployment пока не подтверждён. Решения фиксируются в `docs/decisions.md`.
