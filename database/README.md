@@ -1,3 +1,3 @@
 # Database
 
-Схема, миграции, история наблюдений и геоданные. Объявления и физические объекты моделируются отдельно. СУБД пока не выбрана.
+Schema, migrations, observation history, and geographic data. Model listings and physical properties separately. The database system has not been selected.

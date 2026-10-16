@@ -1,35 +1,33 @@
-# План настройки GitHub
+# GitHub setup
 
-## Выполнено 16 октября 2026
+## Completed on October 16, 2026
 
-- Приватный репозиторий: https://github.com/Artyomkrtchyan/fairrent
-- Приватный связанный проект: https://github.com/users/Artyomkrtchyan/projects/4
-- Подготовленные документы, структура модулей и шаблоны отправлены в main.
+- Private repository: https://github.com/Artyomkrtchyan/fairrent
+- Linked private project: https://github.com/users/Artyomkrtchyan/projects/4
+- Initial documentation, module structure, and templates pushed to main.
 - Board: Backlog → Ready → In Progress → Review → Done.
-- Planning: таблица с исполнителями, статусом, Area, Priority и Phase.
+- Planning: table with assignees, status, Area, Priority, and Phase.
 - Area: Data / DB, ML / Ontology, Backend, Frontend, Infra, Docs / QA.
 - Priority: P0, P1, P2. Phase: Foundation, MVP, Intelligence, Release.
-- Репозиторий fairrent выбран по умолчанию для новых задач проекта.
-- Доска пустая: задачи и назначения ожидают распределения ролей командой.
+- fairrent selected as the default repository for new project issues.
+- Repository invitations sent to alisamanukyann, Lazr22, and manemazmand.
+- All three teammates granted Write access to the project board.
+- Three area owners documented in [team responsibilities](team.md).
 
-Ниже сохранён план дальнейших настроек. Отдельное представление By Area, labels, milestones и защита main пока не настроены. Доступ команды будет настроен после получения usernames.
+Individual tasks have not been created. Backend/Automation/Deployment ownership is awaiting confirmation.
 
-Имя репозитория: `fairrent`. Видимость: private.
+Repository name: `fairrent`. Visibility: private.
 
-## Доска FairRent
+## Remaining configuration
 
-Колонки Status: Backlog, Ready, In Progress, Review, Done.
+- Optional By Area view grouped by responsibility.
+- Track dependencies using linked issues; a custom Depends on field has not been created.
+- Suggested labels: area:data, area:db, area:ml, area:ontology, area:backend, area:frontend, area:infra, area:docs, type:feature, type:bug, type:research, blocked.
+- Suggested milestones: Foundation, End-to-end MVP, Model and Ontology, Release and Demo. Set dates with the team.
+- Proposed main protection: require pull requests, one independent review, and resolved conversations. Add required CI checks when meaningful checks exist. Protection availability depends on the GitHub plan and repository visibility.
 
-Поля: Area (Data/DB, ML/Ontology, Backend, Frontend, Infra, Docs/QA), Priority (P0, P1, P2), Phase (Foundation, MVP, Intelligence, Release), Assignees, Depends on (ссылки на задачи).
+The By Area view, suggested labels, milestones, and main protection have not been configured. Do not mark settings complete without verifying them on GitHub.
 
-Представления: Board по Status; Table со всеми полями; By Area с группировкой по направлению. Сначала создать пустую доску; задачи участников добавить после распределения.
+## Language
 
-## Настройки репозитория
-
-- Основная ветка main.
-- Labels: area:data, area:db, area:ml, area:ontology, area:backend, area:frontend, area:infra, area:docs, type:feature, type:bug, type:research, blocked.
-- Этапы: Foundation, End-to-end MVP, Model and Ontology, Release and Demo; сроки назначить командой.
-- Правило main: Pull Request, один независимый review, закрытые обсуждения; обязательные CI-проверки добавить после появления реальных проверок. Доступность защиты зависит от плана и видимости репозитория.
-- Доступ участников настроить после получения GitHub usernames.
-
-Не отмечать настройки выполненными без проверки на GitHub.
+Use English for documentation, issues, pull requests, comments, and commit messages.

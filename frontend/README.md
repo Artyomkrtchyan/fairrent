@@ -1,3 +1,3 @@
 # Frontend
 
-Каталог, фильтры, карта, карточка оценки, аналитика и очередь проверки. Стек пока не выбран. Начать с общего контракта API и синтетических ответов.
+Catalogue, filters, map, valuation cards, analytics, and review interface. The technology stack has not been selected. Start with the shared API contract and synthetic responses.

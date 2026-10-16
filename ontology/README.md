@@ -1,3 +1,3 @@
 # Ontology
 
-Классы, отношения, географические правила и объяснения. Формат согласовать с требованиями курса. Правила должны иметь версии и проверяемые примеры вывода.
+Classes, relationships, geographic rules, and explanations. Align the format with course requirements. Version rules and provide verifiable inference examples.

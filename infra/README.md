@@ -1,3 +1,3 @@
 # Infrastructure
 
-Воспроизводимый запуск, CI, еженедельные загрузки и deployment. Стек и hosting пока не выбраны. Не добавлять фиктивный CI, который не проверяет проект.
+Reproducible application setup, CI, weekly collection, and deployment. The technology stack and hosting have not been selected. Add CI checks that perform meaningful validation.

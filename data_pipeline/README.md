@@ -1,3 +1,3 @@
 # Data pipeline
 
-Сбор, нормализация, дедупликация и географическое обогащение. Источники пока не выбраны. Сохранять происхождение данных и журналы загрузки; не коммитить реальные сырые выгрузки.
+Collection, normalization, deduplication, and geographic enrichment. Sources have not been selected. Preserve data provenance and collection logs; do not commit real raw data exports.

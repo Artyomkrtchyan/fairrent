@@ -1,16 +1,16 @@
 name: Project task
-description: Задача с результатом и критериями приёмки
+description: A task with deliverables and acceptance criteria
 body:
   - type: textarea
     id: goal
     attributes:
-      label: Цель и границы
+      label: Goal and scope
     validations:
       required: true
   - type: dropdown
     id: area
     attributes:
-      label: Направление
+      label: Area
       options:
         - Data / DB
         - ML / Ontology
@@ -23,16 +23,16 @@ body:
   - type: textarea
     id: deliverable
     attributes:
-      label: Результат и критерии приёмки
-      description: Что должно появиться и как проверить готовность
+      label: Deliverables and acceptance criteria
+      description: Describe the expected result and how to verify completion
     validations:
       required: true
   - type: textarea
     id: dependencies
     attributes:
-      label: Зависимости
-      description: Ссылки на блокирующие задачи и необходимые контракты
+      label: Dependencies
+      description: Link blocking issues and required contracts
   - type: textarea
     id: validation
     attributes:
-      label: Способ проверки
+      label: Validation approach

@@ -1,26 +1,26 @@
-# Команда и последовательность
+# Team workflow and implementation order
 
-| Направление | Владелец | Результат |
+| Area | Owner | Deliverables |
 | --- | --- | --- |
-| A: Data + DB | [alisamanukyann](https://github.com/alisamanukyann) | Нормализованные данные, БД, история и география |
-| B: ML + онтология | [Lazr22](https://github.com/Lazr22) | Baseline, модель, знания, оценка качества |
-| C: Backend + Automation + Deployment | Не выбран | API, правила риска, очередь, запуск |
-| D: Frontend + UX + Analytics | [manemazmand](https://github.com/manemazmand) | Каталог, карта, оценка, аналитика |
+| A: Data + DB | [alisamanukyann](https://github.com/alisamanukyann) | Normalized data, database, price history, geographic features |
+| B: ML + Ontology | [Lazr22](https://github.com/Lazr22) | Baseline, model, knowledge representation, evaluation |
+| C: Backend + Automation + Deployment | To be confirmed | API, risk rules, review queue, application setup |
+| D: Frontend + UX + Analytics | [manemazmand](https://github.com/manemazmand) | Catalogue, map, valuation interface, analytics |
 
-## Этапы
+## Phases
 
-1. Совместно: границы, источники, данные, API, синтетические примеры.
-2. Параллельно: A готовит сбор/БД; B — онтологию и baseline; C — API с заглушкой модели; D — UI на тестовых ответах.
-3. Сквозной MVP: реальные объявления A → API C → интерфейс D; baseline B подключается через C.
-4. Улучшение: A расширяет и очищает данные; B обучает и проверяет модель; C добавляет очередь и расписание; D добавляет карту и объяснения.
-5. Совместно: интеграция, проверка качества, deployment, демонстрация.
+1. Together: agree on scope, sources, data, API, and synthetic examples.
+2. In parallel: A prepares collection/database; B designs the ontology and baseline; C builds the API with a model stub; D builds the UI using mock responses.
+3. End-to-end MVP: real listings from A → API from C → interface from D; integrate B's baseline through C.
+4. Improvements: A expands and cleans data; B trains and evaluates the model; C adds the queue and scheduling; D adds the map and explanations.
+5. Together: integration, quality evaluation, deployment, and demonstration.
 
-## Зависимости
+## Dependencies
 
-- B зависит от очищенных данных A для обучения, но проектирование начинает сразу.
-- C зависит от схемы A и интерфейса B; до их готовности использует заглушки.
-- D зависит от контракта C; реализация UI начинается без готового сервера.
-- A и B согласуют признаки; C и D — запросы, ошибки, фильтры и пагинацию.
-- CI и воспроизводимый запуск готовятся с начала проекта.
+- B needs A's cleaned data for training but can start design immediately.
+- C depends on A's schema and B's model interface; use stubs until they are ready.
+- D depends on C's API contract; UI implementation can begin before the server is ready.
+- A and B agree on features; C and D agree on requests, errors, filters, and pagination.
+- Establish CI and reproducible setup early.
 
-Еженедельно: короткая интеграционная демонстрация, проверка блокеров и обновление доски. При перегрузке C расписание загрузки можно передать A. Задачи и назначения пока не создаются.
+Hold a short weekly integration demonstration, review blockers, and update the board. If C is overloaded, collection scheduling can move to A. Individual tasks and issue assignments will be created later.

@@ -1,44 +1,46 @@
 # FairRent — Rental Housing Fair-Price Estimator
 
-Учебный проект команды из четырёх человек: оценка диапазона аренды, объяснение факторов стоимости и выделение объявлений для проверки.
+A four-person student project that estimates rental price ranges, explains valuation factors, and flags listings for review.
 
-Статус: проектирование. Код приложения и задачи участников ещё не созданы.
+Status: planning. Application code and individual tasks have not been created yet.
 
-Репозиторий: https://github.com/Artyomkrtchyan/fairrent
+Repository: https://github.com/Artyomkrtchyan/fairrent
 
-Командная доска: https://github.com/users/Artyomkrtchyan/projects/4
+Team board: https://github.com/users/Artyomkrtchyan/projects/4
 
 Team roles: [Responsibilities and GitHub accounts](docs/team.md).
 
-## Результат для пользователя
+## User outcomes
 
-- Каталог и карта объявлений с фильтрами.
-- Ожидаемая цена, оценочный диапазон и объяснение.
-- Отдельные сигналы ценовых аномалий и риска.
-- Очередь ручной проверки.
-- Индекс цен предложений по районам с датой обновления и количеством наблюдений.
+- A searchable listing catalogue and map.
+- Expected rental prices, estimated ranges, and explanations.
+- Separate signals for price anomalies and potential risks.
+- A manual review queue.
+- Neighborhood asking-price indexes with update dates and observation counts.
 
-Высокая цена не доказывает мошенничество. Система выдаёт сигналы для проверки.
+A high price does not prove fraud. The system provides signals for review.
 
-## Структура
+## Repository structure
 
-| Каталог | Ответственность |
+| Directory | Responsibility |
 | --- | --- |
-| `data_pipeline/` | Сбор, очистка, нормализация, дедупликация |
-| `database/` | Схема БД, миграции, геоданные |
-| `ml/` | Baseline, модель, оценка качества |
-| `ontology/` | Сущности, отношения, правила вывода |
-| `backend/` | API, бизнес-процессы, очередь проверки |
-| `frontend/` | Каталог, карта, аналитика, интерфейс проверки |
-| `infra/` | Запуск, автоматизация, deployment |
-| `docs/` | Требования, контракты и организация работы |
+| `data_pipeline/` | Collection, cleaning, normalization, deduplication |
+| `database/` | Database schema, migrations, geographic data |
+| `ml/` | Baseline estimator, model, evaluation |
+| `ontology/` | Entities, relationships, inference rules |
+| `backend/` | API, business workflows, review queue |
+| `frontend/` | Catalogue, map, analytics, review interface |
+| `infra/` | Application setup, automation, deployment |
+| `docs/` | Requirements, contracts, team workflow |
 
-## Начать здесь
+## Start here
 
-1. [Границы и бизнес-правила](docs/business-rules.md).
-2. [Команда, этапы и зависимости](docs/team-workflow.md).
-3. [Начальный контракт данных](docs/data-contract.md).
-4. [Настройка GitHub Project](docs/github-setup.md).
-5. [Правила участия](CONTRIBUTING.md).
+1. [Scope and business rules](docs/business-rules.md).
+2. [Team workflow, phases, and dependencies](docs/team-workflow.md).
+3. [Initial data contract](docs/data-contract.md).
+4. [GitHub Project setup](docs/github-setup.md).
+5. [Contribution guidelines](CONTRIBUTING.md).
 
-Город, источники, технологический стек и сроки пока не выбраны. Три направления распределены; владелец Backend/Automation/Deployment пока не подтверждён. Решения фиксируются в `docs/decisions.md`.
+The city, sources, technology stack, and deadlines remain undecided. Three areas have assigned owners; the Backend/Automation/Deployment owner is awaiting confirmation. Record decisions in `docs/decisions.md`.
+
+All repository documentation, issues, pull requests, comments, and commit messages must be written in English.

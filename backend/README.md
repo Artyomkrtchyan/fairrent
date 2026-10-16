@@ -1,3 +1,3 @@
 # Backend
 
-API, бизнес-правила, интеграция модели, очередь проверки. Стек пока не выбран. Начать с контракта API и заглушки оценки.
+API, business rules, model integration, and review queue. The technology stack has not been selected. Start with the API contract and a valuation stub.

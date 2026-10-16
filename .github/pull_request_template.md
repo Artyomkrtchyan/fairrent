@@ -1,18 +1,18 @@
-## Что изменилось и зачем
+## What changed and why
 
 Closes #
 
-## Проверка
+## Validation
 
-Опишите выполненные проверки и результат.
+Describe the checks performed and their results.
 
-## Контракты и зависимости
+## Contracts and dependencies
 
-Укажите изменения данных/API и затронутые компоненты.
+Describe data/API changes and affected components.
 
-## Готовность
+## Readiness
 
-- [ ] Выполнены критерии приёмки
-- [ ] Документация актуальна
-- [ ] Подходящие проверки пройдены
-- [ ] Секреты и сырые данные не добавлены
+- [ ] Acceptance criteria met
+- [ ] Documentation updated
+- [ ] Appropriate checks passed
+- [ ] No secrets or raw data added
