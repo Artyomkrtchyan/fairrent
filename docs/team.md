@@ -7,4 +7,4 @@
 | Frontend & Analytics | [manemazmand](https://github.com/manemazmand) | Build the catalogue, filters and map; display valuations and explanations; visualize neighborhood trends; implement the review interface. | Web interface, interactive map, valuation cards, market charts and review dashboard. |
 | Backend, Automation & Deployment | [Artyomkrtchyan](https://github.com/Artyomkrtchyan) | Develop APIs; integrate database and model; implement risk rules and review workflow; schedule jobs; manage deployment. | API, integration, risk signals, review queue, scheduled jobs and deployment configuration. |
 
-Each member tests and documents their components. Data/API contracts and integration checks are shared responsibilities. Assignments to individual issues will be made later.
+Each member tests and documents their components. Data/API contracts and integration checks are shared responsibilities. See the [implementation plan](implementation-plan.md) for individual tasks and dependencies.

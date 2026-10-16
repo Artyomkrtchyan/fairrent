@@ -1,0 +1,609 @@
+[
+  {
+    "id": "A01",
+    "title": "Inspect list.am listings and define the source mapping",
+    "owner": "alisamanukyann",
+    "area": "Data / DB",
+    "phase": "Foundation",
+    "priority": "P0",
+    "deps": [],
+    "goal": "Analyze Yerevan long-term apartment listings and map available source fields to the shared data contract.",
+    "criteria": [
+      "Document available fields, missing values, pagination, and source update behavior.",
+      "Provide a small sanitized or synthetic parser fixture and field mapping.",
+      "Document collection constraints, rate limits, and a reproducible fallback import if access fails."
+    ]
+  },
+  {
+    "id": "A02",
+    "title": "Implement the PostgreSQL/PostGIS schema and migrations",
+    "owner": "alisamanukyann",
+    "area": "Data / DB",
+    "phase": "Foundation",
+    "priority": "P0",
+    "deps": [
+      "A01",
+      "C01"
+    ],
+    "goal": "Design and implement storage for properties, listings, observations, infrastructure, estimates, signals, reviews, and ingestion runs.",
+    "criteria": [
+      "Publish an ER diagram and Alembic migrations that work on an empty database.",
+      "Preserve source identity and price history with suitable constraints and geographic indexes.",
+      "Provide synthetic seed data and coordinate schema ownership with backend."
+    ]
+  },
+  {
+    "id": "A03",
+    "title": "Build the listing collection and normalization pipeline",
+    "owner": "alisamanukyann",
+    "area": "Data / DB",
+    "phase": "MVP",
+    "priority": "P0",
+    "deps": [
+      "A01",
+      "A02",
+      "C02"
+    ],
+    "goal": "Collect the selected list.am segment and normalize records for the Yerevan rental market.",
+    "criteria": [
+      "Provide a repeatable CLI with bounded retries, pagination, and run summaries.",
+      "Normalize monthly USD amounts while preserving original currencies, conversion provenance, and utility-cost uncertainty.",
+      "Quarantine invalid records and test representative parsing and normalization failures."
+    ]
+  },
+  {
+    "id": "A04",
+    "title": "Handle duplicates, observations, and listing lifecycle",
+    "owner": "alisamanukyann",
+    "area": "Data / DB",
+    "phase": "MVP",
+    "priority": "P0",
+    "deps": [
+      "A03"
+    ],
+    "goal": "Make repeated collection safe and keep inactive inventory distinguishable from collection failures.",
+    "criteria": [
+      "Repeated runs do not duplicate listings or observations; price changes remain traceable.",
+      "Document and verify duplicate grouping without merging unrelated properties.",
+      "Deactivate records only after successful source observations under a documented staleness policy."
+    ]
+  },
+  {
+    "id": "A05",
+    "title": "Add Yerevan districts and infrastructure proximity features",
+    "owner": "alisamanukyann",
+    "area": "Data / DB",
+    "phase": "MVP",
+    "priority": "P0",
+    "deps": [
+      "A02",
+      "A03"
+    ],
+    "goal": "Enrich listings with districts, coordinates, and distances to metro stations, universities, and a defined city-center reference.",
+    "criteria": [
+      "Record geographic data provenance and coordinate confidence; flag unresolved locations.",
+      "Produce distance features with explicit units and a documented center definition.",
+      "Validate known location examples and make the features available to ML and API consumers."
+    ]
+  },
+  {
+    "id": "A06",
+    "title": "Publish reproducible training and evaluation datasets",
+    "owner": "alisamanukyann",
+    "area": "Data / DB",
+    "phase": "Intelligence",
+    "priority": "P0",
+    "deps": [
+      "A04",
+      "A05",
+      "B02"
+    ],
+    "goal": "Export versioned datasets following the feature contract and leakage-prevention rules.",
+    "criteria": [
+      "Export includes observation dates, duplicate groups, feature definitions, and provenance.",
+      "Provide a data-quality report covering missingness, invalid values, duplicates, and neighborhood coverage.",
+      "Demonstrate reproducible snapshot generation without committing raw listings or personal data."
+    ]
+  },
+  {
+    "id": "A07",
+    "title": "Build neighborhood asking-price index aggregates",
+    "owner": "alisamanukyann",
+    "area": "Data / DB",
+    "phase": "Intelligence",
+    "priority": "P1",
+    "deps": [
+      "A04",
+      "A05"
+    ],
+    "goal": "Produce weekly neighborhood asking-price statistics for comparable active inventory.",
+    "criteria": [
+      "Provide median USD/month and USD/m², sample counts, period, and data freshness.",
+      "Define sparse-neighborhood behavior and avoid presenting listing prices as signed-contract prices.",
+      "Validate aggregates against a small known dataset and expose a stable query interface to backend."
+    ]
+  },
+  {
+    "id": "A08",
+    "title": "Validate ingestion recovery and deliver the data runbook",
+    "owner": "alisamanukyann",
+    "area": "Data / DB",
+    "phase": "Release",
+    "priority": "P0",
+    "deps": [
+      "A06",
+      "A07",
+      "C08"
+    ],
+    "goal": "Verify production ingestion behavior and make collection reproducible for teammates.",
+    "criteria": [
+      "Demonstrate initial load, repeated load, price change, and recovery from a failed run.",
+      "Verify failed collection does not clear active inventory and incomplete records stay traceable.",
+      "Deliver source limitations, rerun instructions, and a reproducible demo dataset for the final demo."
+    ]
+  },
+  {
+    "id": "B01",
+    "title": "Model the municipal real estate ontology",
+    "owner": "Lazr22",
+    "area": "ML / Ontology",
+    "phase": "Foundation",
+    "priority": "P0",
+    "deps": [],
+    "goal": "Define the ontology for properties, listings, districts, infrastructure, estimates, and risk evidence.",
+    "criteria": [
+      "Commit an OWL/RDF ontology and a readable class/relationship diagram.",
+      "Provide competency questions and examples covering Yerevan locations and property characteristics.",
+      "Demonstrate consistency and sample queries/inferences with Protégé or RDFLib."
+    ]
+  },
+  {
+    "id": "B02",
+    "title": "Define the feature and evaluation contract",
+    "owner": "Lazr22",
+    "area": "ML / Ontology",
+    "phase": "Foundation",
+    "priority": "P0",
+    "deps": [
+      "C01"
+    ],
+    "goal": "Agree with data and backend owners on model inputs, outputs, and evaluation methodology.",
+    "criteria": [
+      "Define feature types, missing-value behavior, units, and prediction response structure.",
+      "Specify chronological splits and duplicate-group isolation to prevent leakage.",
+      "Define baseline, error metrics, interval coverage/width, and neighborhood-level evaluation."
+    ]
+  },
+  {
+    "id": "B03",
+    "title": "Implement the comparable-property median baseline",
+    "owner": "Lazr22",
+    "area": "ML / Ontology",
+    "phase": "MVP",
+    "priority": "P0",
+    "deps": [
+      "B02",
+      "A03"
+    ],
+    "goal": "Create an explainable valuation baseline using comparable rental listings.",
+    "criteria": [
+      "Return expected monthly USD rent, comparable count, and selection explanation.",
+      "Handle sparse comparables with a documented fallback or insufficient_data result.",
+      "Provide a callable interface and deterministic checks on controlled examples for backend integration."
+    ]
+  },
+  {
+    "id": "B04",
+    "title": "Train and compare the rental price model",
+    "owner": "Lazr22",
+    "area": "ML / Ontology",
+    "phase": "Intelligence",
+    "priority": "P0",
+    "deps": [
+      "A06",
+      "B03"
+    ],
+    "goal": "Train a CatBoost regressor and compare it fairly with the baseline.",
+    "criteria": [
+      "Run a reproducible experiment on the agreed split and report baseline/model MAE and median absolute error.",
+      "Report neighborhood results and investigate large errors and data leakage.",
+      "Save preprocessing, feature schema, model artifact, and version metadata; keep the baseline fallback if ML is worse."
+    ]
+  },
+  {
+    "id": "B05",
+    "title": "Calibrate prediction intervals and valuation confidence",
+    "owner": "Lazr22",
+    "area": "ML / Ontology",
+    "phase": "Intelligence",
+    "priority": "P0",
+    "deps": [
+      "B04"
+    ],
+    "goal": "Add empirically evaluated rental price intervals and defensible abstention behavior.",
+    "criteria": [
+      "Calibrate intervals without using test labels and report held-out coverage and width.",
+      "Implement within_range, above_range, below_range, and insufficient_data consistently.",
+      "Evaluate sparse, missing-feature, and out-of-distribution examples; explain confidence limitations."
+    ]
+  },
+  {
+    "id": "B06",
+    "title": "Implement ontology rules and valuation explanations",
+    "owner": "Lazr22",
+    "area": "ML / Ontology",
+    "phase": "Intelligence",
+    "priority": "P0",
+    "deps": [
+      "B01",
+      "A05",
+      "B03"
+    ],
+    "goal": "Connect geographic facts and property descriptions to traceable inference and readable explanations.",
+    "criteria": [
+      "Implement versioned rules with evidence for proximity and description/location inconsistencies.",
+      "Show at least three representative inference examples, including a missing-data case.",
+      "Separate inferred facts from learned price effects and supply structured explanations to backend."
+    ]
+  },
+  {
+    "id": "B07",
+    "title": "Package the inference interface for backend integration",
+    "owner": "Lazr22",
+    "area": "ML / Ontology",
+    "phase": "Intelligence",
+    "priority": "P0",
+    "deps": [
+      "B05",
+      "B06"
+    ],
+    "goal": "Deliver a versioned prediction package usable by the FastAPI application.",
+    "criteria": [
+      "Provide one documented inference entry point matching the shared contract.",
+      "Include model/rule versions, data freshness, interval, factors, and fallback behavior.",
+      "Verify artifact loading and predictions in the backend container with a reproducible example."
+    ]
+  },
+  {
+    "id": "B08",
+    "title": "Deliver model and ontology evaluation evidence",
+    "owner": "Lazr22",
+    "area": "ML / Ontology",
+    "phase": "Release",
+    "priority": "P0",
+    "deps": [
+      "B07"
+    ],
+    "goal": "Prepare evidence for the final defense and document practical limitations.",
+    "criteria": [
+      "Publish a model card, reproducible evaluation commands, and comparison charts.",
+      "Show ontology competency-question results and rule validation examples.",
+      "Evaluate risk-related examples separately from price errors; state limitations without claiming unmeasured fraud accuracy."
+    ]
+  },
+  {
+    "id": "C01",
+    "title": "Finalize shared data, API, and integration contracts",
+    "owner": "Artyomkrtchyan",
+    "area": "Backend",
+    "phase": "Foundation",
+    "priority": "P0",
+    "deps": [],
+    "goal": "Coordinate the contracts used by all four components before parallel implementation.",
+    "criteria": [
+      "Publish OpenAPI schemas for listings, estimates, market indexes, and reviews with filters, pagination, and errors.",
+      "Agree units, USD conversion semantics, nullable fields, identifiers, and model inputs with the owners.",
+      "Provide synthetic request/response fixtures so frontend and ML can work independently."
+    ]
+  },
+  {
+    "id": "C02",
+    "title": "Bootstrap FastAPI and the local Docker environment",
+    "owner": "Artyomkrtchyan",
+    "area": "Backend",
+    "phase": "Foundation",
+    "priority": "P0",
+    "deps": [
+      "C01"
+    ],
+    "goal": "Create a runnable backend and shared local environment.",
+    "criteria": [
+      "Docker Compose starts the API and PostgreSQL/PostGIS with documented setup.",
+      "Provide health checks, environment examples, database configuration, and a model stub.",
+      "Verify a clean setup and basic API behavior without external credentials."
+    ]
+  },
+  {
+    "id": "C03",
+    "title": "Implement listing search, details, and geographic APIs",
+    "owner": "Artyomkrtchyan",
+    "area": "Backend",
+    "phase": "MVP",
+    "priority": "P0",
+    "deps": [
+      "C02",
+      "A02"
+    ],
+    "goal": "Serve normalized listing data through the agreed API.",
+    "criteria": [
+      "Implement district/price/rooms/area filters, stable pagination, details, and bounded map queries.",
+      "Return source links, freshness, missing-data states, and inactive status consistently.",
+      "Verify query validation, no-result cases, and representative database-backed responses."
+    ]
+  },
+  {
+    "id": "C04",
+    "title": "Integrate valuation and ontology results",
+    "owner": "Artyomkrtchyan",
+    "area": "Backend",
+    "phase": "MVP",
+    "priority": "P0",
+    "deps": [
+      "C03",
+      "B03"
+    ],
+    "goal": "Expose baseline valuation first and support the versioned ML package when available.",
+    "criteria": [
+      "Expose expected USD rent, interval when available, factors, versions, and insufficient-data behavior.",
+      "Persist estimates with freshness/version metadata and avoid silently returning stale results.",
+      "Integrate the baseline for MVP, then B07 for final delivery; verify success and model-failure paths."
+    ]
+  },
+  {
+    "id": "C05",
+    "title": "Implement risk signals and the protected review workflow",
+    "owner": "Artyomkrtchyan",
+    "area": "Backend",
+    "phase": "Intelligence",
+    "priority": "P0",
+    "deps": [
+      "C04",
+      "A04",
+      "B06"
+    ],
+    "goal": "Create explainable risk rules and a reviewer-only queue with recorded decisions.",
+    "criteria": [
+      "Keep price anomalies separate from fraud-risk evidence; version rules and prevent duplicate signals.",
+      "Implement queue filters, status changes, decision reasons, and audit timestamps.",
+      "Protect reviewer endpoints with authentication/authorization and verify unauthorized requests are rejected."
+    ]
+  },
+  {
+    "id": "C06",
+    "title": "Expose market analytics and data freshness",
+    "owner": "Artyomkrtchyan",
+    "area": "Backend",
+    "phase": "Intelligence",
+    "priority": "P1",
+    "deps": [
+      "C03",
+      "A07"
+    ],
+    "goal": "Provide frontend-ready neighborhood and trend endpoints.",
+    "criteria": [
+      "Return periods, USD units, sample counts, and source freshness with every aggregate.",
+      "Handle sparse data and empty periods without fabricated values.",
+      "Verify API responses against data-layer aggregates and the agreed chart fixtures."
+    ]
+  },
+  {
+    "id": "C07",
+    "title": "Add pull-request checks and container build workflows",
+    "owner": "Artyomkrtchyan",
+    "area": "Infra",
+    "phase": "MVP",
+    "priority": "P0",
+    "deps": [
+      "C02",
+      "D02"
+    ],
+    "goal": "Create CI for meaningful component checks and reproducible container builds.",
+    "criteria": [
+      "Run backend/data/ML checks and frontend type/build checks as components become available.",
+      "Build required Docker images and document version/tag conventions.",
+      "Verify a failing check is reported and configure PR review/protection where supported by the repository plan."
+    ]
+  },
+  {
+    "id": "C08",
+    "title": "Provision and deploy the AWS application with Terraform",
+    "owner": "Artyomkrtchyan",
+    "area": "Infra",
+    "phase": "Release",
+    "priority": "P0",
+    "deps": [
+      "C03",
+      "C07",
+      "D07"
+    ],
+    "goal": "Deploy the application using the agreed AWS architecture.",
+    "criteria": [
+      "Terraform defines frontend S3/CloudFront, backend ECS/ECR, RDS/PostGIS, artifact storage, networking, and logging.",
+      "Configure HTTPS, appropriate CORS, private database access, and secrets handling; record cost assumptions before provisioning.",
+      "Deploy versioned images/frontend builds and document migrations, rollback, and teardown; do not place credentials in Git."
+    ]
+  },
+  {
+    "id": "C09",
+    "title": "Automate weekly ingestion and operational monitoring",
+    "owner": "Artyomkrtchyan",
+    "area": "Infra",
+    "phase": "Release",
+    "priority": "P0",
+    "deps": [
+      "C08",
+      "A04"
+    ],
+    "goal": "Run ingestion on schedule and make failures visible.",
+    "criteria": [
+      "EventBridge Scheduler launches the collection ECS task weekly with explicit timezone and overlap prevention.",
+      "Record run status, retries, and freshness; add failure visibility through CloudWatch.",
+      "Demonstrate a manual run, a failed run, and recovery without clearing inventory; document rerun steps."
+    ]
+  },
+  {
+    "id": "C10",
+    "title": "Complete end-to-end release verification and the demo runbook",
+    "owner": "Artyomkrtchyan",
+    "area": "Backend",
+    "phase": "Release",
+    "priority": "P0",
+    "deps": [
+      "A08",
+      "B08",
+      "D08",
+      "C05",
+      "C06",
+      "C09"
+    ],
+    "goal": "Coordinate final integration and produce a reproducible release demonstration.",
+    "criteria": [
+      "Verify collection → database → valuation → signals → API → UI → reviewer decision using real and controlled examples.",
+      "Record resolved integration defects, deployed version, smoke checks, and known limitations.",
+      "Deliver setup/deployment/demo instructions with a baseline-vs-ML example and rollback procedure."
+    ]
+  },
+  {
+    "id": "D01",
+    "title": "Design the user journeys and screen contracts",
+    "owner": "manemazmand",
+    "area": "Frontend",
+    "phase": "Foundation",
+    "priority": "P0",
+    "deps": [],
+    "goal": "Define the catalogue, detail, analytics, and reviewer journeys before implementation.",
+    "criteria": [
+      "Provide lightweight wireframes and a shared UI structure for desktop and mobile.",
+      "Define loading, empty, error, insufficient-data, and stale-data states.",
+      "Review required API data with backend and align labels so risk signals are not presented as fraud verdicts."
+    ]
+  },
+  {
+    "id": "D02",
+    "title": "Bootstrap React/TypeScript and a mock API layer",
+    "owner": "manemazmand",
+    "area": "Frontend",
+    "phase": "Foundation",
+    "priority": "P0",
+    "deps": [
+      "D01",
+      "C01"
+    ],
+    "goal": "Create the frontend shell and a mock-backed integration boundary.",
+    "criteria": [
+      "Vite app runs with routing, reusable layout, and environment-based API configuration.",
+      "Use shared synthetic fixtures behind a typed API client.",
+      "Provide type/build checks and demonstrate switching between mock and real API modes."
+    ]
+  },
+  {
+    "id": "D03",
+    "title": "Build the listing catalogue and filters",
+    "owner": "manemazmand",
+    "area": "Frontend",
+    "phase": "MVP",
+    "priority": "P0",
+    "deps": [
+      "D02"
+    ],
+    "goal": "Implement browsing of Yerevan rentals with useful comparisons.",
+    "criteria": [
+      "Display monthly USD rent, area, rooms, district, and source freshness.",
+      "Implement filters and pagination with URL state and clear/reset behavior.",
+      "Verify loading, empty, error, and missing-field cases; integrate C03 when available."
+    ]
+  },
+  {
+    "id": "D04",
+    "title": "Build listing details and the valuation explanation view",
+    "owner": "manemazmand",
+    "area": "Frontend",
+    "phase": "MVP",
+    "priority": "P0",
+    "deps": [
+      "D03"
+    ],
+    "goal": "Show the requested rent alongside the estimated range and explanation.",
+    "criteria": [
+      "Display expected price, interval when available, comparables, factors, versions/freshness, and original source link.",
+      "Separate price status from risk signals and handle insufficient_data without invented scores.",
+      "Use responsive layout and connect the real C04 endpoint when ready."
+    ]
+  },
+  {
+    "id": "D05",
+    "title": "Implement the interactive property and infrastructure map",
+    "owner": "manemazmand",
+    "area": "Frontend",
+    "phase": "Intelligence",
+    "priority": "P1",
+    "deps": [
+      "D03",
+      "A05",
+      "C03"
+    ],
+    "goal": "Connect map exploration to the listing catalogue.",
+    "criteria": [
+      "Render geolocated listings, selected property details, and relevant infrastructure with Leaflet.",
+      "Keep filters and map selection consistent and handle missing coordinates.",
+      "Document map/tile attribution and verify marker behavior and bounded-query performance on representative data."
+    ]
+  },
+  {
+    "id": "D06",
+    "title": "Build neighborhood market analytics",
+    "owner": "manemazmand",
+    "area": "Frontend",
+    "phase": "Intelligence",
+    "priority": "P1",
+    "deps": [
+      "D02",
+      "C06"
+    ],
+    "goal": "Visualize neighborhood asking-price indexes and trends with Recharts.",
+    "criteria": [
+      "Provide neighborhood/time controls and clearly labeled USD/month and USD/m² measures.",
+      "Show observation counts, periods, and freshness; distinguish missing data from zero.",
+      "Verify rendered values against API fixtures and real aggregate responses."
+    ]
+  },
+  {
+    "id": "D07",
+    "title": "Build the authenticated reviewer interface",
+    "owner": "manemazmand",
+    "area": "Frontend",
+    "phase": "Intelligence",
+    "priority": "P0",
+    "deps": [
+      "D02",
+      "C05"
+    ],
+    "goal": "Enable authorized reviewers to inspect signals and record decisions.",
+    "criteria": [
+      "Provide login/session handling, queue filters, evidence details, and review actions.",
+      "Require a decision reason and show saved status/history without duplicate submissions.",
+      "Handle expired/unauthorized sessions and connect the protected backend workflow."
+    ]
+  },
+  {
+    "id": "D08",
+    "title": "Validate the integrated UI and prepare the frontend demo",
+    "owner": "manemazmand",
+    "area": "Frontend",
+    "phase": "Release",
+    "priority": "P0",
+    "deps": [
+      "D04",
+      "D05",
+      "D06",
+      "D07",
+      "C08"
+    ],
+    "goal": "Verify the complete frontend against the deployed application.",
+    "criteria": [
+      "Add meaningful Playwright coverage for browsing, filters, valuation, analytics, and reviewer decisions.",
+      "Check mobile layout, keyboard navigation, empty/error/stale states, and production API configuration.",
+      "Resolve UI integration defects and deliver a short demo sequence with screenshots and known limitations."
+    ]
+  }
+]

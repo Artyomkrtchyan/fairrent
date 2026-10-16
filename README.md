@@ -39,6 +39,8 @@ A high price does not prove fraud. The system provides signals for review.
 
 ## Start here
 
+See the [implementation plan and task dependencies](docs/implementation-plan.md).
+
 1. [Scope and business rules](docs/business-rules.md).
 2. [Team workflow, phases, and dependencies](docs/team-workflow.md).
 3. [Initial data contract](docs/data-contract.md).
