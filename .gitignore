@@ -18,3 +18,5 @@ artifacts/
 *.log
 .DS_Store
 Thumbs.db
+.contract-deps/
+.venv-wsl/
