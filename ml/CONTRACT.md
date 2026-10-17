@@ -1,51 +1,74 @@
-# [B02] ML Feature & Evaluation Contract
+# [B02] Machine Learning Feature, Evaluation & Integration Contract
 
-This document defines the formal API & Data contract between **Machine Learning (ML)**, **Data Engineering**, and **Backend** roles for the FairRent real estate valuation platform.
-
----
-
-## 1. Feature Specifications & Input Schema
-
-### Input Features Matrix
-
-| Feature Name | Type | Unit / Format | Missing-Value Behavior | Description |
-| :--- | :--- | :--- | :--- | :--- |
-| `property_id` | String | UUID / Text | Reject (Required) | Unique identifier for the property |
-| `area_sqm` | Float | $m^2$ | Reject if $\le 0$ or Null | Total living space area |
-| `rooms` | Integer | Count ($1, 2, 3...$) | Impute with Median by District | Number of rooms |
-| `building_type` | Categorical | Enum (`monolith`, `panel`, `stone`) | Impute with `"unknown"` | Construction material |
-| `renovation` | Categorical | Enum (`cosmetic`, `designer`, `none`) | Impute with `"none"` | Renovation quality |
-| `district` | Categorical | Yerevan District Enum | Reject (Required) | Administrative district (e.g., Kentron, Arabkir) |
-| `latitude` | Float | Decimal Degrees | Reject if Null | Geographic WGS84 coordinate |
-| `longitude` | Float | Decimal Degrees | Reject if Null | Geographic WGS84 coordinate |
-| `distance_metro_m` | Float | Meters ($m$) | Impute with $99999.0$ (Far) | Geodesic distance to nearest metro station |
-| `distance_center_m` | Float | Meters ($m$) | Impute with District Mean | Geodesic distance to Republic Square |
-| `distance_university_m` | Float | Meters ($m$) | Impute with $99999.0$ (Far) | Geodesic distance to nearest university node |
-| `listing_date` | Datetime | ISO 8601 (`YYYY-MM-DD`) | Reject (Required) | Date advertisement was posted |
+This document defines the binding data schema, evaluation methodology, and API contract for the **Machine Learning (ML)** component, fully aligned with the shared project contracts in **PR #38 (C01)**.
 
 ---
 
-## 2. Prediction Response Structure (API Contract)
+## 1. Input Specifications & Null-Handling Strategy
 
-The model inference endpoint receives a property feature payload and returns a structured JSON response containing point predictions, valuation ranges, standard deviations, and explainability signals:
+### A. Training Record Requirements vs. Inference API Inputs
+* **Training Dataset (Database & Pipeline Requirements):**
+  * Historical records must contain valid target values (`price_usd`), verified geotags (`latitude`, `longitude`), and creation timestamps (`listing_date`).
+  * Listings missing critical structural metadata or geotags are dropped during data cleaning.
+  * Every record must contain a `dedup_group_id` (hash of normalized location + structural features) to isolate duplicate re-listings.
+
+* **Inference API Payload (Flexible Scopes):**
+  * Supports full listing payloads (e.g., standard property evaluation).
+  * Supports **coordinate-only requests** (e.g., when a user clicks a pin on the interactive map).
+
+### B. Shared Schema & Model Imputation Matrix (Aligned with C01 / PR #38)
+
+| Field Name | Data Type | Inference Required? | API Null Allowed? | Model-Side Imputation Strategy | Unit / Description |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `latitude` | Float | **Yes** | No | **Reject Request** | WGS84 latitude coordinate |
+| `longitude` | Float | **Yes** | No | **Reject Request** | WGS84 longitude coordinate |
+| `area_sqm` | Float | Optional | Yes | District Median Imputation | Living space area in $m^2$ |
+| `rooms` | Integer | Optional | Yes | District Mode Imputation | Number of rooms |
+| `building_type` | String | Optional | Yes | Constant `"unknown"` | Construction material (`monolith`, `stone`, `panel`) |
+| `renovation` | String | Optional | Yes | Constant `"none"` | Interior quality (`cosmetic`, `designer`, `none`) |
+| `district` | String | Optional | Yes | PostGIS Spatial Join Lookup | Yerevan municipal district |
+| `distance_metro_m` | Float | Optional | Yes | Nearest spatial lookup or $99999.0$ | Geodesic distance to nearest metro station ($m$) |
+| `distance_center_m` | Float | Optional | Yes | Geodesic distance to Republic Sq ($m$) | Geodesic distance to city center ($m$) |
+| `distance_university_m` | Float | Optional | Yes | Spatial lookup or $99999.0$ | Geodesic distance to nearest university ($m$) |
+
+---
+
+## 2. API Response Contract & Variance Separation
+
+The inference output strictly distinguishes **observed spatial market variance** (from local database clusters) from **ML model prediction confidence intervals**.
 
 ```json
 {
-  "property_id": "prop_7841a",
-  "estimated_price_usd": 750.00,
-  "prediction_interval": {
-    "lower_bound_usd": 680.00,
-    "upper_bound_usd": 820.00,
-    "std_dev_usd": 70.00,
-    "confidence_level": 0.95
+  "request_id": "req_c01_9921a",
+  "coordinates": {
+    "latitude": 40.1811,
+    "longitude": 44.5136
+  },
+  "versions": {
+    "model_version": "v1.2.0-catboost",
+    "rule_engine_version": "v1.0.0-ontology"
   },
   "valuation_assessment": {
-    "tier": "Fair Market Price",
-    "deviation_from_baseline_pct": 2.5,
-    "risk_flag": "NORMAL"
+    "estimated_price_usd": 750.00,
+    "price_per_sqm_usd": 11.54,
+    "valuation_tier": "Fair Market Price",
+    "deviation_from_baseline_pct": +2.4
+  },
+  "observed_market_statistics": {
+    "cluster_mean_price_usd": 732.00,
+    "observed_price_std_dev_usd": 85.50,
+    "comparables_count": 14,
+    "data_freshness_days": 6,
+    "insufficient_data": false
+  },
+  "ml_prediction_interval": {
+    "lower_bound_usd": 670.00,
+    "upper_bound_usd": 830.00,
+    "confidence_level": 0.95,
+    "interval_width_usd": 160.00
   },
   "feature_attributions": [
-    { "feature": "distance_metro_m", "impact_pct": +12.5, "direction": "positive" },
-    { "feature": "renovation", "impact_pct": +8.0, "direction": "positive" }
+    { "feature": "distance_metro_m", "impact_pct": +11.2, "direction": "positive" },
+    { "feature": "renovation", "impact_pct": +6.5, "direction": "positive" }
   ]
 }
