@@ -29,9 +29,12 @@ Repository name: `fairrent`. Visibility: private.
 ## Additional tasks assigned October 17, 2026
 
 - S01–S04 created as issues #40–43, assigned to manemazmand and added to project 4.
-- All four cards are Backlog / Infra / P1. Phases: S01 Foundation, S02–S03 MVP, S04 Release.
-- The plan has 41 tasks. Mane owns nine frontend tasks and four operations tasks (S01–S04).
+- S01–S04 are now Backlog / Infra / P2 / Release, after the core release and security tasks, only if time remains.
+- The plan has 46 tasks. Mane owns nine frontend tasks, five application security tasks (E01–E05) and four optional operations tasks (S01–S04).
 - S01–S04 cover Linux configuration, access, monitoring, database backup/restore and service recovery. Acceptance criteria and dependencies follow the same format as the other tasks.
+- E01–E05 cover assets/risks, security CI and container review, application access/input tests, transport/artifact verification and incident response. AWS and IAM remain owned by Artyom. E05 is a dependency of C10; S tasks do not block release.
+- E01–E05 are issues #47–51, assigned to manemazmand and included in project 4. E01–E02 are Ready; E03–E05 remain Backlog until dependencies are complete. All are P0; phases follow the implementation plan.
+- Regenerate task documents with `python docs/generate-task-docs.py`. `board-tasks.json` is the task definition source and `board-issues.json` maps codes to actual GitHub issues. Updating GitHub with `docs/sync-mane-tasks.py` requires an authenticated CLI; Projects fields are maintained separately.
 
 ## Remaining configuration (unchanged)
 
