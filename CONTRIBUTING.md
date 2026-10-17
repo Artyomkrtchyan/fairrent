@@ -9,6 +9,10 @@
 - Do not commit secrets, personal data, raw data exports, or large model files.
 - Small synthetic examples are welcome; document the provenance of real data separately.
 
+## System administration contributions
+
+Mane (@manemazmand) owns frontend/analytics and the S01–S04 System Administration Lab. See [team responsibilities](docs/team.md) and [lab scope](docs/system-administration.md). Lab changes include manual Linux setup, diagnostic shell scripts, synthetic database backup/restore and recovery instructions; no Ansible is required. Keep scripts in `infra/lab/` and procedures in `docs/operations/` when implementing those tasks. Include sanitized verification evidence, and keep VM images, private keys, environment secrets and database dumps out of Git. Coordinate database changes with Alisa and production infrastructure changes with Artyom.
+
 ## Definition of Ready
 
 A task has a goal, scope, deliverables, dependencies, and acceptance criteria.
