@@ -291,7 +291,7 @@
     "deps": [],
     "goal": "Coordinate the contracts used by all four components before parallel implementation.",
     "criteria": [
-      "Publish OpenAPI schemas for listings, estimates, market indexes, and reviews with filters, pagination, and errors.",
+      "Publish OpenAPI schemas for listings, coordinate valuations with standard deviations, estimates, market indexes, and reviews, including validation, pagination, and errors.",
       "Agree units, USD conversion semantics, nullable fields, identifiers, and model inputs with the owners.",
       "Provide synthetic request/response fixtures so frontend and ML can work independently."
     ]
@@ -425,7 +425,7 @@
   },
   {
     "id": "C09",
-    "title": "Automate weekly ingestion and operational monitoring",
+    "title": "Configure weekly cron ingestion and operational monitoring",
     "owner": "Artyomkrtchyan",
     "area": "Infra",
     "phase": "Release",
@@ -436,7 +436,7 @@
     ],
     "goal": "Run ingestion on schedule and make failures visible.",
     "criteria": [
-      "EventBridge Scheduler launches the collection ECS task weekly with explicit timezone and overlap prevention.",
+      "Configure an explicit weekly cron expression in Terraform for EventBridge Scheduler (initial schedule: Sunday 03:00, Asia/Yerevan) to launch the collection ECS task with overlap prevention; make the schedule configurable.",
       "Record run status, retries, and freshness; add failure visibility through CloudWatch.",
       "Demonstrate a manual run, a failed run, and recovery without clearing inventory; document rerun steps."
     ]
@@ -454,7 +454,9 @@
       "D08",
       "C05",
       "C06",
-      "C09"
+      "C09",
+      "C11",
+      "D09"
     ],
     "goal": "Coordinate final integration and produce a reproducible release demonstration.",
     "criteria": [
@@ -604,6 +606,62 @@
       "Add meaningful Playwright coverage for browsing, filters, valuation, analytics, and reviewer decisions.",
       "Check mobile layout, keyboard navigation, empty/error/stale states, and production API configuration.",
       "Resolve UI integration defects and deliver a short demo sequence with screenshots and known limitations."
+    ]
+  },
+  {
+    "id": "B09",
+    "title": "Build the coordinate-based price statistics and assessment pipeline",
+    "owner": "Lazr22",
+    "area": "ML / Ontology",
+    "phase": "MVP",
+    "priority": "P0",
+    "deps": [
+      "B02",
+      "B03",
+      "A05"
+    ],
+    "goal": "Implement the required Python analysis pipeline using Pandas and Scikit-Learn to assess rental prices around supplied coordinates.",
+    "criteria": [
+      "Define radius/time/property comparability rules, duplicate handling, and minimum sample size with the data owner.",
+      "Return count, mean, sample standard deviation (n−1) in USD/month and USD/m² where available, cohort metadata, and a valuation assessment; distinguish observed dispersion from prediction intervals.",
+      "Support coordinate-only neighborhood reference and property-specific valuation when enough inputs exist; verify sparse, out-of-coverage, and known synthetic samples without fabricating values."
+    ]
+  },
+  {
+    "id": "C11",
+    "title": "Expose the coordinate valuation and price standard deviation REST endpoint",
+    "owner": "Artyomkrtchyan",
+    "area": "Backend",
+    "phase": "MVP",
+    "priority": "P0",
+    "deps": [
+      "C03",
+      "C04",
+      "B09"
+    ],
+    "goal": "Implement POST /api/v1/valuations for supplied coordinates, optional property features, local dispersion, and valuation assessments.",
+    "criteria": [
+      "Validate coordinate bounds, Yerevan coverage, supported radius, and property inputs; document request/response examples in OpenAPI.",
+      "Integrate B09 and return cohort size, units, mean, standard deviations, valuation assessment, freshness, and model/rule versions; clearly label coordinate-only results as area references.",
+      "Verify controlled-sample numeric results, insufficient-data/null behavior, invalid inputs, and an end-to-end coordinate request through the deployed API."
+    ]
+  },
+  {
+    "id": "D09",
+    "title": "Add coordinate-based valuation lookup and price dispersion results",
+    "owner": "manemazmand",
+    "area": "Frontend",
+    "phase": "MVP",
+    "priority": "P0",
+    "deps": [
+      "D02",
+      "C11"
+    ],
+    "goal": "Let users request an assessment for a coordinate pair or map selection and inspect local price dispersion.",
+    "criteria": [
+      "Provide validated coordinate input or map selection and optional property characteristics connected to POST /api/v1/valuations.",
+      "Display the assessment, comparable count, search radius/time window, freshness, and standard deviations with explicit USD/month and USD/m² units.",
+      "Explain that standard deviation is observed market dispersion, keep it separate from prediction intervals, and handle insufficient data, unsupported locations, and request errors."
     ]
   }
 ]

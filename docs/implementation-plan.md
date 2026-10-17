@@ -4,7 +4,9 @@ Each task has one owner, a deliverable, and acceptance criteria. Follow the link
 
 ## Delivery sequence
 
-Foundation → working baseline MVP → model/ontology and analytics integration → deployed release and demonstration.
+Foundation → working baseline and coordinate-valuation MVP → model/ontology and analytics integration → deployed release and demonstration.
+
+The required outcome includes a Pandas/Scikit-Learn analysis pipeline, a REST endpoint returning price standard deviations and valuation assessments for given coordinates, and weekly cron ingestion. B09, C11, D09, and C09 cover these explicitly.
 
 The first parallel tasks are A01, B01, C01, and D01. Complete C01 early so all components share the same contract. Infrastructure preparation can begin early; production deployment follows integration.
 
@@ -394,7 +396,7 @@ Acceptance criteria:
 
 <a id="c09"></a>
 
-## C09: Automate weekly ingestion and operational monitoring
+## C09: Configure weekly cron ingestion and operational monitoring
 
 Owner: @Artyomkrtchyan | Area: Infra | Phase: Release | Priority: P0
 
@@ -404,7 +406,7 @@ Dependencies: [C08](#c08), [A04](#a04).
 
 Acceptance criteria:
 
-- [ ] EventBridge Scheduler launches the collection ECS task weekly with explicit timezone and overlap prevention.
+- [ ] Configure a weekly cron expression in Terraform for EventBridge Scheduler (initial schedule: Sunday 03:00, Asia/Yerevan), with overlap prevention and a configurable schedule.
 - [ ] Record run status, retries, and freshness; add failure visibility through CloudWatch.
 - [ ] Demonstrate a manual run, a failed run, and recovery without clearing inventory; document rerun steps.
 
@@ -416,7 +418,7 @@ Owner: @Artyomkrtchyan | Area: Backend | Phase: Release | Priority: P0
 
 Coordinate final integration and produce a reproducible release demonstration.
 
-Dependencies: [A08](#a08), [B08](#b08), [D08](#d08), [C05](#c05), [C06](#c06), [C09](#c09).
+Dependencies: [A08](#a08), [B08](#b08), [D08](#d08), [C05](#c05), [C06](#c06), [C09](#c09), [C11](#c11), [D09](#d09).
 
 Acceptance criteria:
 
@@ -551,3 +553,52 @@ Acceptance criteria:
 - [ ] Add meaningful Playwright coverage for browsing, filters, valuation, analytics, and reviewer decisions.
 - [ ] Check mobile layout, keyboard navigation, empty/error/stale states, and production API configuration.
 - [ ] Resolve UI integration defects and deliver a short demo sequence with screenshots and known limitations.
+
+<a id="b09"></a>
+
+## B09: Build the coordinate-based price statistics and assessment pipeline
+
+Owner: @Lazr22 | Area: ML / Ontology | Phase: MVP | Priority: P0
+
+Implement the required Python analysis pipeline using Pandas and Scikit-Learn to assess rental prices around supplied coordinates.
+
+Dependencies: [B02](#b02), [B03](#b03), [A05](#a05).
+
+Acceptance criteria:
+
+- [ ] Define radius/time/property comparability rules, duplicate handling, and minimum sample size with the data owner.
+- [ ] Return count, mean, sample standard deviation (n−1) in USD/month and USD/m² where available, cohort metadata, and a valuation assessment; distinguish observed dispersion from prediction intervals.
+- [ ] Support coordinate-only neighborhood reference and property-specific valuation when enough inputs exist; verify sparse, out-of-coverage, and known synthetic samples without fabricating values.
+
+<a id="c11"></a>
+
+## C11: Expose the coordinate valuation and price standard deviation REST endpoint
+
+Owner: @Artyomkrtchyan | Area: Backend | Phase: MVP | Priority: P0
+
+Implement POST /api/v1/valuations for supplied coordinates, optional property features, local dispersion, and valuation assessments.
+
+Dependencies: [C03](#c03), [C04](#c04), [B09](#b09).
+
+Acceptance criteria:
+
+- [ ] Validate coordinate bounds, Yerevan coverage, supported radius, and property inputs; document request/response examples in OpenAPI.
+- [ ] Integrate B09 and return cohort size, units, mean, standard deviations, valuation assessment, freshness, and model/rule versions; clearly label coordinate-only results as area references.
+- [ ] Verify controlled-sample numeric results, insufficient-data/null behavior, invalid inputs, and an end-to-end coordinate request through the deployed API.
+
+<a id="d09"></a>
+
+## D09: Add coordinate-based valuation lookup and price dispersion results
+
+Owner: @manemazmand | Area: Frontend | Phase: MVP | Priority: P0
+
+Let users request an assessment for a coordinate pair or map selection and inspect local price dispersion.
+
+Dependencies: [D02](#d02), [C11](#c11).
+
+Acceptance criteria:
+
+- [ ] Provide validated coordinate input or map selection and optional property characteristics connected to POST /api/v1/valuations.
+- [ ] Display the assessment, comparable count, search radius/time window, freshness, and standard deviations with explicit USD/month and USD/m² units.
+- [ ] Explain that standard deviation is observed market dispersion, keep it separate from prediction intervals, and handle insufficient data, unsupported locations, and request errors.
+
