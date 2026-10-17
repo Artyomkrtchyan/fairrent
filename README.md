@@ -21,6 +21,8 @@ AWS hosting with Terraform, Docker, and GitHub Actions. See the [complete techno
 - Separate signals for price anomalies and potential risks.
 - A manual review queue.
 - Neighborhood asking-price indexes with update dates and observation counts.
+- Coordinate-based rental assessments and local price standard deviations from a Pandas/Scikit-Learn analysis pipeline.
+- A weekly cron workflow for listing collection, obsolete active-inventory cleanup, and outlier review queue processing.
 
 A high price does not prove fraud. The system provides signals for review.
 

@@ -23,4 +23,4 @@
 - A and B agree on features; C and D agree on requests, errors, filters, and pagination.
 - Establish CI and reproducible setup early.
 
-Hold a short weekly integration demonstration, review blockers, and update the board. If C is overloaded, collection scheduling can move to A. Individual tasks and issue assignments will be created later.
+Hold a short weekly integration demonstration, review blockers, and update the board. If C is overloaded, collection scheduling can move to A. The [implementation plan](implementation-plan.md) links all 37 assigned issues and their dependencies.
