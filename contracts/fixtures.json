@@ -1,0 +1,447 @@
+{
+  "listings": {
+    "schema": "ListingPage",
+    "value": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "source": "list.am",
+          "external_id": "synthetic-001",
+          "source_url": "https://example.org/synthetic-listing",
+          "property_id": null,
+          "duplicate_group_id": null,
+          "description": "Synthetic apartment; no real listing or personal data.",
+          "address": null,
+          "district_id": "kentron",
+          "latitude": 40.185,
+          "longitude": 44.515,
+          "coordinate_confidence": "approximate",
+          "price_original": 600,
+          "currency_original": "USD",
+          "price_monthly_normalized": 600,
+          "currency_normalized": "USD",
+          "conversion": {
+            "rate_to_usd": 1,
+            "rate_date": "2026-10-17",
+            "rate_source": "identity"
+          },
+          "utilities_included": null,
+          "area_m2": 50,
+          "rooms": 2,
+          "floor": null,
+          "total_floors": null,
+          "condition": null,
+          "published_at": null,
+          "first_seen_at": "2026-10-17T08:00:00Z",
+          "last_seen_at": "2026-10-17T08:00:00Z",
+          "status": "active"
+        }
+      ],
+      "page": 1,
+      "page_size": 20,
+      "total": 1
+    }
+  },
+  "listing-detail": {
+    "schema": "ListingDetail",
+    "value": {
+      "listing": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "source": "list.am",
+        "external_id": "synthetic-001",
+        "source_url": "https://example.org/synthetic-listing",
+        "property_id": null,
+        "duplicate_group_id": null,
+        "description": "Synthetic apartment; no real listing or personal data.",
+        "address": null,
+        "district_id": "kentron",
+        "latitude": 40.185,
+        "longitude": 44.515,
+        "coordinate_confidence": "approximate",
+        "price_original": 600,
+        "currency_original": "USD",
+        "price_monthly_normalized": 600,
+        "currency_normalized": "USD",
+        "conversion": {
+          "rate_to_usd": 1,
+          "rate_date": "2026-10-17",
+          "rate_source": "identity"
+        },
+        "utilities_included": null,
+        "area_m2": 50,
+        "rooms": 2,
+        "floor": null,
+        "total_floors": null,
+        "condition": null,
+        "published_at": null,
+        "first_seen_at": "2026-10-17T08:00:00Z",
+        "last_seen_at": "2026-10-17T08:00:00Z",
+        "status": "active"
+      },
+      "signals": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "listing_id": "00000000-0000-4000-8000-000000000001",
+          "category": "price_anomaly",
+          "rule_id": "synthetic-price-rule",
+          "rules_version": "synthetic-rules-v1",
+          "evidence": [
+            "Price deviation requires review; not proof of fraud."
+          ],
+          "created_at": "2026-10-17T08:00:00Z"
+        }
+      ]
+    }
+  },
+  "estimate": {
+    "schema": "Estimate",
+    "value": {
+      "expected_price": 600,
+      "lower_bound": 500,
+      "upper_bound": 700,
+      "currency": "USD",
+      "unit": "USD/month",
+      "price_status": "within_range",
+      "comparable_count": 3,
+      "confidence_explanation": "Synthetic calibrated interval for UI demonstration only.",
+      "factors": [],
+      "model_version": "synthetic-baseline-v1",
+      "rules_version": "synthetic-rules-v1",
+      "data_as_of": "2026-10-17T08:00:00Z",
+      "created_at": "2026-10-17T08:00:00Z"
+    }
+  },
+  "estimate-insufficient": {
+    "schema": "Estimate",
+    "value": {
+      "expected_price": null,
+      "lower_bound": null,
+      "upper_bound": null,
+      "currency": "USD",
+      "unit": "USD/month",
+      "price_status": "insufficient_data",
+      "comparable_count": 1,
+      "confidence_explanation": "Insufficient comparables; no prediction interval available.",
+      "factors": [],
+      "model_version": "synthetic-baseline-v1",
+      "rules_version": "synthetic-rules-v1",
+      "data_as_of": "2026-10-17T08:00:00Z",
+      "created_at": "2026-10-17T08:00:00Z"
+    }
+  },
+  "valuation-request": {
+    "schema": "ValuationRequest",
+    "value": {
+      "latitude": 40.185,
+      "longitude": 44.515,
+      "property": {
+        "area_m2": 50,
+        "rooms": 2,
+        "floor": null,
+        "total_floors": null,
+        "condition": null
+      },
+      "asking_price_usd_month": 600
+    }
+  },
+  "valuation": {
+    "schema": "ValuationResponse",
+    "value": {
+      "kind": "property_valuation",
+      "latitude": 40.185,
+      "longitude": 44.515,
+      "cohort": {
+        "radius_m": 1000,
+        "period_start": "2026-09-18",
+        "period_end": "2026-10-17",
+        "minimum_sample_size": 3,
+        "selection_version": "synthetic-cohort-v1",
+        "duplicate_policy": "latest_observation_per_duplicate_group",
+        "inventory_policy": "active_at_data_as_of"
+      },
+      "monthly": {
+        "unit": "USD/month",
+        "count": 3,
+        "mean": 600,
+        "sample_stddev": 100
+      },
+      "per_m2": {
+        "unit": "USD/m2",
+        "count": 3,
+        "mean": 12,
+        "sample_stddev": 2
+      },
+      "estimate": {
+        "expected_price": 600,
+        "lower_bound": 500,
+        "upper_bound": 700,
+        "currency": "USD",
+        "unit": "USD/month",
+        "price_status": "within_range",
+        "comparable_count": 3,
+        "confidence_explanation": "Synthetic calibrated interval for UI demonstration only.",
+        "factors": [],
+        "model_version": "synthetic-baseline-v1",
+        "rules_version": "synthetic-rules-v1",
+        "data_as_of": "2026-10-17T08:00:00Z",
+        "created_at": "2026-10-17T08:00:00Z"
+      }
+    }
+  },
+  "area-request": {
+    "schema": "ValuationRequest",
+    "value": {
+      "latitude": 40.185,
+      "longitude": 44.515
+    }
+  },
+  "area-reference": {
+    "schema": "ValuationResponse",
+    "value": {
+      "kind": "area_reference",
+      "latitude": 40.185,
+      "longitude": 44.515,
+      "cohort": {
+        "radius_m": 1000,
+        "period_start": "2026-09-18",
+        "period_end": "2026-10-17",
+        "minimum_sample_size": 3,
+        "selection_version": "synthetic-cohort-v1",
+        "duplicate_policy": "latest_observation_per_duplicate_group",
+        "inventory_policy": "active_at_data_as_of"
+      },
+      "monthly": {
+        "unit": "USD/month",
+        "count": 3,
+        "mean": 600,
+        "sample_stddev": 100
+      },
+      "per_m2": {
+        "unit": "USD/m2",
+        "count": 3,
+        "mean": 12,
+        "sample_stddev": 2
+      },
+      "estimate": {
+        "expected_price": null,
+        "lower_bound": null,
+        "upper_bound": null,
+        "currency": "USD",
+        "unit": "USD/month",
+        "price_status": "insufficient_data",
+        "comparable_count": 3,
+        "confidence_explanation": "Area reference only: property characteristics were not supplied.",
+        "factors": [],
+        "model_version": "synthetic-baseline-v1",
+        "rules_version": "synthetic-rules-v1",
+        "data_as_of": "2026-10-17T08:00:00Z",
+        "created_at": "2026-10-17T08:00:00Z"
+      }
+    }
+  },
+  "valuation-sparse": {
+    "schema": "ValuationResponse",
+    "value": {
+      "kind": "area_reference",
+      "latitude": 40.185,
+      "longitude": 44.515,
+      "cohort": {
+        "radius_m": 1000,
+        "period_start": "2026-09-18",
+        "period_end": "2026-10-17",
+        "minimum_sample_size": 3,
+        "selection_version": "synthetic-cohort-v1",
+        "duplicate_policy": "latest_observation_per_duplicate_group",
+        "inventory_policy": "active_at_data_as_of"
+      },
+      "monthly": {
+        "unit": "USD/month",
+        "count": 1,
+        "mean": 500,
+        "sample_stddev": null
+      },
+      "per_m2": {
+        "unit": "USD/m2",
+        "count": 0,
+        "mean": null,
+        "sample_stddev": null
+      },
+      "estimate": {
+        "expected_price": null,
+        "lower_bound": null,
+        "upper_bound": null,
+        "currency": "USD",
+        "unit": "USD/month",
+        "price_status": "insufficient_data",
+        "comparable_count": 1,
+        "confidence_explanation": "Insufficient comparables; no prediction interval available.",
+        "factors": [],
+        "model_version": "synthetic-baseline-v1",
+        "rules_version": "synthetic-rules-v1",
+        "data_as_of": "2026-10-17T08:00:00Z",
+        "created_at": "2026-10-17T08:00:00Z"
+      }
+    }
+  },
+  "listings-empty": {
+    "schema": "ListingPage",
+    "value": {
+      "items": [],
+      "page": 1,
+      "page_size": 20,
+      "total": 0
+    }
+  },
+  "market-index": {
+    "schema": "MarketIndexPage",
+    "value": {
+      "items": [
+        {
+          "district_id": "kentron",
+          "period_start": "2026-10-12",
+          "period_end": "2026-10-18",
+          "sample_count": 3,
+          "area_sample_count": 3,
+          "median_usd_month": 600,
+          "median_usd_m2": 12,
+          "status": "available",
+          "data_as_of": "2026-10-17T08:00:00Z",
+          "measure": "asking_price"
+        }
+      ],
+      "page": 1,
+      "page_size": 20,
+      "total": 1
+    }
+  },
+  "reviews": {
+    "schema": "ReviewPage",
+    "value": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "listing_id": "00000000-0000-4000-8000-000000000001",
+          "signal_ids": [
+            "00000000-0000-4000-8000-000000000001"
+          ],
+          "status": "pending",
+          "decision": null,
+          "reason": null,
+          "reviewed_at": null,
+          "updated_at": "2026-10-17T08:00:00Z",
+          "version": 1,
+          "history": []
+        }
+      ],
+      "page": 1,
+      "page_size": 20,
+      "total": 1
+    }
+  },
+  "review-update": {
+    "schema": "ReviewUpdate",
+    "value": {
+      "status": "resolved",
+      "decision": "dismissed",
+      "reason": "Synthetic evidence checked.",
+      "version": 1
+    }
+  },
+  "review-resolved": {
+    "schema": "Review",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "listing_id": "00000000-0000-4000-8000-000000000001",
+      "signal_ids": [
+        "00000000-0000-4000-8000-000000000001"
+      ],
+      "status": "resolved",
+      "decision": "dismissed",
+      "reason": "Synthetic evidence checked.",
+      "reviewed_at": "2026-10-17T08:00:00Z",
+      "updated_at": "2026-10-17T08:00:00Z",
+      "version": 2,
+      "history": [
+        {
+          "status": "resolved",
+          "decision": "dismissed",
+          "reason": "Synthetic evidence checked.",
+          "actor_id": "00000000-0000-4000-8000-000000000001",
+          "created_at": "2026-10-17T08:00:00Z"
+        }
+      ]
+    }
+  },
+  "error-validation_error": {
+    "schema": "Error",
+    "value": {
+      "code": "validation_error",
+      "message": "Synthetic validation_error",
+      "request_id": "00000000-0000-4000-8000-000000000001",
+      "details": []
+    }
+  },
+  "error-not_found": {
+    "schema": "Error",
+    "value": {
+      "code": "not_found",
+      "message": "Synthetic not_found",
+      "request_id": "00000000-0000-4000-8000-000000000001",
+      "details": []
+    }
+  },
+  "error-unauthenticated": {
+    "schema": "Error",
+    "value": {
+      "code": "unauthenticated",
+      "message": "Synthetic unauthenticated",
+      "request_id": "00000000-0000-4000-8000-000000000001",
+      "details": []
+    }
+  },
+  "error-forbidden": {
+    "schema": "Error",
+    "value": {
+      "code": "forbidden",
+      "message": "Synthetic forbidden",
+      "request_id": "00000000-0000-4000-8000-000000000001",
+      "details": []
+    }
+  },
+  "error-conflict": {
+    "schema": "Error",
+    "value": {
+      "code": "conflict",
+      "message": "Synthetic conflict",
+      "request_id": "00000000-0000-4000-8000-000000000001",
+      "details": []
+    }
+  },
+  "error-outside_coverage": {
+    "schema": "Error",
+    "value": {
+      "code": "outside_coverage",
+      "message": "Synthetic outside_coverage",
+      "request_id": "00000000-0000-4000-8000-000000000001",
+      "details": []
+    }
+  },
+  "error-service_unavailable": {
+    "schema": "Error",
+    "value": {
+      "code": "service_unavailable",
+      "message": "Synthetic service_unavailable",
+      "request_id": "00000000-0000-4000-8000-000000000001",
+      "details": []
+    }
+  },
+  "error-internal_error": {
+    "schema": "Error",
+    "value": {
+      "code": "internal_error",
+      "message": "Synthetic internal_error",
+      "request_id": "00000000-0000-4000-8000-000000000001",
+      "details": []
+    }
+  }
+}

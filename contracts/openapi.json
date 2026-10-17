@@ -1,0 +1,2216 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "FairRent shared contract",
+    "version": "0.1.0",
+    "description": "C01 proposal for owner review. No running API is implied. Normative semantics: docs/contract-semantics.md."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000"
+    }
+  ],
+  "paths": {
+    "/api/v1/listings": {
+      "get": {
+        "operationId": "get_listings",
+        "summary": "GET /api/v1/listings",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "district_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "price_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "price_max",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "rooms",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "area_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          {
+            "name": "area_max",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "inactive"
+              ],
+              "default": "active"
+            }
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingPage"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "00000000-0000-4000-8000-000000000001",
+                      "source": "list.am",
+                      "external_id": "synthetic-001",
+                      "source_url": "https://example.org/synthetic-listing",
+                      "property_id": null,
+                      "duplicate_group_id": null,
+                      "description": "Synthetic apartment; no real listing or personal data.",
+                      "address": null,
+                      "district_id": "kentron",
+                      "latitude": 40.185,
+                      "longitude": 44.515,
+                      "coordinate_confidence": "approximate",
+                      "price_original": 600,
+                      "currency_original": "USD",
+                      "price_monthly_normalized": 600,
+                      "currency_normalized": "USD",
+                      "conversion": {
+                        "rate_to_usd": 1,
+                        "rate_date": "2026-10-17",
+                        "rate_source": "identity"
+                      },
+                      "utilities_included": null,
+                      "area_m2": 50,
+                      "rooms": 2,
+                      "floor": null,
+                      "total_floors": null,
+                      "condition": null,
+                      "published_at": null,
+                      "first_seen_at": "2026-10-17T08:00:00Z",
+                      "last_seen_at": "2026-10-17T08:00:00Z",
+                      "status": "active"
+                    }
+                  ],
+                  "page": 1,
+                  "page_size": 20,
+                  "total": 1
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/listings/{id}": {
+      "get": {
+        "operationId": "get_listings_id",
+        "summary": "GET /api/v1/listings/{id}",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListingDetail"
+                },
+                "example": {
+                  "listing": {
+                    "id": "00000000-0000-4000-8000-000000000001",
+                    "source": "list.am",
+                    "external_id": "synthetic-001",
+                    "source_url": "https://example.org/synthetic-listing",
+                    "property_id": null,
+                    "duplicate_group_id": null,
+                    "description": "Synthetic apartment; no real listing or personal data.",
+                    "address": null,
+                    "district_id": "kentron",
+                    "latitude": 40.185,
+                    "longitude": 44.515,
+                    "coordinate_confidence": "approximate",
+                    "price_original": 600,
+                    "currency_original": "USD",
+                    "price_monthly_normalized": 600,
+                    "currency_normalized": "USD",
+                    "conversion": {
+                      "rate_to_usd": 1,
+                      "rate_date": "2026-10-17",
+                      "rate_source": "identity"
+                    },
+                    "utilities_included": null,
+                    "area_m2": 50,
+                    "rooms": 2,
+                    "floor": null,
+                    "total_floors": null,
+                    "condition": null,
+                    "published_at": null,
+                    "first_seen_at": "2026-10-17T08:00:00Z",
+                    "last_seen_at": "2026-10-17T08:00:00Z",
+                    "status": "active"
+                  },
+                  "signals": [
+                    {
+                      "id": "00000000-0000-4000-8000-000000000001",
+                      "listing_id": "00000000-0000-4000-8000-000000000001",
+                      "category": "price_anomaly",
+                      "rule_id": "synthetic-price-rule",
+                      "rules_version": "synthetic-rules-v1",
+                      "evidence": [
+                        "Price deviation requires review; not proof of fraud."
+                      ],
+                      "created_at": "2026-10-17T08:00:00Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/listings/{id}/estimate": {
+      "get": {
+        "operationId": "get_listings_id_estimate",
+        "summary": "GET /api/v1/listings/{id}/estimate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Estimate"
+                },
+                "example": {
+                  "expected_price": 600,
+                  "lower_bound": 500,
+                  "upper_bound": 700,
+                  "currency": "USD",
+                  "unit": "USD/month",
+                  "price_status": "within_range",
+                  "comparable_count": 3,
+                  "confidence_explanation": "Synthetic calibrated interval for UI demonstration only.",
+                  "factors": [],
+                  "model_version": "synthetic-baseline-v1",
+                  "rules_version": "synthetic-rules-v1",
+                  "data_as_of": "2026-10-17T08:00:00Z",
+                  "created_at": "2026-10-17T08:00:00Z"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/valuations": {
+      "post": {
+        "operationId": "post_valuations",
+        "summary": "POST /api/v1/valuations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValuationResponse"
+                },
+                "example": {
+                  "kind": "property_valuation",
+                  "latitude": 40.185,
+                  "longitude": 44.515,
+                  "cohort": {
+                    "radius_m": 1000,
+                    "period_start": "2026-09-18",
+                    "period_end": "2026-10-17",
+                    "minimum_sample_size": 3,
+                    "selection_version": "synthetic-cohort-v1",
+                    "duplicate_policy": "latest_observation_per_duplicate_group",
+                    "inventory_policy": "active_at_data_as_of"
+                  },
+                  "monthly": {
+                    "unit": "USD/month",
+                    "count": 3,
+                    "mean": 600,
+                    "sample_stddev": 100
+                  },
+                  "per_m2": {
+                    "unit": "USD/m2",
+                    "count": 3,
+                    "mean": 12,
+                    "sample_stddev": 2
+                  },
+                  "estimate": {
+                    "expected_price": 600,
+                    "lower_bound": 500,
+                    "upper_bound": 700,
+                    "currency": "USD",
+                    "unit": "USD/month",
+                    "price_status": "within_range",
+                    "comparable_count": 3,
+                    "confidence_explanation": "Synthetic calibrated interval for UI demonstration only.",
+                    "factors": [],
+                    "model_version": "synthetic-baseline-v1",
+                    "rules_version": "synthetic-rules-v1",
+                    "data_as_of": "2026-10-17T08:00:00Z",
+                    "created_at": "2026-10-17T08:00:00Z"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Outside Yerevan coverage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValuationRequest"
+              },
+              "example": {
+                "latitude": 40.185,
+                "longitude": 44.515,
+                "property": {
+                  "area_m2": 50,
+                  "rooms": 2,
+                  "floor": null,
+                  "total_floors": null,
+                  "condition": null
+                },
+                "asking_price_usd_month": 600
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/market-index": {
+      "get": {
+        "operationId": "get_market-index",
+        "summary": "GET /api/v1/market-index",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "district_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "period_start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "period_end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketIndexPage"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "district_id": "kentron",
+                      "period_start": "2026-10-12",
+                      "period_end": "2026-10-18",
+                      "sample_count": 3,
+                      "area_sample_count": 3,
+                      "median_usd_month": 600,
+                      "median_usd_m2": 12,
+                      "status": "available",
+                      "data_as_of": "2026-10-17T08:00:00Z",
+                      "measure": "asking_price"
+                    }
+                  ],
+                  "page": 1,
+                  "page_size": 20,
+                  "total": 1
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reviews": {
+      "get": {
+        "operationId": "get_reviews",
+        "summary": "GET /api/v1/reviews",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "in_review",
+                "resolved"
+              ]
+            }
+          },
+          {
+            "name": "listing_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewPage"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "00000000-0000-4000-8000-000000000001",
+                      "listing_id": "00000000-0000-4000-8000-000000000001",
+                      "signal_ids": [
+                        "00000000-0000-4000-8000-000000000001"
+                      ],
+                      "status": "pending",
+                      "decision": null,
+                      "reason": null,
+                      "reviewed_at": null,
+                      "updated_at": "2026-10-17T08:00:00Z",
+                      "version": 1,
+                      "history": []
+                    }
+                  ],
+                  "page": 1,
+                  "page_size": 20,
+                  "total": 1
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Reviewer role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "reviewerBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/reviews/{id}": {
+      "patch": {
+        "operationId": "patch_reviews_id",
+        "summary": "PATCH /api/v1/reviews/{id}",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Review"
+                },
+                "example": {
+                  "id": "00000000-0000-4000-8000-000000000001",
+                  "listing_id": "00000000-0000-4000-8000-000000000001",
+                  "signal_ids": [
+                    "00000000-0000-4000-8000-000000000001"
+                  ],
+                  "status": "resolved",
+                  "decision": "dismissed",
+                  "reason": "Synthetic evidence checked.",
+                  "reviewed_at": "2026-10-17T08:00:00Z",
+                  "updated_at": "2026-10-17T08:00:00Z",
+                  "version": 2,
+                  "history": [
+                    {
+                      "status": "resolved",
+                      "decision": "dismissed",
+                      "reason": "Synthetic evidence checked.",
+                      "actor_id": "00000000-0000-4000-8000-000000000001",
+                      "created_at": "2026-10-17T08:00:00Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Reviewer role required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version or transition conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewUpdate"
+              },
+              "example": {
+                "status": "resolved",
+                "decision": "dismissed",
+                "reason": "Synthetic evidence checked.",
+                "version": 1
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "reviewerBearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Conversion": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "rate_to_usd",
+          "rate_date",
+          "rate_source"
+        ],
+        "properties": {
+          "rate_to_usd": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "rate_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "rate_source": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "PropertyFeatures": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "area_m2",
+          "rooms",
+          "floor",
+          "total_floors",
+          "condition"
+        ],
+        "properties": {
+          "area_m2": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rooms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "floor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_floors": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "needs_renovation",
+                  "good",
+                  "renovated",
+                  "new"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "Listing": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "source",
+          "external_id",
+          "source_url",
+          "property_id",
+          "duplicate_group_id",
+          "description",
+          "address",
+          "district_id",
+          "latitude",
+          "longitude",
+          "coordinate_confidence",
+          "price_original",
+          "currency_original",
+          "price_monthly_normalized",
+          "currency_normalized",
+          "conversion",
+          "utilities_included",
+          "area_m2",
+          "rooms",
+          "floor",
+          "total_floors",
+          "condition",
+          "published_at",
+          "first_seen_at",
+          "last_seen_at",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "list.am"
+            ]
+          },
+          "external_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "property_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "duplicate_group_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "district_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "coordinate_confidence": {
+            "type": "string",
+            "enum": [
+              "exact",
+              "approximate",
+              "unknown"
+            ]
+          },
+          "price_original": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "currency_original": {
+            "type": "string",
+            "enum": [
+              "USD",
+              "AMD",
+              "EUR",
+              "RUB"
+            ]
+          },
+          "price_monthly_normalized": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currency_normalized": {
+            "type": "string",
+            "enum": [
+              "USD"
+            ]
+          },
+          "conversion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Conversion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "utilities_included": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "area_m2": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rooms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "floor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_floors": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "needs_renovation",
+                  "good",
+                  "renovated",
+                  "new"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_seen_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "inactive"
+            ]
+          }
+        }
+      },
+      "Factor": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "explanation",
+          "origin",
+          "evidence"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "explanation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "model",
+              "baseline",
+              "ontology"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      },
+      "Estimate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expected_price",
+          "lower_bound",
+          "upper_bound",
+          "currency",
+          "unit",
+          "price_status",
+          "comparable_count",
+          "confidence_explanation",
+          "factors",
+          "model_version",
+          "rules_version",
+          "data_as_of",
+          "created_at"
+        ],
+        "properties": {
+          "expected_price": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lower_bound": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "upper_bound": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "USD"
+            ]
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "USD/month"
+            ]
+          },
+          "price_status": {
+            "type": "string",
+            "enum": [
+              "within_range",
+              "above_range",
+              "below_range",
+              "insufficient_data"
+            ]
+          },
+          "comparable_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "confidence_explanation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "factors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Factor"
+            }
+          },
+          "model_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rules_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data_as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        }
+      },
+      "RiskSignal": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "listing_id",
+          "category",
+          "rule_id",
+          "rules_version",
+          "evidence",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "listing_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "price_anomaly",
+              "risk_evidence"
+            ]
+          },
+          "rule_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rules_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        }
+      },
+      "ListingDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "listing",
+          "signals"
+        ],
+        "properties": {
+          "listing": {
+            "$ref": "#/components/schemas/Listing"
+          },
+          "signals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RiskSignal"
+            }
+          }
+        }
+      },
+      "ReviewEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "decision",
+          "reason",
+          "actor_id",
+          "created_at"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_review",
+              "resolved"
+            ]
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "dismissed",
+                  "needs_follow_up",
+                  "confirmed_issue"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1
+          },
+          "actor_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          }
+        }
+      },
+      "Review": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "listing_id",
+          "signal_ids",
+          "status",
+          "decision",
+          "reason",
+          "reviewed_at",
+          "updated_at",
+          "version",
+          "history"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "listing_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "signal_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_review",
+              "resolved"
+            ]
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "dismissed",
+                  "needs_follow_up",
+                  "confirmed_issue"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewEvent"
+            }
+          }
+        }
+      },
+      "ReviewUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "decision",
+          "reason",
+          "version"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_review",
+              "resolved"
+            ]
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "dismissed",
+                  "needs_follow_up",
+                  "confirmed_issue"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "pattern": "\\S"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "resolved"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "decision": {
+                  "type": "string"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "decision": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "MarketIndex": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "district_id",
+          "period_start",
+          "period_end",
+          "sample_count",
+          "area_sample_count",
+          "median_usd_month",
+          "median_usd_m2",
+          "status",
+          "data_as_of",
+          "measure"
+        ],
+        "properties": {
+          "district_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date"
+          },
+          "sample_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "area_sample_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "median_usd_month": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "median_usd_m2": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "insufficient_data"
+            ]
+          },
+          "data_as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "measure": {
+            "type": "string",
+            "enum": [
+              "asking_price"
+            ]
+          }
+        }
+      },
+      "Statistics": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "unit",
+          "count",
+          "mean",
+          "sample_stddev"
+        ],
+        "properties": {
+          "unit": {
+            "type": "string",
+            "enum": [
+              "USD/month",
+              "USD/m2"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sample_stddev": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "Cohort": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "radius_m",
+          "period_start",
+          "period_end",
+          "minimum_sample_size",
+          "selection_version",
+          "duplicate_policy",
+          "inventory_policy"
+        ],
+        "properties": {
+          "radius_m": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 5000
+          },
+          "period_start": {
+            "type": "string",
+            "format": "date"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date"
+          },
+          "minimum_sample_size": {
+            "type": "integer",
+            "minimum": 2
+          },
+          "selection_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "duplicate_policy": {
+            "type": "string",
+            "enum": [
+              "latest_observation_per_duplicate_group"
+            ]
+          },
+          "inventory_policy": {
+            "type": "string",
+            "enum": [
+              "active_at_data_as_of"
+            ]
+          }
+        }
+      },
+      "ValuationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "radius_m": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 5000,
+            "default": 1000
+          },
+          "window_days": {
+            "type": "integer",
+            "minimum": 7,
+            "maximum": 90,
+            "default": 30
+          },
+          "property": {
+            "$ref": "#/components/schemas/PropertyFeatures"
+          },
+          "asking_price_usd_month": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        }
+      },
+      "ValuationResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "latitude",
+          "longitude",
+          "cohort",
+          "monthly",
+          "per_m2",
+          "estimate"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "area_reference",
+              "property_valuation"
+            ]
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "cohort": {
+            "$ref": "#/components/schemas/Cohort"
+          },
+          "monthly": {
+            "$ref": "#/components/schemas/Statistics"
+          },
+          "per_m2": {
+            "$ref": "#/components/schemas/Statistics"
+          },
+          "estimate": {
+            "$ref": "#/components/schemas/Estimate"
+          }
+        }
+      },
+      "ModelInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request",
+          "as_of",
+          "district_id",
+          "distance_to_metro_m",
+          "distance_to_university_m",
+          "distance_to_center_m"
+        ],
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/ValuationRequest"
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          "district_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "distance_to_metro_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "distance_to_university_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "distance_to_center_m": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ErrorDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field",
+          "message"
+        ],
+        "properties": {
+          "field": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "message",
+          "request_id",
+          "details"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "validation_error",
+              "not_found",
+              "unauthenticated",
+              "forbidden",
+              "conflict",
+              "outside_coverage",
+              "service_unavailable",
+              "internal_error"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          },
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ErrorDetail"
+            }
+          }
+        }
+      },
+      "ListingPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "total"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Listing"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "ReviewPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "total"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Review"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "MarketIndexPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "total"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MarketIndex"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "reviewerBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Requires reviewer role; token issuer/session design belongs to C05."
+      }
+    }
+  }
+}

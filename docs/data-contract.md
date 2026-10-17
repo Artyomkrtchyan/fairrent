@@ -1,6 +1,6 @@
-# Initial data contract — draft v0
+# Shared data contract — C01 proposal v0.1.0
 
-This is a proposal for team agreement, not an implemented API.
+This is a proposal for team agreement, not an implemented API. The original outline below is expanded by the [OpenAPI schemas and synthetic fixtures](../contracts/README.md) and [normative integration semantics and pending owner approvals](contract-semantics.md). Those documents define the precise v0.1.0 behavior.
 
 ## Listing
 
