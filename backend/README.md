@@ -59,3 +59,16 @@ response or a valuation endpoint.
 - Restarting the database restores `/ready` to 200.
 - PostGIS responds to `SELECT PostGIS_Version();`.
 - The model stub can be imported and called inside the API container.
+
+## Automated API tests
+
+From the repository root, with a Python virtual environment activated:
+
+```bash
+python -m pip install -r backend/requirements-dev.txt
+python -m pytest backend/tests -v
+```
+
+Tests cover `/health`, successful database readiness, and database connection
+failure. Database connections are mocked; Docker and a running database are
+not required. Real PostGIS connectivity is verified separately through Compose.
