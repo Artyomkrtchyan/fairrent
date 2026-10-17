@@ -46,3 +46,4 @@ See the [implementation plan and task dependencies](docs/implementation-plan.md)
 3. [Initial data contract](docs/data-contract.md).
 4. [GitHub Project setup](docs/github-setup.md).
 5. [Contribution guidelines](CONTRIBUTING.md).
+6. [Git branches, commits, push, and pull requests](docs/git-workflow.md).

@@ -22,6 +22,7 @@ Review: `id`, `listing_id`, `signal_ids`, `status` (pending/in_review/resolved),
 
 ## Proposed API endpoints
 
+- `POST /api/v1/valuations` — coordinate-based rental valuation and local price standard deviations. Accept latitude/longitude and optional property characteristics; coordinate-only requests return a documented neighborhood reference rather than a precise apartment-specific prediction.
 - `GET /api/v1/listings` — filtering and pagination.
 - `GET /api/v1/listings/{id}` — listing details.
 - `GET /api/v1/listings/{id}/estimate` — valuation and explanation.
@@ -30,3 +31,7 @@ Review: `id`, `listing_id`, `signal_ids`, `status` (pending/in_review/resolved),
 - `PATCH /api/v1/reviews/{id}` — reviewer decision.
 
 Agree on access permissions, error formats, pagination, synthetic responses, and OpenAPI before implementation.
+
+## Coordinate valuation statistics
+
+Define a comparable cohort using a documented search radius, observation period, active-inventory policy, and duplicate handling. Return sample count, radius, period, freshness, mean and sample standard deviation in USD/month and USD/m² where supported. Use the n−1 sample convention; return null dispersion for fewer than two observations. Do not return zero for missing data. Missing property characteristics must result in a clearly identified area reference or insufficient_data. Keep dispersion separate from the estimated rental interval, include model/rule versions, and validate coordinate bounds and supported Yerevan coverage.

@@ -17,7 +17,7 @@ The team's current stack for FairRent.
 | Backend Hosting | AWS ECS Fargate + ECR | Running Docker containers and storing container images |
 | Managed Database | AWS RDS PostgreSQL + PostGIS | Hosting relational and geographic data |
 | Data & Model Storage | AWS S3 | Storing datasets, model artifacts, and evaluation outputs |
-| Scheduled Jobs | EventBridge Scheduler + ECS Tasks | Weekly listing collection and processing |
+| Scheduled Jobs | EventBridge Scheduler cron + ECS Tasks | Weekly listing collection and processing |
 | Logging | AWS CloudWatch | Application logs and scheduled job monitoring |
 | Infrastructure as Code | Terraform | Reproducible AWS infrastructure provisioning |
 | CI/CD | GitHub Actions | Automated checks, container builds, and deployment |
@@ -29,6 +29,7 @@ The team's current stack for FairRent.
 - The backend reads PostgreSQL/PostGIS and invokes the valuation model within the application.
 - A separate collection process normalizes listings and writes observations to the database.
 - EventBridge Scheduler starts the collection process as an ECS task each week.
+- The coordinate valuation endpoint returns local sample standard deviations and valuation assessments from the Pandas/Scikit-Learn pipeline; CatBoost is the candidate price model.
 - The manual review queue is stored in PostgreSQL.
 - S3 stores datasets and model artifacts; ECR stores container images.
 - Terraform defines AWS resources; GitHub Actions runs checks and deployment workflows.

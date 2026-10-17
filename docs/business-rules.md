@@ -8,6 +8,8 @@ Flow: collection → normalization → deduplication → geographic enrichment �
 
 ## Valuation
 
+- Deliver a Python analysis pipeline using Pandas and Scikit-Learn and a REST endpoint that evaluates a supplied coordinate pair.
+- Return local price dispersion (standard deviation), comparable sample size, and a valuation assessment. Standard deviation describes observed asking-price dispersion and is separate from a prediction interval.
 - Baseline: median price per square meter for comparable properties, considering the period, neighborhood, and property characteristics.
 - Compare ML and baseline results on the same test set.
 - Validate prediction intervals using observed coverage on held-out data.
@@ -34,7 +36,7 @@ Rules establish geographic proximity; market data validates its effect on price.
 - Mark obsolete listings as inactive.
 - Collection failures must not imply that listings have been removed.
 - Repeated collection must not create duplicate observations.
-- Refresh market data weekly; evaluate available data on demand.
+- Refresh market data weekly using a cron schedule; evaluate available data on demand. AWS EventBridge Scheduler launches the ingestion ECS task.
 - Keep model retraining separate from collection.
 
 ## Evaluation
