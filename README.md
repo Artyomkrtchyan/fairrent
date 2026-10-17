@@ -38,7 +38,7 @@ A high price does not prove fraud. The system provides signals for review.
 | `ontology/` | Entities, relationships, inference rules |
 | `backend/` | API, business workflows, review queue |
 | `frontend/` | Catalogue, map, analytics, review interface |
-| `infra/` | Application setup, automation, deployment |
+| `infra/` | Application setup, automation, deployment; Mane's system administration lab |
 | `docs/` | Requirements, contracts, team workflow |
 
 ## Start here

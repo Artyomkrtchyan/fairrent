@@ -22,6 +22,7 @@ The team's current stack for FairRent.
 | Infrastructure as Code | Terraform | Reproducible AWS infrastructure provisioning |
 | CI/CD | GitHub Actions | Automated checks, container builds, and deployment |
 | Local Development | Docker + Docker Compose | Consistent local environments for all team members |
+| System Administration Lab | Ubuntu Linux VM, SSH, shell scripts, Docker Compose, PostgreSQL backup/restore tools | Mane's S01–S04: access, diagnostics, backups and recovery practice |
 
 ## Component boundaries
 
@@ -35,3 +36,9 @@ The team's current stack for FairRent.
 - Terraform defines AWS resources; GitHub Actions runs checks and deployment workflows.
 
 Docker Compose provides the local development environment. AWS resources are provisioned during deployment; this document records the architecture and does not indicate that infrastructure is already deployed.
+
+## System administration ownership
+
+Mane (@manemazmand) owns the isolated [Linux administration lab](system-administration.md), alongside frontend and analytics. She documents Linux users/permissions, SSH and firewall setup, service diagnostics, log retention, synthetic database backup/restore and failure recovery. No Ansible is required.
+
+The lab runs separately from production. Artyom owns Terraform/AWS deployment and production orchestration; Alisa owns database schemas and migrations. Lab procedures inform operations without replacing the production deployment or RDS backup design.
