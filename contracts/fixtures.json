@@ -9,7 +9,6 @@
           "external_id": "synthetic-001",
           "source_url": "https://example.org/synthetic-listing",
           "property_id": null,
-          "duplicate_group_id": null,
           "description": "Synthetic apartment; no real listing or personal data.",
           "address": null,
           "district_id": "kentron",
@@ -26,20 +25,32 @@
             "rate_source": "identity"
           },
           "utilities_included": null,
-          "area_m2": 50,
           "rooms": 2,
           "floor": null,
           "total_floors": null,
-          "condition": null,
           "published_at": null,
           "first_seen_at": "2026-10-17T08:00:00Z",
           "last_seen_at": "2026-10-17T08:00:00Z",
-          "status": "active"
+          "status": "active",
+          "area_sqm": 50,
+          "dedup_group_id": null,
+          "renovation": null,
+          "building_type": null,
+          "thumbnail_url": null,
+          "price_status": "within_range",
+          "freshness": {
+            "data_as_of": "2026-10-17T08:00:00Z",
+            "generated_at": "2026-10-17T08:00:00Z",
+            "is_stale": false,
+            "max_age_days": 14,
+            "policy_version": "freshness-proposal-v1"
+          }
         }
       ],
       "page": 1,
       "page_size": 20,
-      "total": 1
+      "total": 1,
+      "has_more": false
     }
   },
   "listing-detail": {
@@ -51,7 +62,6 @@
         "external_id": "synthetic-001",
         "source_url": "https://example.org/synthetic-listing",
         "property_id": null,
-        "duplicate_group_id": null,
         "description": "Synthetic apartment; no real listing or personal data.",
         "address": null,
         "district_id": "kentron",
@@ -68,15 +78,26 @@
           "rate_source": "identity"
         },
         "utilities_included": null,
-        "area_m2": 50,
         "rooms": 2,
         "floor": null,
         "total_floors": null,
-        "condition": null,
         "published_at": null,
         "first_seen_at": "2026-10-17T08:00:00Z",
         "last_seen_at": "2026-10-17T08:00:00Z",
-        "status": "active"
+        "status": "active",
+        "area_sqm": 50,
+        "dedup_group_id": null,
+        "renovation": null,
+        "building_type": null,
+        "thumbnail_url": null,
+        "price_status": "within_range",
+        "freshness": {
+          "data_as_of": "2026-10-17T08:00:00Z",
+          "generated_at": "2026-10-17T08:00:00Z",
+          "is_stale": false,
+          "max_age_days": 14,
+          "policy_version": "freshness-proposal-v1"
+        }
       },
       "signals": [
         {
@@ -88,68 +109,107 @@
           "evidence": [
             "Price deviation requires review; not proof of fraud."
           ],
-          "created_at": "2026-10-17T08:00:00Z"
+          "created_at": "2026-10-17T08:00:00Z",
+          "explanation": "Synthetic signal for review; not a fraud verdict."
         }
-      ]
+      ],
+      "estimate": {
+        "request_id": "req_synthetic_001",
+        "coordinates": {
+          "latitude": 40.185,
+          "longitude": 44.515
+        },
+        "versions": {
+          "model_version": "synthetic-baseline-v1",
+          "rule_engine_version": "synthetic-rules-v1"
+        },
+        "valuation_assessment": {
+          "estimated_price_usd": 600,
+          "price_per_sqm_usd": 12,
+          "valuation_tier": "Fair Market Price",
+          "assessment_status": "VALUATION_SUCCESS",
+          "deviation_from_baseline_pct": 0
+        },
+        "observed_market_statistics": {
+          "cluster_mean_price_usd": 600,
+          "observed_price_std_dev_usd": 100,
+          "comparables_count": 3,
+          "data_freshness_days": 0,
+          "insufficient_data": false,
+          "cluster_mean_price_per_sqm_usd": 12,
+          "observed_price_std_dev_per_sqm_usd": 2,
+          "area_comparables_count": 3
+        },
+        "ml_prediction_interval": {
+          "lower_bound_usd": 520,
+          "upper_bound_usd": 680,
+          "confidence_level": 0.95,
+          "interval_width_usd": 160,
+          "calibration_version": "synthetic-validation-fixture-v1"
+        },
+        "feature_attributions": [],
+        "area_reference": null,
+        "kind": "property_valuation",
+        "cohort": {
+          "radius_m": 1000,
+          "period_start": "2026-09-18",
+          "period_end": "2026-10-17",
+          "minimum_sample_size": 3,
+          "selection_version": "synthetic-cohort-v1",
+          "duplicate_policy": "latest_observation_per_duplicate_group",
+          "inventory_policy": "active_at_data_as_of"
+        },
+        "freshness": {
+          "data_as_of": "2026-10-17T08:00:00Z",
+          "generated_at": "2026-10-17T08:00:00Z",
+          "is_stale": false,
+          "max_age_days": 14,
+          "policy_version": "freshness-proposal-v1"
+        },
+        "explanation": "Synthetic independently defined interval; no measured accuracy claim.",
+        "price_status": "within_range"
+      }
     }
   },
   "estimate": {
     "schema": "Estimate",
     "value": {
-      "expected_price": 600,
-      "lower_bound": 500,
-      "upper_bound": 700,
-      "currency": "USD",
-      "unit": "USD/month",
-      "price_status": "within_range",
-      "comparable_count": 3,
-      "confidence_explanation": "Synthetic calibrated interval for UI demonstration only.",
-      "factors": [],
-      "model_version": "synthetic-baseline-v1",
-      "rules_version": "synthetic-rules-v1",
-      "data_as_of": "2026-10-17T08:00:00Z",
-      "created_at": "2026-10-17T08:00:00Z"
-    }
-  },
-  "estimate-insufficient": {
-    "schema": "Estimate",
-    "value": {
-      "expected_price": null,
-      "lower_bound": null,
-      "upper_bound": null,
-      "currency": "USD",
-      "unit": "USD/month",
-      "price_status": "insufficient_data",
-      "comparable_count": 1,
-      "confidence_explanation": "Insufficient comparables; no prediction interval available.",
-      "factors": [],
-      "model_version": "synthetic-baseline-v1",
-      "rules_version": "synthetic-rules-v1",
-      "data_as_of": "2026-10-17T08:00:00Z",
-      "created_at": "2026-10-17T08:00:00Z"
-    }
-  },
-  "valuation-request": {
-    "schema": "ValuationRequest",
-    "value": {
-      "latitude": 40.185,
-      "longitude": 44.515,
-      "property": {
-        "area_m2": 50,
-        "rooms": 2,
-        "floor": null,
-        "total_floors": null,
-        "condition": null
+      "request_id": "req_synthetic_001",
+      "coordinates": {
+        "latitude": 40.185,
+        "longitude": 44.515
       },
-      "asking_price_usd_month": 600
-    }
-  },
-  "valuation": {
-    "schema": "ValuationResponse",
-    "value": {
+      "versions": {
+        "model_version": "synthetic-baseline-v1",
+        "rule_engine_version": "synthetic-rules-v1"
+      },
+      "valuation_assessment": {
+        "estimated_price_usd": 600,
+        "price_per_sqm_usd": 12,
+        "valuation_tier": "Fair Market Price",
+        "assessment_status": "VALUATION_SUCCESS",
+        "deviation_from_baseline_pct": 0
+      },
+      "observed_market_statistics": {
+        "cluster_mean_price_usd": 600,
+        "observed_price_std_dev_usd": 100,
+        "comparables_count": 3,
+        "data_freshness_days": 0,
+        "insufficient_data": false,
+        "cluster_mean_price_per_sqm_usd": 12,
+        "observed_price_std_dev_per_sqm_usd": 2,
+        "area_comparables_count": 3
+      },
+      "ml_prediction_interval": {
+        "lower_bound_usd": 520,
+        "upper_bound_usd": 680,
+        "confidence_level": 0.95,
+        "interval_width_usd": 160,
+        "calibration_version": "synthetic-validation-fixture-v1"
+      },
+      "feature_attributions": [],
+      "area_reference": null,
       "kind": "property_valuation",
-      "latitude": 40.185,
-      "longitude": 44.515,
       "cohort": {
         "radius_m": 1000,
         "period_start": "2026-09-18",
@@ -159,33 +219,147 @@
         "duplicate_policy": "latest_observation_per_duplicate_group",
         "inventory_policy": "active_at_data_as_of"
       },
-      "monthly": {
-        "unit": "USD/month",
-        "count": 3,
-        "mean": 600,
-        "sample_stddev": 100
-      },
-      "per_m2": {
-        "unit": "USD/m2",
-        "count": 3,
-        "mean": 12,
-        "sample_stddev": 2
-      },
-      "estimate": {
-        "expected_price": 600,
-        "lower_bound": 500,
-        "upper_bound": 700,
-        "currency": "USD",
-        "unit": "USD/month",
-        "price_status": "within_range",
-        "comparable_count": 3,
-        "confidence_explanation": "Synthetic calibrated interval for UI demonstration only.",
-        "factors": [],
-        "model_version": "synthetic-baseline-v1",
-        "rules_version": "synthetic-rules-v1",
+      "freshness": {
         "data_as_of": "2026-10-17T08:00:00Z",
-        "created_at": "2026-10-17T08:00:00Z"
-      }
+        "generated_at": "2026-10-17T08:00:00Z",
+        "is_stale": false,
+        "max_age_days": 14,
+        "policy_version": "freshness-proposal-v1"
+      },
+      "explanation": "Synthetic independently defined interval; no measured accuracy claim.",
+      "price_status": "within_range"
+    }
+  },
+  "estimate-insufficient": {
+    "schema": "Estimate",
+    "value": {
+      "request_id": "req_synthetic_001",
+      "coordinates": {
+        "latitude": 40.185,
+        "longitude": 44.515
+      },
+      "versions": {
+        "model_version": "synthetic-baseline-v1",
+        "rule_engine_version": "synthetic-rules-v1"
+      },
+      "valuation_assessment": {
+        "estimated_price_usd": null,
+        "price_per_sqm_usd": null,
+        "valuation_tier": "UNCERTAIN_OUTOF_SCOPE",
+        "assessment_status": "INSUFFICIENT_DATA_ABSTAIN",
+        "deviation_from_baseline_pct": null
+      },
+      "observed_market_statistics": {
+        "cluster_mean_price_usd": 500,
+        "observed_price_std_dev_usd": null,
+        "comparables_count": 1,
+        "data_freshness_days": 0,
+        "insufficient_data": true,
+        "cluster_mean_price_per_sqm_usd": null,
+        "observed_price_std_dev_per_sqm_usd": null,
+        "area_comparables_count": 0
+      },
+      "ml_prediction_interval": {
+        "lower_bound_usd": null,
+        "upper_bound_usd": null,
+        "confidence_level": null,
+        "interval_width_usd": null,
+        "calibration_version": null
+      },
+      "feature_attributions": [],
+      "area_reference": {
+        "district": "kentron",
+        "reference_area_sqm": 50,
+        "note": "Training-fitted reference area; not the requested apartment area."
+      },
+      "kind": "area_reference",
+      "cohort": {
+        "radius_m": 1000,
+        "period_start": "2026-09-18",
+        "period_end": "2026-10-17",
+        "minimum_sample_size": 3,
+        "selection_version": "synthetic-cohort-v1",
+        "duplicate_policy": "latest_observation_per_duplicate_group",
+        "inventory_policy": "active_at_data_as_of"
+      },
+      "freshness": {
+        "data_as_of": "2026-10-17T08:00:00Z",
+        "generated_at": "2026-10-17T08:00:00Z",
+        "is_stale": false,
+        "max_age_days": 14,
+        "policy_version": "freshness-proposal-v1"
+      },
+      "explanation": "Only one monthly observation; property valuation unavailable.",
+      "price_status": "insufficient_data"
+    }
+  },
+  "valuation-request": {
+    "schema": "ValuationRequest",
+    "value": {
+      "latitude": 40.185,
+      "longitude": 44.515,
+      "area_sqm": 50,
+      "rooms": 2,
+      "asking_price_usd_month": 600
+    }
+  },
+  "valuation": {
+    "schema": "ValuationResponse",
+    "value": {
+      "request_id": "req_synthetic_001",
+      "coordinates": {
+        "latitude": 40.185,
+        "longitude": 44.515
+      },
+      "versions": {
+        "model_version": "synthetic-baseline-v1",
+        "rule_engine_version": "synthetic-rules-v1"
+      },
+      "valuation_assessment": {
+        "estimated_price_usd": 600,
+        "price_per_sqm_usd": 12,
+        "valuation_tier": "Fair Market Price",
+        "assessment_status": "VALUATION_SUCCESS",
+        "deviation_from_baseline_pct": 0
+      },
+      "observed_market_statistics": {
+        "cluster_mean_price_usd": 600,
+        "observed_price_std_dev_usd": 100,
+        "comparables_count": 3,
+        "data_freshness_days": 0,
+        "insufficient_data": false,
+        "cluster_mean_price_per_sqm_usd": 12,
+        "observed_price_std_dev_per_sqm_usd": 2,
+        "area_comparables_count": 3
+      },
+      "ml_prediction_interval": {
+        "lower_bound_usd": 520,
+        "upper_bound_usd": 680,
+        "confidence_level": 0.95,
+        "interval_width_usd": 160,
+        "calibration_version": "synthetic-validation-fixture-v1"
+      },
+      "feature_attributions": [],
+      "area_reference": null,
+      "kind": "property_valuation",
+      "cohort": {
+        "radius_m": 1000,
+        "period_start": "2026-09-18",
+        "period_end": "2026-10-17",
+        "minimum_sample_size": 3,
+        "selection_version": "synthetic-cohort-v1",
+        "duplicate_policy": "latest_observation_per_duplicate_group",
+        "inventory_policy": "active_at_data_as_of"
+      },
+      "freshness": {
+        "data_as_of": "2026-10-17T08:00:00Z",
+        "generated_at": "2026-10-17T08:00:00Z",
+        "is_stale": false,
+        "max_age_days": 14,
+        "policy_version": "freshness-proposal-v1"
+      },
+      "explanation": "Synthetic independently defined interval; no measured accuracy claim.",
+      "price_status": "within_range"
     }
   },
   "area-request": {
@@ -198,9 +372,46 @@
   "area-reference": {
     "schema": "ValuationResponse",
     "value": {
+      "request_id": "req_synthetic_001",
+      "coordinates": {
+        "latitude": 40.185,
+        "longitude": 44.515
+      },
+      "versions": {
+        "model_version": "synthetic-baseline-v1",
+        "rule_engine_version": "synthetic-rules-v1"
+      },
+      "valuation_assessment": {
+        "estimated_price_usd": 600,
+        "price_per_sqm_usd": 12,
+        "valuation_tier": "Baseline Market Estimate",
+        "assessment_status": "COORDINATE_BASELINE_ONLY",
+        "deviation_from_baseline_pct": 0
+      },
+      "observed_market_statistics": {
+        "cluster_mean_price_usd": 600,
+        "observed_price_std_dev_usd": 100,
+        "comparables_count": 3,
+        "data_freshness_days": 0,
+        "insufficient_data": false,
+        "cluster_mean_price_per_sqm_usd": 12,
+        "observed_price_std_dev_per_sqm_usd": 2,
+        "area_comparables_count": 3
+      },
+      "ml_prediction_interval": {
+        "lower_bound_usd": null,
+        "upper_bound_usd": null,
+        "confidence_level": null,
+        "interval_width_usd": null,
+        "calibration_version": null
+      },
+      "feature_attributions": [],
+      "area_reference": {
+        "district": "kentron",
+        "reference_area_sqm": 50,
+        "note": "Training-fitted reference area; not the requested apartment area."
+      },
       "kind": "area_reference",
-      "latitude": 40.185,
-      "longitude": 44.515,
       "cohort": {
         "radius_m": 1000,
         "period_start": "2026-09-18",
@@ -210,41 +421,60 @@
         "duplicate_policy": "latest_observation_per_duplicate_group",
         "inventory_policy": "active_at_data_as_of"
       },
-      "monthly": {
-        "unit": "USD/month",
-        "count": 3,
-        "mean": 600,
-        "sample_stddev": 100
-      },
-      "per_m2": {
-        "unit": "USD/m2",
-        "count": 3,
-        "mean": 12,
-        "sample_stddev": 2
-      },
-      "estimate": {
-        "expected_price": null,
-        "lower_bound": null,
-        "upper_bound": null,
-        "currency": "USD",
-        "unit": "USD/month",
-        "price_status": "insufficient_data",
-        "comparable_count": 3,
-        "confidence_explanation": "Area reference only: property characteristics were not supplied.",
-        "factors": [],
-        "model_version": "synthetic-baseline-v1",
-        "rules_version": "synthetic-rules-v1",
+      "freshness": {
         "data_as_of": "2026-10-17T08:00:00Z",
-        "created_at": "2026-10-17T08:00:00Z"
-      }
+        "generated_at": "2026-10-17T08:00:00Z",
+        "is_stale": false,
+        "max_age_days": 14,
+        "policy_version": "freshness-proposal-v1"
+      },
+      "explanation": "Area reference only; property characteristics were not provided.",
+      "price_status": "insufficient_data"
     }
   },
   "valuation-sparse": {
     "schema": "ValuationResponse",
     "value": {
+      "request_id": "req_synthetic_001",
+      "coordinates": {
+        "latitude": 40.185,
+        "longitude": 44.515
+      },
+      "versions": {
+        "model_version": "synthetic-baseline-v1",
+        "rule_engine_version": "synthetic-rules-v1"
+      },
+      "valuation_assessment": {
+        "estimated_price_usd": null,
+        "price_per_sqm_usd": null,
+        "valuation_tier": "UNCERTAIN_OUTOF_SCOPE",
+        "assessment_status": "INSUFFICIENT_DATA_ABSTAIN",
+        "deviation_from_baseline_pct": null
+      },
+      "observed_market_statistics": {
+        "cluster_mean_price_usd": 500,
+        "observed_price_std_dev_usd": null,
+        "comparables_count": 1,
+        "data_freshness_days": 0,
+        "insufficient_data": true,
+        "cluster_mean_price_per_sqm_usd": null,
+        "observed_price_std_dev_per_sqm_usd": null,
+        "area_comparables_count": 0
+      },
+      "ml_prediction_interval": {
+        "lower_bound_usd": null,
+        "upper_bound_usd": null,
+        "confidence_level": null,
+        "interval_width_usd": null,
+        "calibration_version": null
+      },
+      "feature_attributions": [],
+      "area_reference": {
+        "district": "kentron",
+        "reference_area_sqm": 50,
+        "note": "Training-fitted reference area; not the requested apartment area."
+      },
       "kind": "area_reference",
-      "latitude": 40.185,
-      "longitude": 44.515,
       "cohort": {
         "radius_m": 1000,
         "period_start": "2026-09-18",
@@ -254,33 +484,15 @@
         "duplicate_policy": "latest_observation_per_duplicate_group",
         "inventory_policy": "active_at_data_as_of"
       },
-      "monthly": {
-        "unit": "USD/month",
-        "count": 1,
-        "mean": 500,
-        "sample_stddev": null
-      },
-      "per_m2": {
-        "unit": "USD/m2",
-        "count": 0,
-        "mean": null,
-        "sample_stddev": null
-      },
-      "estimate": {
-        "expected_price": null,
-        "lower_bound": null,
-        "upper_bound": null,
-        "currency": "USD",
-        "unit": "USD/month",
-        "price_status": "insufficient_data",
-        "comparable_count": 1,
-        "confidence_explanation": "Insufficient comparables; no prediction interval available.",
-        "factors": [],
-        "model_version": "synthetic-baseline-v1",
-        "rules_version": "synthetic-rules-v1",
+      "freshness": {
         "data_as_of": "2026-10-17T08:00:00Z",
-        "created_at": "2026-10-17T08:00:00Z"
-      }
+        "generated_at": "2026-10-17T08:00:00Z",
+        "is_stale": false,
+        "max_age_days": 14,
+        "policy_version": "freshness-proposal-v1"
+      },
+      "explanation": "Only one monthly observation; property valuation unavailable.",
+      "price_status": "insufficient_data"
     }
   },
   "listings-empty": {
@@ -289,7 +501,8 @@
       "items": [],
       "page": 1,
       "page_size": 20,
-      "total": 0
+      "total": 0,
+      "has_more": false
     }
   },
   "market-index": {
@@ -306,12 +519,22 @@
           "median_usd_m2": 12,
           "status": "available",
           "data_as_of": "2026-10-17T08:00:00Z",
-          "measure": "asking_price"
+          "measure": "asking_price",
+          "freshness": {
+            "data_as_of": "2026-10-17T08:00:00Z",
+            "generated_at": "2026-10-17T08:00:00Z",
+            "is_stale": false,
+            "max_age_days": 14,
+            "policy_version": "freshness-proposal-v1"
+          }
         }
       ],
       "page": 1,
       "page_size": 20,
-      "total": 1
+      "total": 1,
+      "has_more": false,
+      "available_from": "2026-10-12",
+      "available_to": "2026-10-18"
     }
   },
   "reviews": {
@@ -330,12 +553,70 @@
           "reviewed_at": null,
           "updated_at": "2026-10-17T08:00:00Z",
           "version": 1,
-          "history": []
+          "history": [],
+          "listing": {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "source": "list.am",
+            "external_id": "synthetic-001",
+            "source_url": "https://example.org/synthetic-listing",
+            "property_id": null,
+            "description": "Synthetic apartment; no real listing or personal data.",
+            "address": null,
+            "district_id": "kentron",
+            "latitude": 40.185,
+            "longitude": 44.515,
+            "coordinate_confidence": "approximate",
+            "price_original": 600,
+            "currency_original": "USD",
+            "price_monthly_normalized": 600,
+            "currency_normalized": "USD",
+            "conversion": {
+              "rate_to_usd": 1,
+              "rate_date": "2026-10-17",
+              "rate_source": "identity"
+            },
+            "utilities_included": null,
+            "rooms": 2,
+            "floor": null,
+            "total_floors": null,
+            "published_at": null,
+            "first_seen_at": "2026-10-17T08:00:00Z",
+            "last_seen_at": "2026-10-17T08:00:00Z",
+            "status": "active",
+            "area_sqm": 50,
+            "dedup_group_id": null,
+            "renovation": null,
+            "building_type": null,
+            "thumbnail_url": null,
+            "price_status": "within_range",
+            "freshness": {
+              "data_as_of": "2026-10-17T08:00:00Z",
+              "generated_at": "2026-10-17T08:00:00Z",
+              "is_stale": false,
+              "max_age_days": 14,
+              "policy_version": "freshness-proposal-v1"
+            }
+          },
+          "signals": [
+            {
+              "id": "00000000-0000-4000-8000-000000000001",
+              "listing_id": "00000000-0000-4000-8000-000000000001",
+              "category": "price_anomaly",
+              "rule_id": "synthetic-price-rule",
+              "rules_version": "synthetic-rules-v1",
+              "evidence": [
+                "Price deviation requires review; not proof of fraud."
+              ],
+              "created_at": "2026-10-17T08:00:00Z",
+              "explanation": "Synthetic signal for review; not a fraud verdict."
+            }
+          ]
         }
       ],
       "page": 1,
       "page_size": 20,
-      "total": 1
+      "total": 1,
+      "has_more": false
     }
   },
   "review-update": {
@@ -368,6 +649,63 @@
           "reason": "Synthetic evidence checked.",
           "actor_id": "00000000-0000-4000-8000-000000000001",
           "created_at": "2026-10-17T08:00:00Z"
+        }
+      ],
+      "listing": {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "source": "list.am",
+        "external_id": "synthetic-001",
+        "source_url": "https://example.org/synthetic-listing",
+        "property_id": null,
+        "description": "Synthetic apartment; no real listing or personal data.",
+        "address": null,
+        "district_id": "kentron",
+        "latitude": 40.185,
+        "longitude": 44.515,
+        "coordinate_confidence": "approximate",
+        "price_original": 600,
+        "currency_original": "USD",
+        "price_monthly_normalized": 600,
+        "currency_normalized": "USD",
+        "conversion": {
+          "rate_to_usd": 1,
+          "rate_date": "2026-10-17",
+          "rate_source": "identity"
+        },
+        "utilities_included": null,
+        "rooms": 2,
+        "floor": null,
+        "total_floors": null,
+        "published_at": null,
+        "first_seen_at": "2026-10-17T08:00:00Z",
+        "last_seen_at": "2026-10-17T08:00:00Z",
+        "status": "active",
+        "area_sqm": 50,
+        "dedup_group_id": null,
+        "renovation": null,
+        "building_type": null,
+        "thumbnail_url": null,
+        "price_status": "within_range",
+        "freshness": {
+          "data_as_of": "2026-10-17T08:00:00Z",
+          "generated_at": "2026-10-17T08:00:00Z",
+          "is_stale": false,
+          "max_age_days": 14,
+          "policy_version": "freshness-proposal-v1"
+        }
+      },
+      "signals": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "listing_id": "00000000-0000-4000-8000-000000000001",
+          "category": "price_anomaly",
+          "rule_id": "synthetic-price-rule",
+          "rules_version": "synthetic-rules-v1",
+          "evidence": [
+            "Price deviation requires review; not proof of fraud."
+          ],
+          "created_at": "2026-10-17T08:00:00Z",
+          "explanation": "Synthetic signal for review; not a fraud verdict."
         }
       ]
     }
@@ -442,6 +780,377 @@
       "message": "Synthetic internal_error",
       "request_id": "00000000-0000-4000-8000-000000000001",
       "details": []
+    }
+  },
+  "exchange-rate": {
+    "schema": "ExchangeRate",
+    "value": {
+      "base_currency": "USD",
+      "quote_currency": "AMD",
+      "amd_per_usd": 400,
+      "source": "synthetic-example",
+      "effective_at": "2026-10-17T08:00:00Z",
+      "status": "available",
+      "freshness": {
+        "data_as_of": "2026-10-17T08:00:00Z",
+        "generated_at": "2026-10-17T08:00:00Z",
+        "is_stale": false,
+        "max_age_days": 7,
+        "policy_version": "fx-proposal-v1"
+      }
+    }
+  },
+  "exchange-rate-unavailable": {
+    "schema": "ExchangeRate",
+    "value": {
+      "base_currency": "USD",
+      "quote_currency": "AMD",
+      "amd_per_usd": null,
+      "source": null,
+      "effective_at": null,
+      "status": "unavailable",
+      "freshness": {
+        "data_as_of": null,
+        "generated_at": "2026-10-17T08:00:00Z",
+        "is_stale": true,
+        "max_age_days": 7,
+        "policy_version": "fx-proposal-v1"
+      }
+    }
+  },
+  "exchange-rate-stale": {
+    "schema": "ExchangeRate",
+    "value": {
+      "base_currency": "USD",
+      "quote_currency": "AMD",
+      "amd_per_usd": 400,
+      "source": "synthetic-example",
+      "effective_at": "2026-10-01T08:00:00Z",
+      "status": "stale",
+      "freshness": {
+        "data_as_of": "2026-10-01T08:00:00Z",
+        "generated_at": "2026-10-17T08:00:00Z",
+        "is_stale": true,
+        "max_age_days": 7,
+        "policy_version": "fx-proposal-v1"
+      }
+    }
+  },
+  "infrastructure": {
+    "schema": "InfrastructurePage",
+    "value": {
+      "items": [
+        {
+          "id": "synthetic-metro-1",
+          "name": "Synthetic metro",
+          "type": "metro",
+          "latitude": 40.185,
+          "longitude": 44.515
+        }
+      ],
+      "page": 1,
+      "page_size": 20,
+      "total": 1,
+      "has_more": false
+    }
+  },
+  "valuation-stale": {
+    "schema": "ValuationResponse",
+    "value": {
+      "request_id": "req_synthetic_001",
+      "coordinates": {
+        "latitude": 40.185,
+        "longitude": 44.515
+      },
+      "versions": {
+        "model_version": "synthetic-baseline-v1",
+        "rule_engine_version": "synthetic-rules-v1"
+      },
+      "valuation_assessment": {
+        "estimated_price_usd": null,
+        "price_per_sqm_usd": null,
+        "valuation_tier": "UNCERTAIN_OUTOF_SCOPE",
+        "assessment_status": "INSUFFICIENT_DATA_ABSTAIN",
+        "deviation_from_baseline_pct": null
+      },
+      "observed_market_statistics": {
+        "cluster_mean_price_usd": 500,
+        "observed_price_std_dev_usd": null,
+        "comparables_count": 1,
+        "data_freshness_days": 108,
+        "insufficient_data": true,
+        "cluster_mean_price_per_sqm_usd": null,
+        "observed_price_std_dev_per_sqm_usd": null,
+        "area_comparables_count": 0
+      },
+      "ml_prediction_interval": {
+        "lower_bound_usd": null,
+        "upper_bound_usd": null,
+        "confidence_level": null,
+        "interval_width_usd": null,
+        "calibration_version": null
+      },
+      "feature_attributions": [],
+      "area_reference": {
+        "district": "kentron",
+        "reference_area_sqm": 50,
+        "note": "Training-fitted reference area; not the requested apartment area."
+      },
+      "kind": "area_reference",
+      "cohort": {
+        "radius_m": 1000,
+        "period_start": "2026-09-18",
+        "period_end": "2026-10-17",
+        "minimum_sample_size": 3,
+        "selection_version": "synthetic-cohort-v1",
+        "duplicate_policy": "latest_observation_per_duplicate_group",
+        "inventory_policy": "active_at_data_as_of"
+      },
+      "freshness": {
+        "data_as_of": "2026-07-01T08:00:00Z",
+        "generated_at": "2026-10-17T08:00:00Z",
+        "is_stale": true,
+        "max_age_days": 60,
+        "policy_version": "freshness-proposal-v1"
+      },
+      "explanation": "Source snapshot exceeds provisional model freshness threshold.",
+      "price_status": "insufficient_data"
+    }
+  },
+  "listing-missing-fields": {
+    "schema": "Listing",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "source": "list.am",
+      "external_id": "synthetic-001",
+      "source_url": "https://example.org/synthetic-listing",
+      "property_id": null,
+      "description": "Synthetic apartment; no real listing or personal data.",
+      "address": null,
+      "district_id": "kentron",
+      "latitude": null,
+      "longitude": null,
+      "coordinate_confidence": "unknown",
+      "price_original": 600,
+      "currency_original": "USD",
+      "price_monthly_normalized": 600,
+      "currency_normalized": "USD",
+      "conversion": {
+        "rate_to_usd": 1,
+        "rate_date": "2026-10-17",
+        "rate_source": "identity"
+      },
+      "utilities_included": null,
+      "rooms": null,
+      "floor": null,
+      "total_floors": null,
+      "published_at": null,
+      "first_seen_at": "2026-10-17T08:00:00Z",
+      "last_seen_at": "2026-10-17T08:00:00Z",
+      "status": "active",
+      "area_sqm": null,
+      "dedup_group_id": null,
+      "renovation": null,
+      "building_type": null,
+      "thumbnail_url": null,
+      "price_status": null,
+      "freshness": {
+        "data_as_of": "2026-10-17T08:00:00Z",
+        "generated_at": "2026-10-17T08:00:00Z",
+        "is_stale": false,
+        "max_age_days": 14,
+        "policy_version": "freshness-proposal-v1"
+      }
+    }
+  },
+  "listing-inactive": {
+    "schema": "Listing",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "source": "list.am",
+      "external_id": "synthetic-001",
+      "source_url": "https://example.org/synthetic-listing",
+      "property_id": null,
+      "description": "Synthetic apartment; no real listing or personal data.",
+      "address": null,
+      "district_id": "kentron",
+      "latitude": 40.185,
+      "longitude": 44.515,
+      "coordinate_confidence": "approximate",
+      "price_original": 600,
+      "currency_original": "USD",
+      "price_monthly_normalized": 600,
+      "currency_normalized": "USD",
+      "conversion": {
+        "rate_to_usd": 1,
+        "rate_date": "2026-10-17",
+        "rate_source": "identity"
+      },
+      "utilities_included": null,
+      "rooms": 2,
+      "floor": null,
+      "total_floors": null,
+      "published_at": null,
+      "first_seen_at": "2026-10-17T08:00:00Z",
+      "last_seen_at": "2026-10-17T08:00:00Z",
+      "status": "inactive",
+      "area_sqm": 50,
+      "dedup_group_id": null,
+      "renovation": null,
+      "building_type": null,
+      "thumbnail_url": null,
+      "price_status": "within_range",
+      "freshness": {
+        "data_as_of": "2026-10-17T08:00:00Z",
+        "generated_at": "2026-10-17T08:00:00Z",
+        "is_stale": false,
+        "max_age_days": 14,
+        "policy_version": "freshness-proposal-v1"
+      }
+    }
+  },
+  "listing-stale": {
+    "schema": "Listing",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "source": "list.am",
+      "external_id": "synthetic-001",
+      "source_url": "https://example.org/synthetic-listing",
+      "property_id": null,
+      "description": "Synthetic apartment; no real listing or personal data.",
+      "address": null,
+      "district_id": "kentron",
+      "latitude": 40.185,
+      "longitude": 44.515,
+      "coordinate_confidence": "approximate",
+      "price_original": 600,
+      "currency_original": "USD",
+      "price_monthly_normalized": 600,
+      "currency_normalized": "USD",
+      "conversion": {
+        "rate_to_usd": 1,
+        "rate_date": "2026-10-17",
+        "rate_source": "identity"
+      },
+      "utilities_included": null,
+      "rooms": 2,
+      "floor": null,
+      "total_floors": null,
+      "published_at": null,
+      "first_seen_at": "2026-09-01T08:00:00Z",
+      "last_seen_at": "2026-09-01T08:00:00Z",
+      "status": "active",
+      "area_sqm": 50,
+      "dedup_group_id": null,
+      "renovation": null,
+      "building_type": null,
+      "thumbnail_url": null,
+      "price_status": "within_range",
+      "freshness": {
+        "data_as_of": "2026-09-01T08:00:00Z",
+        "generated_at": "2026-10-17T08:00:00Z",
+        "is_stale": true,
+        "max_age_days": 14,
+        "policy_version": "freshness-proposal-v1"
+      }
+    }
+  },
+  "reviews-empty": {
+    "schema": "ReviewPage",
+    "value": {
+      "items": [],
+      "page": 1,
+      "page_size": 20,
+      "total": 0,
+      "has_more": false
+    }
+  },
+  "market-empty": {
+    "schema": "MarketIndexPage",
+    "value": {
+      "items": [],
+      "page": 1,
+      "page_size": 20,
+      "total": 0,
+      "has_more": false,
+      "available_from": null,
+      "available_to": null
+    }
+  },
+  "market-sparse": {
+    "schema": "MarketIndex",
+    "value": {
+      "district_id": "kentron",
+      "period_start": "2026-10-12",
+      "period_end": "2026-10-18",
+      "sample_count": 1,
+      "area_sample_count": 0,
+      "median_usd_month": null,
+      "median_usd_m2": null,
+      "status": "insufficient_data",
+      "data_as_of": "2026-10-17T08:00:00Z",
+      "measure": "asking_price",
+      "freshness": {
+        "data_as_of": "2026-10-17T08:00:00Z",
+        "generated_at": "2026-10-17T08:00:00Z",
+        "is_stale": false,
+        "max_age_days": 14,
+        "policy_version": "freshness-proposal-v1"
+      }
+    }
+  },
+  "listings-truncated": {
+    "schema": "ListingPage",
+    "value": {
+      "items": [
+        {
+          "id": "00000000-0000-4000-8000-000000000001",
+          "source": "list.am",
+          "external_id": "synthetic-001",
+          "source_url": "https://example.org/synthetic-listing",
+          "property_id": null,
+          "description": "Synthetic apartment; no real listing or personal data.",
+          "address": null,
+          "district_id": "kentron",
+          "latitude": 40.185,
+          "longitude": 44.515,
+          "coordinate_confidence": "approximate",
+          "price_original": 600,
+          "currency_original": "USD",
+          "price_monthly_normalized": 600,
+          "currency_normalized": "USD",
+          "conversion": {
+            "rate_to_usd": 1,
+            "rate_date": "2026-10-17",
+            "rate_source": "identity"
+          },
+          "utilities_included": null,
+          "rooms": 2,
+          "floor": null,
+          "total_floors": null,
+          "published_at": null,
+          "first_seen_at": "2026-10-17T08:00:00Z",
+          "last_seen_at": "2026-10-17T08:00:00Z",
+          "status": "active",
+          "area_sqm": 50,
+          "dedup_group_id": null,
+          "renovation": null,
+          "building_type": null,
+          "thumbnail_url": null,
+          "price_status": "within_range",
+          "freshness": {
+            "data_as_of": "2026-10-17T08:00:00Z",
+            "generated_at": "2026-10-17T08:00:00Z",
+            "is_stale": false,
+            "max_age_days": 14,
+            "policy_version": "freshness-proposal-v1"
+          }
+        }
+      ],
+      "page": 1,
+      "page_size": 1,
+      "total": 3,
+      "has_more": true
     }
   }
 }

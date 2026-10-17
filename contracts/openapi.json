@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "FairRent shared contract",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "C01 proposal for owner review. No running API is implied. Normative semantics: docs/contract-semantics.md."
   },
   "servers": [
@@ -112,6 +112,22 @@
               "type": "string",
               "pattern": "^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$"
             }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "newest",
+                "price_asc",
+                "price_desc",
+                "area_asc",
+                "area_desc"
+              ],
+              "default": "newest"
+            }
           }
         ],
         "responses": {
@@ -130,7 +146,6 @@
                       "external_id": "synthetic-001",
                       "source_url": "https://example.org/synthetic-listing",
                       "property_id": null,
-                      "duplicate_group_id": null,
                       "description": "Synthetic apartment; no real listing or personal data.",
                       "address": null,
                       "district_id": "kentron",
@@ -147,20 +162,32 @@
                         "rate_source": "identity"
                       },
                       "utilities_included": null,
-                      "area_m2": 50,
                       "rooms": 2,
                       "floor": null,
                       "total_floors": null,
-                      "condition": null,
                       "published_at": null,
                       "first_seen_at": "2026-10-17T08:00:00Z",
                       "last_seen_at": "2026-10-17T08:00:00Z",
-                      "status": "active"
+                      "status": "active",
+                      "area_sqm": 50,
+                      "dedup_group_id": null,
+                      "renovation": null,
+                      "building_type": null,
+                      "thumbnail_url": null,
+                      "price_status": "within_range",
+                      "freshness": {
+                        "data_as_of": "2026-10-17T08:00:00Z",
+                        "generated_at": "2026-10-17T08:00:00Z",
+                        "is_stale": false,
+                        "max_age_days": 14,
+                        "policy_version": "freshness-proposal-v1"
+                      }
                     }
                   ],
                   "page": 1,
                   "page_size": 20,
-                  "total": 1
+                  "total": 1,
+                  "has_more": false
                 }
               }
             }
@@ -195,7 +222,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Proposed contract; see docs/contract-semantics.md for units, nullability, ordering and runtime validation."
       }
     },
     "/api/v1/listings/{id}": {
@@ -228,7 +256,6 @@
                     "external_id": "synthetic-001",
                     "source_url": "https://example.org/synthetic-listing",
                     "property_id": null,
-                    "duplicate_group_id": null,
                     "description": "Synthetic apartment; no real listing or personal data.",
                     "address": null,
                     "district_id": "kentron",
@@ -245,15 +272,26 @@
                       "rate_source": "identity"
                     },
                     "utilities_included": null,
-                    "area_m2": 50,
                     "rooms": 2,
                     "floor": null,
                     "total_floors": null,
-                    "condition": null,
                     "published_at": null,
                     "first_seen_at": "2026-10-17T08:00:00Z",
                     "last_seen_at": "2026-10-17T08:00:00Z",
-                    "status": "active"
+                    "status": "active",
+                    "area_sqm": 50,
+                    "dedup_group_id": null,
+                    "renovation": null,
+                    "building_type": null,
+                    "thumbnail_url": null,
+                    "price_status": "within_range",
+                    "freshness": {
+                      "data_as_of": "2026-10-17T08:00:00Z",
+                      "generated_at": "2026-10-17T08:00:00Z",
+                      "is_stale": false,
+                      "max_age_days": 14,
+                      "policy_version": "freshness-proposal-v1"
+                    }
                   },
                   "signals": [
                     {
@@ -265,9 +303,66 @@
                       "evidence": [
                         "Price deviation requires review; not proof of fraud."
                       ],
-                      "created_at": "2026-10-17T08:00:00Z"
+                      "created_at": "2026-10-17T08:00:00Z",
+                      "explanation": "Synthetic signal for review; not a fraud verdict."
                     }
-                  ]
+                  ],
+                  "estimate": {
+                    "request_id": "req_synthetic_001",
+                    "coordinates": {
+                      "latitude": 40.185,
+                      "longitude": 44.515
+                    },
+                    "versions": {
+                      "model_version": "synthetic-baseline-v1",
+                      "rule_engine_version": "synthetic-rules-v1"
+                    },
+                    "valuation_assessment": {
+                      "estimated_price_usd": 600,
+                      "price_per_sqm_usd": 12,
+                      "valuation_tier": "Fair Market Price",
+                      "assessment_status": "VALUATION_SUCCESS",
+                      "deviation_from_baseline_pct": 0
+                    },
+                    "observed_market_statistics": {
+                      "cluster_mean_price_usd": 600,
+                      "observed_price_std_dev_usd": 100,
+                      "comparables_count": 3,
+                      "data_freshness_days": 0,
+                      "insufficient_data": false,
+                      "cluster_mean_price_per_sqm_usd": 12,
+                      "observed_price_std_dev_per_sqm_usd": 2,
+                      "area_comparables_count": 3
+                    },
+                    "ml_prediction_interval": {
+                      "lower_bound_usd": 520,
+                      "upper_bound_usd": 680,
+                      "confidence_level": 0.95,
+                      "interval_width_usd": 160,
+                      "calibration_version": "synthetic-validation-fixture-v1"
+                    },
+                    "feature_attributions": [],
+                    "area_reference": null,
+                    "kind": "property_valuation",
+                    "cohort": {
+                      "radius_m": 1000,
+                      "period_start": "2026-09-18",
+                      "period_end": "2026-10-17",
+                      "minimum_sample_size": 3,
+                      "selection_version": "synthetic-cohort-v1",
+                      "duplicate_policy": "latest_observation_per_duplicate_group",
+                      "inventory_policy": "active_at_data_as_of"
+                    },
+                    "freshness": {
+                      "data_as_of": "2026-10-17T08:00:00Z",
+                      "generated_at": "2026-10-17T08:00:00Z",
+                      "is_stale": false,
+                      "max_age_days": 14,
+                      "policy_version": "freshness-proposal-v1"
+                    },
+                    "explanation": "Synthetic independently defined interval; no measured accuracy claim.",
+                    "price_status": "within_range"
+                  }
                 }
               }
             }
@@ -312,7 +407,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Proposed contract; see docs/contract-semantics.md for units, nullability, ordering and runtime validation."
       }
     },
     "/api/v1/listings/{id}/estimate": {
@@ -339,19 +435,60 @@
                   "$ref": "#/components/schemas/Estimate"
                 },
                 "example": {
-                  "expected_price": 600,
-                  "lower_bound": 500,
-                  "upper_bound": 700,
-                  "currency": "USD",
-                  "unit": "USD/month",
-                  "price_status": "within_range",
-                  "comparable_count": 3,
-                  "confidence_explanation": "Synthetic calibrated interval for UI demonstration only.",
-                  "factors": [],
-                  "model_version": "synthetic-baseline-v1",
-                  "rules_version": "synthetic-rules-v1",
-                  "data_as_of": "2026-10-17T08:00:00Z",
-                  "created_at": "2026-10-17T08:00:00Z"
+                  "request_id": "req_synthetic_001",
+                  "coordinates": {
+                    "latitude": 40.185,
+                    "longitude": 44.515
+                  },
+                  "versions": {
+                    "model_version": "synthetic-baseline-v1",
+                    "rule_engine_version": "synthetic-rules-v1"
+                  },
+                  "valuation_assessment": {
+                    "estimated_price_usd": 600,
+                    "price_per_sqm_usd": 12,
+                    "valuation_tier": "Fair Market Price",
+                    "assessment_status": "VALUATION_SUCCESS",
+                    "deviation_from_baseline_pct": 0
+                  },
+                  "observed_market_statistics": {
+                    "cluster_mean_price_usd": 600,
+                    "observed_price_std_dev_usd": 100,
+                    "comparables_count": 3,
+                    "data_freshness_days": 0,
+                    "insufficient_data": false,
+                    "cluster_mean_price_per_sqm_usd": 12,
+                    "observed_price_std_dev_per_sqm_usd": 2,
+                    "area_comparables_count": 3
+                  },
+                  "ml_prediction_interval": {
+                    "lower_bound_usd": 520,
+                    "upper_bound_usd": 680,
+                    "confidence_level": 0.95,
+                    "interval_width_usd": 160,
+                    "calibration_version": "synthetic-validation-fixture-v1"
+                  },
+                  "feature_attributions": [],
+                  "area_reference": null,
+                  "kind": "property_valuation",
+                  "cohort": {
+                    "radius_m": 1000,
+                    "period_start": "2026-09-18",
+                    "period_end": "2026-10-17",
+                    "minimum_sample_size": 3,
+                    "selection_version": "synthetic-cohort-v1",
+                    "duplicate_policy": "latest_observation_per_duplicate_group",
+                    "inventory_policy": "active_at_data_as_of"
+                  },
+                  "freshness": {
+                    "data_as_of": "2026-10-17T08:00:00Z",
+                    "generated_at": "2026-10-17T08:00:00Z",
+                    "is_stale": false,
+                    "max_age_days": 14,
+                    "policy_version": "freshness-proposal-v1"
+                  },
+                  "explanation": "Synthetic independently defined interval; no measured accuracy claim.",
+                  "price_status": "within_range"
                 }
               }
             }
@@ -396,7 +533,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Proposed contract; see docs/contract-semantics.md for units, nullability, ordering and runtime validation."
       }
     },
     "/api/v1/valuations": {
@@ -413,9 +551,42 @@
                   "$ref": "#/components/schemas/ValuationResponse"
                 },
                 "example": {
+                  "request_id": "req_synthetic_001",
+                  "coordinates": {
+                    "latitude": 40.185,
+                    "longitude": 44.515
+                  },
+                  "versions": {
+                    "model_version": "synthetic-baseline-v1",
+                    "rule_engine_version": "synthetic-rules-v1"
+                  },
+                  "valuation_assessment": {
+                    "estimated_price_usd": 600,
+                    "price_per_sqm_usd": 12,
+                    "valuation_tier": "Fair Market Price",
+                    "assessment_status": "VALUATION_SUCCESS",
+                    "deviation_from_baseline_pct": 0
+                  },
+                  "observed_market_statistics": {
+                    "cluster_mean_price_usd": 600,
+                    "observed_price_std_dev_usd": 100,
+                    "comparables_count": 3,
+                    "data_freshness_days": 0,
+                    "insufficient_data": false,
+                    "cluster_mean_price_per_sqm_usd": 12,
+                    "observed_price_std_dev_per_sqm_usd": 2,
+                    "area_comparables_count": 3
+                  },
+                  "ml_prediction_interval": {
+                    "lower_bound_usd": 520,
+                    "upper_bound_usd": 680,
+                    "confidence_level": 0.95,
+                    "interval_width_usd": 160,
+                    "calibration_version": "synthetic-validation-fixture-v1"
+                  },
+                  "feature_attributions": [],
+                  "area_reference": null,
                   "kind": "property_valuation",
-                  "latitude": 40.185,
-                  "longitude": 44.515,
                   "cohort": {
                     "radius_m": 1000,
                     "period_start": "2026-09-18",
@@ -425,33 +596,15 @@
                     "duplicate_policy": "latest_observation_per_duplicate_group",
                     "inventory_policy": "active_at_data_as_of"
                   },
-                  "monthly": {
-                    "unit": "USD/month",
-                    "count": 3,
-                    "mean": 600,
-                    "sample_stddev": 100
-                  },
-                  "per_m2": {
-                    "unit": "USD/m2",
-                    "count": 3,
-                    "mean": 12,
-                    "sample_stddev": 2
-                  },
-                  "estimate": {
-                    "expected_price": 600,
-                    "lower_bound": 500,
-                    "upper_bound": 700,
-                    "currency": "USD",
-                    "unit": "USD/month",
-                    "price_status": "within_range",
-                    "comparable_count": 3,
-                    "confidence_explanation": "Synthetic calibrated interval for UI demonstration only.",
-                    "factors": [],
-                    "model_version": "synthetic-baseline-v1",
-                    "rules_version": "synthetic-rules-v1",
+                  "freshness": {
                     "data_as_of": "2026-10-17T08:00:00Z",
-                    "created_at": "2026-10-17T08:00:00Z"
-                  }
+                    "generated_at": "2026-10-17T08:00:00Z",
+                    "is_stale": false,
+                    "max_age_days": 14,
+                    "policy_version": "freshness-proposal-v1"
+                  },
+                  "explanation": "Synthetic independently defined interval; no measured accuracy claim.",
+                  "price_status": "within_range"
                 }
               }
             }
@@ -507,18 +660,14 @@
               "example": {
                 "latitude": 40.185,
                 "longitude": 44.515,
-                "property": {
-                  "area_m2": 50,
-                  "rooms": 2,
-                  "floor": null,
-                  "total_floors": null,
-                  "condition": null
-                },
+                "area_sqm": 50,
+                "rooms": 2,
                 "asking_price_usd_month": 600
               }
             }
           }
-        }
+        },
+        "description": "Proposed contract; see docs/contract-semantics.md for units, nullability, ordering and runtime validation."
       }
     },
     "/api/v1/market-index": {
@@ -595,12 +744,22 @@
                       "median_usd_m2": 12,
                       "status": "available",
                       "data_as_of": "2026-10-17T08:00:00Z",
-                      "measure": "asking_price"
+                      "measure": "asking_price",
+                      "freshness": {
+                        "data_as_of": "2026-10-17T08:00:00Z",
+                        "generated_at": "2026-10-17T08:00:00Z",
+                        "is_stale": false,
+                        "max_age_days": 14,
+                        "policy_version": "freshness-proposal-v1"
+                      }
                     }
                   ],
                   "page": 1,
                   "page_size": 20,
-                  "total": 1
+                  "total": 1,
+                  "has_more": false,
+                  "available_from": "2026-10-12",
+                  "available_to": "2026-10-18"
                 }
               }
             }
@@ -635,7 +794,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Proposed contract; see docs/contract-semantics.md for units, nullability, ordering and runtime validation."
       }
     },
     "/api/v1/reviews": {
@@ -674,7 +834,8 @@
                 "pending",
                 "in_review",
                 "resolved"
-              ]
+              ],
+              "default": "pending"
             }
           },
           {
@@ -684,6 +845,27 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "rule_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "price_anomaly",
+                "risk_evidence"
+              ]
             }
           }
         ],
@@ -709,12 +891,70 @@
                       "reviewed_at": null,
                       "updated_at": "2026-10-17T08:00:00Z",
                       "version": 1,
-                      "history": []
+                      "history": [],
+                      "listing": {
+                        "id": "00000000-0000-4000-8000-000000000001",
+                        "source": "list.am",
+                        "external_id": "synthetic-001",
+                        "source_url": "https://example.org/synthetic-listing",
+                        "property_id": null,
+                        "description": "Synthetic apartment; no real listing or personal data.",
+                        "address": null,
+                        "district_id": "kentron",
+                        "latitude": 40.185,
+                        "longitude": 44.515,
+                        "coordinate_confidence": "approximate",
+                        "price_original": 600,
+                        "currency_original": "USD",
+                        "price_monthly_normalized": 600,
+                        "currency_normalized": "USD",
+                        "conversion": {
+                          "rate_to_usd": 1,
+                          "rate_date": "2026-10-17",
+                          "rate_source": "identity"
+                        },
+                        "utilities_included": null,
+                        "rooms": 2,
+                        "floor": null,
+                        "total_floors": null,
+                        "published_at": null,
+                        "first_seen_at": "2026-10-17T08:00:00Z",
+                        "last_seen_at": "2026-10-17T08:00:00Z",
+                        "status": "active",
+                        "area_sqm": 50,
+                        "dedup_group_id": null,
+                        "renovation": null,
+                        "building_type": null,
+                        "thumbnail_url": null,
+                        "price_status": "within_range",
+                        "freshness": {
+                          "data_as_of": "2026-10-17T08:00:00Z",
+                          "generated_at": "2026-10-17T08:00:00Z",
+                          "is_stale": false,
+                          "max_age_days": 14,
+                          "policy_version": "freshness-proposal-v1"
+                        }
+                      },
+                      "signals": [
+                        {
+                          "id": "00000000-0000-4000-8000-000000000001",
+                          "listing_id": "00000000-0000-4000-8000-000000000001",
+                          "category": "price_anomaly",
+                          "rule_id": "synthetic-price-rule",
+                          "rules_version": "synthetic-rules-v1",
+                          "evidence": [
+                            "Price deviation requires review; not proof of fraud."
+                          ],
+                          "created_at": "2026-10-17T08:00:00Z",
+                          "explanation": "Synthetic signal for review; not a fraud verdict."
+                        }
+                      ]
                     }
                   ],
                   "page": 1,
                   "page_size": 20,
-                  "total": 1
+                  "total": 1,
+                  "has_more": false
                 }
               }
             }
@@ -774,7 +1014,8 @@
           {
             "reviewerBearer": []
           }
-        ]
+        ],
+        "description": "Proposed contract; see docs/contract-semantics.md for units, nullability, ordering and runtime validation."
       }
     },
     "/api/v1/reviews/{id}": {
@@ -819,6 +1060,63 @@
                       "reason": "Synthetic evidence checked.",
                       "actor_id": "00000000-0000-4000-8000-000000000001",
                       "created_at": "2026-10-17T08:00:00Z"
+                    }
+                  ],
+                  "listing": {
+                    "id": "00000000-0000-4000-8000-000000000001",
+                    "source": "list.am",
+                    "external_id": "synthetic-001",
+                    "source_url": "https://example.org/synthetic-listing",
+                    "property_id": null,
+                    "description": "Synthetic apartment; no real listing or personal data.",
+                    "address": null,
+                    "district_id": "kentron",
+                    "latitude": 40.185,
+                    "longitude": 44.515,
+                    "coordinate_confidence": "approximate",
+                    "price_original": 600,
+                    "currency_original": "USD",
+                    "price_monthly_normalized": 600,
+                    "currency_normalized": "USD",
+                    "conversion": {
+                      "rate_to_usd": 1,
+                      "rate_date": "2026-10-17",
+                      "rate_source": "identity"
+                    },
+                    "utilities_included": null,
+                    "rooms": 2,
+                    "floor": null,
+                    "total_floors": null,
+                    "published_at": null,
+                    "first_seen_at": "2026-10-17T08:00:00Z",
+                    "last_seen_at": "2026-10-17T08:00:00Z",
+                    "status": "active",
+                    "area_sqm": 50,
+                    "dedup_group_id": null,
+                    "renovation": null,
+                    "building_type": null,
+                    "thumbnail_url": null,
+                    "price_status": "within_range",
+                    "freshness": {
+                      "data_as_of": "2026-10-17T08:00:00Z",
+                      "generated_at": "2026-10-17T08:00:00Z",
+                      "is_stale": false,
+                      "max_age_days": 14,
+                      "policy_version": "freshness-proposal-v1"
+                    }
+                  },
+                  "signals": [
+                    {
+                      "id": "00000000-0000-4000-8000-000000000001",
+                      "listing_id": "00000000-0000-4000-8000-000000000001",
+                      "category": "price_anomaly",
+                      "rule_id": "synthetic-price-rule",
+                      "rules_version": "synthetic-rules-v1",
+                      "evidence": [
+                        "Price deviation requires review; not proof of fraud."
+                      ],
+                      "created_at": "2026-10-17T08:00:00Z",
+                      "explanation": "Synthetic signal for review; not a fraud verdict."
                     }
                   ]
                 }
@@ -916,7 +1214,181 @@
           {
             "reviewerBearer": []
           }
-        ]
+        ],
+        "description": "Proposed contract; see docs/contract-semantics.md for units, nullability, ordering and runtime validation."
+      }
+    },
+    "/api/v1/infrastructure": {
+      "get": {
+        "operationId": "get_infrastructure",
+        "summary": "GET /api/v1/infrastructure",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "bbox",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?,-?\\d+(\\.\\d+)?$"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "metro",
+                "university"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfrastructurePage"
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "synthetic-metro-1",
+                      "name": "Synthetic metro",
+                      "type": "metro",
+                      "latitude": 40.185,
+                      "longitude": 44.515
+                    }
+                  ],
+                  "page": 1,
+                  "page_size": 20,
+                  "total": 1,
+                  "has_more": false
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Proposed contract; see docs/contract-semantics.md for units, nullability, ordering and runtime validation."
+      }
+    },
+    "/api/v1/exchange-rate": {
+      "get": {
+        "operationId": "get_exchange_rate",
+        "summary": "GET /api/v1/exchange-rate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExchangeRate"
+                },
+                "example": {
+                  "base_currency": "USD",
+                  "quote_currency": "AMD",
+                  "amd_per_usd": 400,
+                  "source": "synthetic-example",
+                  "effective_at": "2026-10-17T08:00:00Z",
+                  "status": "available",
+                  "freshness": {
+                    "data_as_of": "2026-10-17T08:00:00Z",
+                    "generated_at": "2026-10-17T08:00:00Z",
+                    "is_stale": false,
+                    "max_age_days": 7,
+                    "policy_version": "fx-proposal-v1"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Proposed contract; see docs/contract-semantics.md for units, nullability, ordering and runtime validation."
       }
     }
   },
@@ -948,25 +1420,8 @@
       "PropertyFeatures": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "area_m2",
-          "rooms",
-          "floor",
-          "total_floors",
-          "condition"
-        ],
+        "required": [],
         "properties": {
-          "area_m2": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "rooms": {
             "anyOf": [
               {
@@ -1000,15 +1455,40 @@
               }
             ]
           },
-          "condition": {
+          "area_sqm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "renovation": {
             "anyOf": [
               {
                 "type": "string",
                 "enum": [
-                  "needs_renovation",
-                  "good",
-                  "renovated",
-                  "new"
+                  "cosmetic",
+                  "designer",
+                  "none"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "building_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "monolith",
+                  "stone",
+                  "panel"
                 ]
               },
               {
@@ -1027,7 +1507,6 @@
           "external_id",
           "source_url",
           "property_id",
-          "duplicate_group_id",
           "description",
           "address",
           "district_id",
@@ -1040,15 +1519,20 @@
           "currency_normalized",
           "conversion",
           "utilities_included",
-          "area_m2",
           "rooms",
           "floor",
           "total_floors",
-          "condition",
           "published_at",
           "first_seen_at",
           "last_seen_at",
-          "status"
+          "status",
+          "area_sqm",
+          "dedup_group_id",
+          "renovation",
+          "building_type",
+          "thumbnail_url",
+          "price_status",
+          "freshness"
         ],
         "properties": {
           "id": {
@@ -1070,17 +1554,6 @@
             "format": "uri"
           },
           "property_id": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "uuid"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "duplicate_group_id": {
             "anyOf": [
               {
                 "type": "string",
@@ -1206,17 +1679,6 @@
               }
             ]
           },
-          "area_m2": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "rooms": {
             "anyOf": [
               {
@@ -1244,22 +1706,6 @@
               {
                 "type": "integer",
                 "minimum": 1
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "condition": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "needs_renovation",
-                  "good",
-                  "renovated",
-                  "new"
-                ]
               },
               {
                 "type": "null"
@@ -1294,6 +1740,88 @@
               "active",
               "inactive"
             ]
+          },
+          "area_sqm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "dedup_group_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "renovation": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "cosmetic",
+                  "designer",
+                  "none"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "building_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "monolith",
+                  "stone",
+                  "panel"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "price_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "within_range",
+                  "above_range",
+                  "below_range",
+                  "insufficient_data"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Freshness"
           }
         }
       },
@@ -1336,65 +1864,72 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "expected_price",
-          "lower_bound",
-          "upper_bound",
-          "currency",
-          "unit",
-          "price_status",
-          "comparable_count",
-          "confidence_explanation",
-          "factors",
-          "model_version",
-          "rules_version",
-          "data_as_of",
-          "created_at"
+          "request_id",
+          "coordinates",
+          "versions",
+          "valuation_assessment",
+          "observed_market_statistics",
+          "ml_prediction_interval",
+          "feature_attributions",
+          "area_reference",
+          "kind",
+          "cohort",
+          "freshness",
+          "explanation",
+          "price_status"
         ],
         "properties": {
-          "expected_price": {
+          "request_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "versions": {
+            "$ref": "#/components/schemas/Versions"
+          },
+          "valuation_assessment": {
+            "$ref": "#/components/schemas/Assessment"
+          },
+          "observed_market_statistics": {
+            "$ref": "#/components/schemas/ObservedMarketStatistics"
+          },
+          "ml_prediction_interval": {
+            "$ref": "#/components/schemas/PredictionInterval"
+          },
+          "feature_attributions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Attribution"
+            }
+          },
+          "area_reference": {
             "anyOf": [
               {
-                "type": "number",
-                "exclusiveMinimum": 0
+                "$ref": "#/components/schemas/AreaReference"
               },
               {
                 "type": "null"
               }
             ]
           },
-          "lower_bound": {
-            "anyOf": [
-              {
-                "type": "number",
-                "minimum": 0
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "upper_bound": {
-            "anyOf": [
-              {
-                "type": "number",
-                "exclusiveMinimum": 0
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "currency": {
+          "kind": {
             "type": "string",
             "enum": [
-              "USD"
+              "area_reference",
+              "property_valuation"
             ]
           },
-          "unit": {
+          "cohort": {
+            "$ref": "#/components/schemas/Cohort"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Freshness"
+          },
+          "explanation": {
             "type": "string",
-            "enum": [
-              "USD/month"
-            ]
+            "minLength": 1
           },
           "price_status": {
             "type": "string",
@@ -1404,47 +1939,62 @@
               "below_range",
               "insufficient_data"
             ]
-          },
-          "comparable_count": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "confidence_explanation": {
-            "type": "string",
-            "minLength": 1
-          },
-          "factors": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Factor"
-            }
-          },
-          "model_version": {
-            "type": "string",
-            "minLength": 1
-          },
-          "rules_version": {
-            "type": "string",
-            "minLength": 1
-          },
-          "data_as_of": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "date-time",
-                "pattern": "Z$"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "pattern": "Z$"
           }
-        }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "valuation_assessment": {
+                  "properties": {
+                    "assessment_status": {
+                      "const": "INSUFFICIENT_DATA_ABSTAIN"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "valuation_assessment": {
+                  "properties": {
+                    "estimated_price_usd": {
+                      "type": "null"
+                    },
+                    "price_per_sqm_usd": {
+                      "type": "null"
+                    },
+                    "deviation_from_baseline_pct": {
+                      "type": "null"
+                    }
+                  }
+                },
+                "ml_prediction_interval": {
+                  "properties": {
+                    "lower_bound_usd": {
+                      "type": "null"
+                    },
+                    "upper_bound_usd": {
+                      "type": "null"
+                    },
+                    "confidence_level": {
+                      "type": "null"
+                    },
+                    "interval_width_usd": {
+                      "type": "null"
+                    },
+                    "calibration_version": {
+                      "type": "null"
+                    }
+                  }
+                },
+                "price_status": {
+                  "const": "insufficient_data"
+                }
+              }
+            }
+          }
+        ]
       },
       "RiskSignal": {
         "type": "object",
@@ -1456,7 +2006,8 @@
           "rule_id",
           "rules_version",
           "evidence",
-          "created_at"
+          "created_at",
+          "explanation"
         ],
         "properties": {
           "id": {
@@ -1493,6 +2044,10 @@
             "type": "string",
             "format": "date-time",
             "pattern": "Z$"
+          },
+          "explanation": {
+            "type": "string",
+            "minLength": 1
           }
         }
       },
@@ -1501,7 +2056,8 @@
         "additionalProperties": false,
         "required": [
           "listing",
-          "signals"
+          "signals",
+          "estimate"
         ],
         "properties": {
           "listing": {
@@ -1512,6 +2068,16 @@
             "items": {
               "$ref": "#/components/schemas/RiskSignal"
             }
+          },
+          "estimate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Estimate"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -1577,7 +2143,9 @@
           "reviewed_at",
           "updated_at",
           "version",
-          "history"
+          "history",
+          "listing",
+          "signals"
         ],
         "properties": {
           "id": {
@@ -1654,6 +2222,15 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ReviewEvent"
+            }
+          },
+          "listing": {
+            "$ref": "#/components/schemas/Listing"
+          },
+          "signals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RiskSignal"
             }
           }
         }
@@ -1740,7 +2317,8 @@
           "median_usd_m2",
           "status",
           "data_as_of",
-          "measure"
+          "measure",
+          "freshness"
         ],
         "properties": {
           "district_id": {
@@ -1809,6 +2387,9 @@
             "enum": [
               "asking_price"
             ]
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Freshness"
           }
         }
       },
@@ -1935,12 +2516,83 @@
             "maximum": 90,
             "default": 30
           },
-          "property": {
-            "$ref": "#/components/schemas/PropertyFeatures"
-          },
           "asking_price_usd_month": {
             "type": "number",
             "exclusiveMinimum": 0
+          },
+          "rooms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "floor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_floors": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "area_sqm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "renovation": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "cosmetic",
+                  "designer",
+                  "none"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "building_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "monolith",
+                  "stone",
+                  "panel"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -1948,15 +2600,56 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
+          "request_id",
+          "coordinates",
+          "versions",
+          "valuation_assessment",
+          "observed_market_statistics",
+          "ml_prediction_interval",
+          "feature_attributions",
+          "area_reference",
           "kind",
-          "latitude",
-          "longitude",
           "cohort",
-          "monthly",
-          "per_m2",
-          "estimate"
+          "freshness",
+          "explanation",
+          "price_status"
         ],
         "properties": {
+          "request_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/Coordinates"
+          },
+          "versions": {
+            "$ref": "#/components/schemas/Versions"
+          },
+          "valuation_assessment": {
+            "$ref": "#/components/schemas/Assessment"
+          },
+          "observed_market_statistics": {
+            "$ref": "#/components/schemas/ObservedMarketStatistics"
+          },
+          "ml_prediction_interval": {
+            "$ref": "#/components/schemas/PredictionInterval"
+          },
+          "feature_attributions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Attribution"
+            }
+          },
+          "area_reference": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AreaReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "kind": {
             "type": "string",
             "enum": [
@@ -1964,6 +2657,92 @@
               "property_valuation"
             ]
           },
+          "cohort": {
+            "$ref": "#/components/schemas/Cohort"
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Freshness"
+          },
+          "explanation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "price_status": {
+            "type": "string",
+            "enum": [
+              "within_range",
+              "above_range",
+              "below_range",
+              "insufficient_data"
+            ]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "valuation_assessment": {
+                  "properties": {
+                    "assessment_status": {
+                      "const": "INSUFFICIENT_DATA_ABSTAIN"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "valuation_assessment": {
+                  "properties": {
+                    "estimated_price_usd": {
+                      "type": "null"
+                    },
+                    "price_per_sqm_usd": {
+                      "type": "null"
+                    },
+                    "deviation_from_baseline_pct": {
+                      "type": "null"
+                    }
+                  }
+                },
+                "ml_prediction_interval": {
+                  "properties": {
+                    "lower_bound_usd": {
+                      "type": "null"
+                    },
+                    "upper_bound_usd": {
+                      "type": "null"
+                    },
+                    "confidence_level": {
+                      "type": "null"
+                    },
+                    "interval_width_usd": {
+                      "type": "null"
+                    },
+                    "calibration_version": {
+                      "type": "null"
+                    }
+                  }
+                },
+                "price_status": {
+                  "const": "insufficient_data"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "ModelInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "latitude",
+          "longitude",
+          "as_of",
+          "radius_m",
+          "window_days"
+        ],
+        "properties": {
           "latitude": {
             "type": "number",
             "minimum": -90,
@@ -1974,41 +2753,81 @@
             "minimum": -180,
             "maximum": 180
           },
-          "cohort": {
-            "$ref": "#/components/schemas/Cohort"
+          "rooms": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          "monthly": {
-            "$ref": "#/components/schemas/Statistics"
+          "floor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          "per_m2": {
-            "$ref": "#/components/schemas/Statistics"
+          "total_floors": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          "estimate": {
-            "$ref": "#/components/schemas/Estimate"
-          }
-        }
-      },
-      "ModelInput": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "request",
-          "as_of",
-          "district_id",
-          "distance_to_metro_m",
-          "distance_to_university_m",
-          "distance_to_center_m"
-        ],
-        "properties": {
-          "request": {
-            "$ref": "#/components/schemas/ValuationRequest"
+          "area_sqm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          "as_of": {
-            "type": "string",
-            "format": "date-time",
-            "pattern": "Z$"
+          "renovation": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "cosmetic",
+                  "designer",
+                  "none"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
-          "district_id": {
+          "building_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "monolith",
+                  "stone",
+                  "panel"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "district": {
             "anyOf": [
               {
                 "type": "string",
@@ -2019,7 +2838,7 @@
               }
             ]
           },
-          "distance_to_metro_m": {
+          "distance_metro_m": {
             "anyOf": [
               {
                 "type": "number",
@@ -2030,7 +2849,7 @@
               }
             ]
           },
-          "distance_to_university_m": {
+          "distance_center_m": {
             "anyOf": [
               {
                 "type": "number",
@@ -2041,7 +2860,7 @@
               }
             ]
           },
-          "distance_to_center_m": {
+          "distance_university_m": {
             "anyOf": [
               {
                 "type": "number",
@@ -2051,6 +2870,23 @@
                 "type": "null"
               }
             ]
+          },
+          "as_of": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          "radius_m": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 5000,
+            "default": 1000
+          },
+          "window_days": {
+            "type": "integer",
+            "minimum": 7,
+            "maximum": 90,
+            "default": 30
           }
         }
       },
@@ -2118,7 +2954,8 @@
           "items",
           "page",
           "page_size",
-          "total"
+          "total",
+          "has_more"
         ],
         "properties": {
           "items": {
@@ -2139,6 +2976,9 @@
           "total": {
             "type": "integer",
             "minimum": 0
+          },
+          "has_more": {
+            "type": "boolean"
           }
         }
       },
@@ -2149,7 +2989,8 @@
           "items",
           "page",
           "page_size",
-          "total"
+          "total",
+          "has_more"
         ],
         "properties": {
           "items": {
@@ -2170,6 +3011,9 @@
           "total": {
             "type": "integer",
             "minimum": 0
+          },
+          "has_more": {
+            "type": "boolean"
           }
         }
       },
@@ -2180,7 +3024,10 @@
           "items",
           "page",
           "page_size",
-          "total"
+          "total",
+          "has_more",
+          "available_from",
+          "available_to"
         ],
         "properties": {
           "items": {
@@ -2201,6 +3048,649 @@
           "total": {
             "type": "integer",
             "minimum": 0
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "available_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "available_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "Freshness": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "data_as_of",
+          "generated_at",
+          "is_stale",
+          "max_age_days",
+          "policy_version"
+        ],
+        "properties": {
+          "data_as_of": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          "is_stale": {
+            "type": "boolean"
+          },
+          "max_age_days": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "policy_version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "Coordinates": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          }
+        }
+      },
+      "Versions": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "model_version",
+          "rule_engine_version"
+        ],
+        "properties": {
+          "model_version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rule_engine_version": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "AreaReference": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "district",
+          "reference_area_sqm",
+          "note"
+        ],
+        "properties": {
+          "district": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reference_area_sqm": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "Assessment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "estimated_price_usd",
+          "price_per_sqm_usd",
+          "valuation_tier",
+          "assessment_status",
+          "deviation_from_baseline_pct"
+        ],
+        "properties": {
+          "estimated_price_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "price_per_sqm_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valuation_tier": {
+            "type": "string",
+            "minLength": 1
+          },
+          "assessment_status": {
+            "type": "string",
+            "enum": [
+              "VALUATION_SUCCESS",
+              "COORDINATE_BASELINE_ONLY",
+              "INSUFFICIENT_DATA_ABSTAIN"
+            ]
+          },
+          "deviation_from_baseline_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ObservedMarketStatistics": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cluster_mean_price_usd",
+          "observed_price_std_dev_usd",
+          "comparables_count",
+          "data_freshness_days",
+          "insufficient_data",
+          "cluster_mean_price_per_sqm_usd",
+          "observed_price_std_dev_per_sqm_usd",
+          "area_comparables_count"
+        ],
+        "properties": {
+          "cluster_mean_price_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observed_price_std_dev_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comparables_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "data_freshness_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "insufficient_data": {
+            "type": "boolean"
+          },
+          "cluster_mean_price_per_sqm_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observed_price_std_dev_per_sqm_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "area_comparables_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "comparables_count": {
+                  "const": 0
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "cluster_mean_price_usd": {
+                  "type": "null"
+                },
+                "observed_price_std_dev_usd": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "comparables_count": {
+                  "maximum": 1
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "observed_price_std_dev_usd": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "area_comparables_count": {
+                  "const": 0
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "cluster_mean_price_per_sqm_usd": {
+                  "type": "null"
+                },
+                "observed_price_std_dev_per_sqm_usd": {
+                  "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "area_comparables_count": {
+                  "maximum": 1
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "observed_price_std_dev_per_sqm_usd": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "PredictionInterval": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "lower_bound_usd",
+          "upper_bound_usd",
+          "confidence_level",
+          "interval_width_usd",
+          "calibration_version"
+        ],
+        "properties": {
+          "lower_bound_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "upper_bound_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confidence_level": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "interval_width_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "calibration_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "oneOf": [
+          {
+            "properties": {
+              "lower_bound_usd": {
+                "type": "null"
+              },
+              "upper_bound_usd": {
+                "type": "null"
+              },
+              "confidence_level": {
+                "type": "null"
+              },
+              "interval_width_usd": {
+                "type": "null"
+              },
+              "calibration_version": {
+                "type": "null"
+              }
+            }
+          },
+          {
+            "properties": {
+              "lower_bound_usd": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "upper_bound_usd": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "confidence_level": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "interval_width_usd": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "calibration_version": {
+                "not": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "Attribution": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "feature",
+          "impact_pct",
+          "direction"
+        ],
+        "properties": {
+          "feature": {
+            "type": "string",
+            "minLength": 1
+          },
+          "impact_pct": {
+            "type": "number",
+            "minimum": 0
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "positive",
+              "negative",
+              "neutral"
+            ]
+          }
+        }
+      },
+      "InfrastructurePoint": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "type",
+          "latitude",
+          "longitude"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "metro",
+              "university"
+            ]
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          }
+        }
+      },
+      "InfrastructurePage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "total",
+          "has_more"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InfrastructurePoint"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "has_more": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ExchangeRate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "base_currency",
+          "quote_currency",
+          "amd_per_usd",
+          "source",
+          "effective_at",
+          "status",
+          "freshness"
+        ],
+        "properties": {
+          "base_currency": {
+            "type": "string",
+            "enum": [
+              "USD"
+            ]
+          },
+          "quote_currency": {
+            "type": "string",
+            "enum": [
+              "AMD"
+            ]
+          },
+          "amd_per_usd": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effective_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "Z$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "stale",
+              "unavailable"
+            ]
+          },
+          "freshness": {
+            "$ref": "#/components/schemas/Freshness"
           }
         }
       }

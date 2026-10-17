@@ -146,6 +146,12 @@ event=dict(status='resolved',decision='dismissed',reason='Synthetic evidence che
 fixture('review-resolved','Review',dict(review,status='resolved',decision='dismissed',reason=event['reason'],reviewed_at=T,version=2,history=[event]))
 for code in S['Error']['properties']['code']['enum']:
     fixture('error-'+code,'Error',dict(code=code,message='Synthetic '+code,request_id=U,details=[]))
+from integration import align
+align(S, paths, fixtures)
+spec['info']['version'] = '0.2.0'
+for operations in paths.values():
+    for op in operations.values():
+        op['description'] = 'Proposed contract; see docs/contract-semantics.md for units, nullability, ordering and runtime validation.'
 for name,schema in [('listings','ListingPage'),('listing-detail','ListingDetail'),('estimate','Estimate'),('valuation','ValuationResponse'),('market-index','MarketIndexPage'),('reviews','ReviewPage'),('review-resolved','Review')]:
     for operations in paths.values():
         for op in operations.values():
@@ -159,5 +165,5 @@ for operations in paths.values():
             media['example']=fixtures['review-update' if media['schema']==ref('ReviewUpdate') else 'valuation-request']['value']
 ROOT.mkdir(exist_ok=True)
 for filename,value in [('openapi.json',spec),('fixtures.json',fixtures)]:
-    (ROOT/filename).write_text(json.dumps(value,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
+    (ROOT/filename).write_text(json.dumps(value,indent=2,ensure_ascii=False)+'\n',encoding='utf-8',newline='\n')
 print(f'Generated {len(S)} schemas, {len(paths)} paths, {len(fixtures)} fixtures.')

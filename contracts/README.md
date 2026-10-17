@@ -1,10 +1,11 @@
 # C01 shared contracts
 
-Proposal v0.1.0, pending component-owner agreement. No running API is implied.
+Proposal v0.2.0, incorporating B02 naming and frontend requirements; pending final owner agreement. No business API implementation is implied.
 
-- `openapi.json`: generated OpenAPI 3.1 for all seven endpoints.
+- `openapi.json`: generated OpenAPI 3.1 for nine endpoints, including infrastructure and USD/AMD display rates.
 - `fixtures.json`: synthetic scenarios with `{schema, value}` wrappers; mocks return `value`.
 - `generate.py`: editable stdlib-only source for schemas and examples.
+- `integration.py`: B02/public-response mapping and frontend additions applied during generation.
 - `validate.py`: OpenAPI, fixture and negative-input checks.
 
 From repository root:
