@@ -603,17 +603,13 @@ Acceptance criteria:
 - [ ] Explain that standard deviation is observed market dispersion, keep it separate from prediction intervals, and handle insufficient data, unsupported locations, and request errors.
 
 
-## Additional system administration track
-
-Mane owns S01–S04 in addition to frontend. This isolated learning lab is not a release dependency. Schedule it sequentially around frontend MVP priorities. No Ansible is required. See [scope and ownership](system-administration.md).
-
 <a id="s01"></a>
 
-## S01: Set up an isolated Linux lab and document secure access
+## S01: Configure the Linux environment and secure access
 
 Owner: @manemazmand | Area: Infra / System Administration | Phase: Foundation | Priority: P1
 
-Deploy the existing Compose application manually on a clean Ubuntu VM and document Linux administration fundamentals.
+Configure a Linux environment for the Compose application and document access, networking and storage.
 
 Dependencies: [C02](implementation-plan.md#c02).
 
@@ -629,7 +625,7 @@ Acceptance criteria:
 
 Owner: @manemazmand | Area: Infra / System Administration | Phase: MVP | Priority: P1
 
-Make application and host failures diagnosable on the isolated Linux lab.
+Implement service monitoring and document application and host diagnostics.
 
 Dependencies: [S01](implementation-plan.md#s01).
 
@@ -641,11 +637,11 @@ Acceptance criteria:
 
 <a id="s03"></a>
 
-## S03: Implement and verify lab database backup and restore
+## S03: Implement and verify database backup and restore
 
 Owner: @manemazmand | Area: Infra / System Administration | Phase: MVP | Priority: P1
 
-Demonstrate recoverability of PostgreSQL/PostGIS using a small synthetic dataset.
+Implement reproducible PostgreSQL/PostGIS backup and restore procedures and verify recovery using synthetic data.
 
 Dependencies: [S01](implementation-plan.md#s01).
 
@@ -653,20 +649,20 @@ Acceptance criteria:
 
 - [ ] Provide documented pg_dump/pg_restore commands or shell scripts, backup naming, restricted permissions and a retention policy; exclude backups from Git.
 - [ ] Restore into a separate disposable database or Compose project and verify synthetic rows and PostGIS functionality without overwriting the working database.
-- [ ] Record backup/restore duration, database and PostGIS versions, failure handling and rerun steps; distinguish this lab procedure from production RDS backups.
+- [ ] Record backup/restore duration, database and PostGIS versions, failure handling and rerun steps; document how the procedure relates to production RDS backups.
 
 <a id="s04"></a>
 
-## S04: Run failure recovery exercises and deliver the administration runbook
+## S04: Validate service recovery and deliver the operations runbook
 
 Owner: @manemazmand | Area: Infra / System Administration | Phase: Release | Priority: P1
 
-Demonstrate independent operation and recovery of the lab application.
+Verify application recovery from service failures and deliver reproducible operating procedures.
 
 Dependencies: [S02](implementation-plan.md#s02), [S03](implementation-plan.md#s03).
 
 Acceptance criteria:
 
-- [ ] Reproduce database unavailability, an occupied API port and invalid configuration safely on the lab; record symptoms, diagnosis and recovery.
+- [ ] Reproduce database unavailability, an occupied API port and invalid configuration in a controlled environment; record symptoms, diagnosis and recovery.
 - [ ] Demonstrate recovery after VM reboot and a database restore drill; verify health/readiness and retained synthetic data.
-- [ ] Publish a runbook covering access, startup/shutdown, logs, backup/restore, recovery and lab teardown; have another teammate reproduce one procedure.
+- [ ] Publish a runbook covering access, startup/shutdown, logs, backup/restore, recovery and environment teardown; have another teammate reproduce one procedure.
