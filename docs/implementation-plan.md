@@ -602,3 +602,71 @@ Acceptance criteria:
 - [ ] Display the assessment, comparable count, search radius/time window, freshness, and standard deviations with explicit USD/month and USD/m² units.
 - [ ] Explain that standard deviation is observed market dispersion, keep it separate from prediction intervals, and handle insufficient data, unsupported locations, and request errors.
 
+
+## Additional system administration track
+
+Mane owns S01–S04 in addition to frontend. This isolated learning lab is not a release dependency. Schedule it sequentially around frontend MVP priorities. No Ansible is required. See [scope and ownership](system-administration.md).
+
+<a id="s01"></a>
+
+## S01: Set up an isolated Linux lab and document secure access
+
+Owner: @manemazmand | Area: Infra / System Administration | Phase: Foundation | Priority: P1
+
+Deploy the existing Compose application manually on a clean Ubuntu VM and document Linux administration fundamentals.
+
+Dependencies: [C02](implementation-plan.md#c02).
+
+Acceptance criteria:
+
+- [ ] Document VM OS/resources, a non-root administrator, SSH key access, file permissions and firewall rules; verify access before restricting SSH.
+- [ ] Start the API and PostGIS from the repository instructions, verify health/readiness, and document container networking and persistent storage.
+- [ ] Keep secrets and real listing data out of Git; provide a reproducible setup and teardown guide with sanitized command output.
+
+<a id="s02"></a>
+
+## S02: Document service monitoring and Linux troubleshooting
+
+Owner: @manemazmand | Area: Infra / System Administration | Phase: MVP | Priority: P1
+
+Make application and host failures diagnosable on the isolated Linux lab.
+
+Dependencies: [S01](implementation-plan.md#s01).
+
+Acceptance criteria:
+
+- [ ] Document checks for API health/readiness, Compose status/logs, listening ports, disk space, memory and host services.
+- [ ] Provide a small shell check script with meaningful exit codes and no credentials in output; demonstrate healthy and unavailable database states.
+- [ ] Document log locations, bounded log retention and a symptom-to-diagnosis checklist with sanitized evidence.
+
+<a id="s03"></a>
+
+## S03: Implement and verify lab database backup and restore
+
+Owner: @manemazmand | Area: Infra / System Administration | Phase: MVP | Priority: P1
+
+Demonstrate recoverability of PostgreSQL/PostGIS using a small synthetic dataset.
+
+Dependencies: [S01](implementation-plan.md#s01).
+
+Acceptance criteria:
+
+- [ ] Provide documented pg_dump/pg_restore commands or shell scripts, backup naming, restricted permissions and a retention policy; exclude backups from Git.
+- [ ] Restore into a separate disposable database or Compose project and verify synthetic rows and PostGIS functionality without overwriting the working database.
+- [ ] Record backup/restore duration, database and PostGIS versions, failure handling and rerun steps; distinguish this lab procedure from production RDS backups.
+
+<a id="s04"></a>
+
+## S04: Run failure recovery exercises and deliver the administration runbook
+
+Owner: @manemazmand | Area: Infra / System Administration | Phase: Release | Priority: P1
+
+Demonstrate independent operation and recovery of the lab application.
+
+Dependencies: [S02](implementation-plan.md#s02), [S03](implementation-plan.md#s03).
+
+Acceptance criteria:
+
+- [ ] Reproduce database unavailability, an occupied API port and invalid configuration safely on the lab; record symptoms, diagnosis and recovery.
+- [ ] Demonstrate recovery after VM reboot and a database restore drill; verify health/readiness and retained synthetic data.
+- [ ] Publish a runbook covering access, startup/shutdown, logs, backup/restore, recovery and lab teardown; have another teammate reproduce one procedure.

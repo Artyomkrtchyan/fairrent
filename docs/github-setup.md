@@ -26,7 +26,14 @@ Repository name: `fairrent`. Visibility: private.
 - Area, Priority, and Phase populated for all cards; independent starting tasks initially set to Ready and dependent work to Backlog.
 - See the [implementation plan](implementation-plan.md) and [Git workflow](git-workflow.md).
 
-## Remaining configuration
+## System administration track added October 17, 2026
+
+- S01–S04 created as issues #40–43, assigned to manemazmand and added to project 4.
+- All four cards are Backlog / Infra / P1. Phases: S01 Foundation, S02–S03 MVP, S04 Release.
+- The plan now has 41 tasks: 37 original tasks plus four system administration lab tasks. Mane owns nine frontend and four lab tasks, scheduled sequentially around frontend MVP priorities.
+- Scope: isolated Linux VM, manual setup, diagnostics, synthetic database backup/restore and recovery runbook. No Ansible. See [system administration scope](system-administration.md).
+
+## Remaining configuration (unchanged)
 
 - Optional By Area view grouped by responsibility.
 - Track dependencies using linked issues; a custom Depends on field has not been created.
