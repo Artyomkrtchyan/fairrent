@@ -1,14 +1,14 @@
 # Implementation plan
 
-Each task has one owner, a deliverable, and acceptance criteria. Follow the linked dependencies before moving a task to Ready. Start independent design tasks in parallel. Dates will be set by the team.
+Each task has one owner, a goal, deliverables, dependencies and acceptance criteria. Dates are set by the team.
 
 ## Delivery sequence
 
-Foundation → working baseline and coordinate-valuation MVP → model/ontology and analytics integration → deployed release and demonstration.
+Foundation → working baseline and coordinate-valuation MVP → model/ontology and analytics integration → deployment, security verification and demonstration.
 
-The required outcome includes a Pandas/Scikit-Learn analysis pipeline, a REST endpoint returning price standard deviations and valuation assessments for given coordinates, and weekly cron ingestion. B09, C11, D09, and C09 cover these explicitly.
+Start A01, B01, C01, D01 and E01 independently. C01 establishes the shared contract. B09, C11 and D09 cover coordinate valuation and observed price dispersion; C09 covers weekly ingestion.
 
-The first parallel tasks are A01, B01, C01, and D01. Complete C01 early so all components share the same contract. Infrastructure preparation can begin early; production deployment follows integration.
+Mane owns D01–D09 and E01–E05 as regular project tasks. Security work follows component availability and E05 feeds release verification C10. Artyom owns AWS and IAM. S01–S04 are Release/P2, performed only after the core release and security work if time remains. They do not block C10.
 
 <a id="a01"></a>
 
@@ -34,7 +34,7 @@ Owner: @alisamanukyann | Area: Data / DB | Phase: Foundation | Priority: P0
 
 Design and implement storage for properties, listings, observations, infrastructure, estimates, signals, reviews, and ingestion runs.
 
-Dependencies: [A01](#a01), [C01](#c01).
+Dependencies: [A01](#a01), [C01](#c01)
 
 Acceptance criteria:
 
@@ -50,7 +50,7 @@ Owner: @alisamanukyann | Area: Data / DB | Phase: MVP | Priority: P0
 
 Collect the selected list.am segment and normalize records for the Yerevan rental market.
 
-Dependencies: [A01](#a01), [A02](#a02), [C02](#c02).
+Dependencies: [A01](#a01), [A02](#a02), [C02](#c02)
 
 Acceptance criteria:
 
@@ -66,7 +66,7 @@ Owner: @alisamanukyann | Area: Data / DB | Phase: MVP | Priority: P0
 
 Make repeated collection safe and keep inactive inventory distinguishable from collection failures.
 
-Dependencies: [A03](#a03).
+Dependencies: [A03](#a03)
 
 Acceptance criteria:
 
@@ -82,7 +82,7 @@ Owner: @alisamanukyann | Area: Data / DB | Phase: MVP | Priority: P0
 
 Enrich listings with districts, coordinates, and distances to metro stations, universities, and a defined city-center reference.
 
-Dependencies: [A02](#a02), [A03](#a03).
+Dependencies: [A02](#a02), [A03](#a03)
 
 Acceptance criteria:
 
@@ -98,7 +98,7 @@ Owner: @alisamanukyann | Area: Data / DB | Phase: Intelligence | Priority: P0
 
 Export versioned datasets following the feature contract and leakage-prevention rules.
 
-Dependencies: [A04](#a04), [A05](#a05), [B02](#b02).
+Dependencies: [A04](#a04), [A05](#a05), [B02](#b02)
 
 Acceptance criteria:
 
@@ -114,7 +114,7 @@ Owner: @alisamanukyann | Area: Data / DB | Phase: Intelligence | Priority: P1
 
 Produce weekly neighborhood asking-price statistics for comparable active inventory.
 
-Dependencies: [A04](#a04), [A05](#a05).
+Dependencies: [A04](#a04), [A05](#a05)
 
 Acceptance criteria:
 
@@ -130,7 +130,7 @@ Owner: @alisamanukyann | Area: Data / DB | Phase: Release | Priority: P0
 
 Verify production ingestion behavior and make collection reproducible for teammates.
 
-Dependencies: [A06](#a06), [A07](#a07), [C08](#c08).
+Dependencies: [A06](#a06), [A07](#a07), [C08](#c08)
 
 Acceptance criteria:
 
@@ -162,7 +162,7 @@ Owner: @Lazr22 | Area: ML / Ontology | Phase: Foundation | Priority: P0
 
 Agree with data and backend owners on model inputs, outputs, and evaluation methodology.
 
-Dependencies: [C01](#c01).
+Dependencies: [C01](#c01)
 
 Acceptance criteria:
 
@@ -178,7 +178,7 @@ Owner: @Lazr22 | Area: ML / Ontology | Phase: MVP | Priority: P0
 
 Create an explainable valuation baseline using comparable rental listings.
 
-Dependencies: [B02](#b02), [A03](#a03).
+Dependencies: [B02](#b02), [A03](#a03)
 
 Acceptance criteria:
 
@@ -194,7 +194,7 @@ Owner: @Lazr22 | Area: ML / Ontology | Phase: Intelligence | Priority: P0
 
 Train a CatBoost regressor and compare it fairly with the baseline.
 
-Dependencies: [A06](#a06), [B03](#b03).
+Dependencies: [A06](#a06), [B03](#b03)
 
 Acceptance criteria:
 
@@ -210,7 +210,7 @@ Owner: @Lazr22 | Area: ML / Ontology | Phase: Intelligence | Priority: P0
 
 Add empirically evaluated rental price intervals and defensible abstention behavior.
 
-Dependencies: [B04](#b04).
+Dependencies: [B04](#b04)
 
 Acceptance criteria:
 
@@ -226,7 +226,7 @@ Owner: @Lazr22 | Area: ML / Ontology | Phase: Intelligence | Priority: P0
 
 Connect geographic facts and property descriptions to traceable inference and readable explanations.
 
-Dependencies: [B01](#b01), [A05](#a05), [B03](#b03).
+Dependencies: [B01](#b01), [A05](#a05), [B03](#b03)
 
 Acceptance criteria:
 
@@ -242,7 +242,7 @@ Owner: @Lazr22 | Area: ML / Ontology | Phase: Intelligence | Priority: P0
 
 Deliver a versioned prediction package usable by the FastAPI application.
 
-Dependencies: [B05](#b05), [B06](#b06).
+Dependencies: [B05](#b05), [B06](#b06)
 
 Acceptance criteria:
 
@@ -258,7 +258,7 @@ Owner: @Lazr22 | Area: ML / Ontology | Phase: Release | Priority: P0
 
 Prepare evidence for the final defense and document practical limitations.
 
-Dependencies: [B07](#b07).
+Dependencies: [B07](#b07)
 
 Acceptance criteria:
 
@@ -278,7 +278,7 @@ Dependencies: None.
 
 Acceptance criteria:
 
-- [ ] Publish OpenAPI schemas for listings, estimates, market indexes, and reviews with filters, pagination, and errors.
+- [ ] Publish OpenAPI schemas for listings, coordinate valuations with standard deviations, estimates, market indexes, and reviews, including validation, pagination, and errors.
 - [ ] Agree units, USD conversion semantics, nullable fields, identifiers, and model inputs with the owners.
 - [ ] Provide synthetic request/response fixtures so frontend and ML can work independently.
 
@@ -290,7 +290,7 @@ Owner: @Artyomkrtchyan | Area: Backend | Phase: Foundation | Priority: P0
 
 Create a runnable backend and shared local environment.
 
-Dependencies: [C01](#c01).
+Dependencies: [C01](#c01)
 
 Acceptance criteria:
 
@@ -306,7 +306,7 @@ Owner: @Artyomkrtchyan | Area: Backend | Phase: MVP | Priority: P0
 
 Serve normalized listing data through the agreed API.
 
-Dependencies: [C02](#c02), [A02](#a02).
+Dependencies: [C02](#c02), [A02](#a02)
 
 Acceptance criteria:
 
@@ -322,7 +322,7 @@ Owner: @Artyomkrtchyan | Area: Backend | Phase: MVP | Priority: P0
 
 Expose baseline valuation first and support the versioned ML package when available.
 
-Dependencies: [C03](#c03), [B03](#b03).
+Dependencies: [C03](#c03), [B03](#b03)
 
 Acceptance criteria:
 
@@ -338,7 +338,7 @@ Owner: @Artyomkrtchyan | Area: Backend | Phase: Intelligence | Priority: P0
 
 Create explainable risk rules and a reviewer-only queue with recorded decisions.
 
-Dependencies: [C04](#c04), [A04](#a04), [B06](#b06).
+Dependencies: [C04](#c04), [A04](#a04), [B06](#b06)
 
 Acceptance criteria:
 
@@ -354,7 +354,7 @@ Owner: @Artyomkrtchyan | Area: Backend | Phase: Intelligence | Priority: P1
 
 Provide frontend-ready neighborhood and trend endpoints.
 
-Dependencies: [C03](#c03), [A07](#a07).
+Dependencies: [C03](#c03), [A07](#a07)
 
 Acceptance criteria:
 
@@ -370,7 +370,7 @@ Owner: @Artyomkrtchyan | Area: Infra | Phase: MVP | Priority: P0
 
 Create CI for meaningful component checks and reproducible container builds.
 
-Dependencies: [C02](#c02), [D02](#d02).
+Dependencies: [C02](#c02), [D02](#d02)
 
 Acceptance criteria:
 
@@ -386,7 +386,7 @@ Owner: @Artyomkrtchyan | Area: Infra | Phase: Release | Priority: P0
 
 Deploy the application using the agreed AWS architecture.
 
-Dependencies: [C03](#c03), [C07](#c07), [D07](#d07).
+Dependencies: [C03](#c03), [C07](#c07), [D07](#d07)
 
 Acceptance criteria:
 
@@ -402,11 +402,11 @@ Owner: @Artyomkrtchyan | Area: Infra | Phase: Release | Priority: P0
 
 Run ingestion on schedule and make failures visible.
 
-Dependencies: [C08](#c08), [A04](#a04).
+Dependencies: [C08](#c08), [A04](#a04)
 
 Acceptance criteria:
 
-- [ ] Configure a weekly cron expression in Terraform for EventBridge Scheduler (initial schedule: Sunday 03:00, Asia/Yerevan), with overlap prevention and a configurable schedule.
+- [ ] Configure an explicit weekly cron expression in Terraform for EventBridge Scheduler (initial schedule: Sunday 03:00, Asia/Yerevan) to launch the collection ECS task with overlap prevention; make the schedule configurable.
 - [ ] Record run status, retries, and freshness; add failure visibility through CloudWatch.
 - [ ] Demonstrate a manual run, a failed run, and recovery without clearing inventory; document rerun steps.
 
@@ -418,7 +418,7 @@ Owner: @Artyomkrtchyan | Area: Backend | Phase: Release | Priority: P0
 
 Coordinate final integration and produce a reproducible release demonstration.
 
-Dependencies: [A08](#a08), [B08](#b08), [D08](#d08), [C05](#c05), [C06](#c06), [C09](#c09), [C11](#c11), [D09](#d09).
+Dependencies: [A08](#a08), [B08](#b08), [D08](#d08), [C05](#c05), [C06](#c06), [C09](#c09), [C11](#c11), [D09](#d09), [E05](#e05)
 
 Acceptance criteria:
 
@@ -450,7 +450,7 @@ Owner: @manemazmand | Area: Frontend | Phase: Foundation | Priority: P0
 
 Create the frontend shell and a mock-backed integration boundary.
 
-Dependencies: [D01](#d01), [C01](#c01).
+Dependencies: [D01](#d01), [C01](#c01)
 
 Acceptance criteria:
 
@@ -466,7 +466,7 @@ Owner: @manemazmand | Area: Frontend | Phase: MVP | Priority: P0
 
 Implement browsing of Yerevan rentals with useful comparisons.
 
-Dependencies: [D02](#d02).
+Dependencies: [D02](#d02)
 
 Acceptance criteria:
 
@@ -482,7 +482,7 @@ Owner: @manemazmand | Area: Frontend | Phase: MVP | Priority: P0
 
 Show the requested rent alongside the estimated range and explanation.
 
-Dependencies: [D03](#d03).
+Dependencies: [D03](#d03)
 
 Acceptance criteria:
 
@@ -498,7 +498,7 @@ Owner: @manemazmand | Area: Frontend | Phase: Intelligence | Priority: P1
 
 Connect map exploration to the listing catalogue.
 
-Dependencies: [D03](#d03), [A05](#a05), [C03](#c03).
+Dependencies: [D03](#d03), [A05](#a05), [C03](#c03)
 
 Acceptance criteria:
 
@@ -514,7 +514,7 @@ Owner: @manemazmand | Area: Frontend | Phase: Intelligence | Priority: P1
 
 Visualize neighborhood asking-price indexes and trends with Recharts.
 
-Dependencies: [D02](#d02), [C06](#c06).
+Dependencies: [D02](#d02), [C06](#c06)
 
 Acceptance criteria:
 
@@ -530,7 +530,7 @@ Owner: @manemazmand | Area: Frontend | Phase: Intelligence | Priority: P0
 
 Enable authorized reviewers to inspect signals and record decisions.
 
-Dependencies: [D02](#d02), [C05](#c05).
+Dependencies: [D02](#d02), [C05](#c05)
 
 Acceptance criteria:
 
@@ -546,7 +546,7 @@ Owner: @manemazmand | Area: Frontend | Phase: Release | Priority: P0
 
 Verify the complete frontend against the deployed application.
 
-Dependencies: [D04](#d04), [D05](#d05), [D06](#d06), [D07](#d07), [C08](#c08).
+Dependencies: [D04](#d04), [D05](#d05), [D06](#d06), [D07](#d07), [C08](#c08)
 
 Acceptance criteria:
 
@@ -562,7 +562,7 @@ Owner: @Lazr22 | Area: ML / Ontology | Phase: MVP | Priority: P0
 
 Implement the required Python analysis pipeline using Pandas and Scikit-Learn to assess rental prices around supplied coordinates.
 
-Dependencies: [B02](#b02), [B03](#b03), [A05](#a05).
+Dependencies: [B02](#b02), [B03](#b03), [A05](#a05)
 
 Acceptance criteria:
 
@@ -578,7 +578,7 @@ Owner: @Artyomkrtchyan | Area: Backend | Phase: MVP | Priority: P0
 
 Implement POST /api/v1/valuations for supplied coordinates, optional property features, local dispersion, and valuation assessments.
 
-Dependencies: [C03](#c03), [C04](#c04), [B09](#b09).
+Dependencies: [C03](#c03), [C04](#c04), [B09](#b09)
 
 Acceptance criteria:
 
@@ -594,7 +594,7 @@ Owner: @manemazmand | Area: Frontend | Phase: MVP | Priority: P0
 
 Let users request an assessment for a coordinate pair or map selection and inspect local price dispersion.
 
-Dependencies: [D02](#d02), [C11](#c11).
+Dependencies: [D02](#d02), [C11](#c11)
 
 Acceptance criteria:
 
@@ -602,16 +602,95 @@ Acceptance criteria:
 - [ ] Display the assessment, comparable count, search radius/time window, freshness, and standard deviations with explicit USD/month and USD/m² units.
 - [ ] Explain that standard deviation is observed market dispersion, keep it separate from prediction intervals, and handle insufficient data, unsupported locations, and request errors.
 
+<a id="e01"></a>
+
+## E01: Inventory information assets and assess application security risks
+
+Owner: @manemazmand | Area: Docs / QA | Phase: Foundation | Priority: P0
+
+Identify FairRent information assets, trust boundaries and security risks, and agree proportionate controls with component owners.
+
+Dependencies: None.
+
+Acceptance criteria:
+
+- [ ] Document asset ownership and classification for listing data, reviewer identities, credentials, model artifacts and logs; assess confidentiality, integrity and availability needs.
+- [ ] Create a data-flow diagram and STRIDE threat model; record likelihood, impact, controls, residual risk and remediation owners in a prioritized risk register.
+- [ ] Map selected controls to NIST CSF or CIS Controls and document access, secret-handling and incident-reporting procedures; do not claim framework certification.
+
+<a id="e02"></a>
+
+## E02: Add security checks and remediate dependency and container findings
+
+Owner: @manemazmand | Area: Infra | Phase: MVP | Priority: P0
+
+Integrate actionable secret, dependency and container security checks into the existing delivery workflow with the CI owner.
+
+Dependencies: [C02](#c02)
+
+Acceptance criteria:
+
+- [ ] Add secret and dependency checks and container-image scanning where supported; verify detection using harmless synthetic fixtures and document severity handling and time-limited exceptions.
+- [ ] Review workflow token permissions, untrusted PR inputs, action references and artifact access with Artyom; document fixes without introducing cloud credentials into CI.
+- [ ] Review container runtime privileges, unnecessary packages and exposed ports; fix verified findings and record retest evidence.
+
+<a id="e03"></a>
+
+## E03: Verify application authorization and untrusted input handling
+
+Owner: @manemazmand | Area: Backend | Phase: Intelligence | Priority: P0
+
+Verify reviewer access controls, frontend sessions and safe handling of untrusted listing and request data.
+
+Dependencies: [C05](#c05), [D07](#d07)
+
+Acceptance criteria:
+
+- [ ] Add tests for missing, expired and invalid tokens, incorrect reviewer role, object access, forbidden review updates and concurrency conflicts; distinguish application roles from AWS IAM.
+- [ ] Verify listing text rendering, external links, session/token handling, query parameterization and safe errors; test representative XSS and injection inputs against owned test environments.
+- [ ] Verify pagination, bounded geographic queries, request-size/time limits and URL-fetching restrictions where applicable; coordinate implementation fixes and retest with component owners.
+
+<a id="e04"></a>
+
+## E04: Verify transport security and data and model artifact integrity
+
+Owner: @manemazmand | Area: Docs / QA | Phase: Release | Priority: P0
+
+Verify protected transport, data handling and model artifact integrity in the deployed application with infrastructure and data owners.
+
+Dependencies: [C08](#c08), [A06](#a06), [B07](#b07)
+
+Acceptance criteria:
+
+- [ ] Inspect the deployed HTTPS certificate chain, hostname and validity using OpenSSL or equivalent tools; verify HTTP-to-HTTPS behavior and absence of mixed content, reporting AWS configuration changes to Artyom.
+- [ ] Verify dataset and model artifact checksums against a trusted manifest and demonstrate rejection of a modified artifact; distinguish integrity hashes from authentication or digital signatures.
+- [ ] Review application database privileges, sensitive log fields, data exports and reachable service boundaries; verify agreed protections without changing AWS resources, IAM or cloud permissions.
+
+<a id="e05"></a>
+
+## E05: Complete security verification and the incident response runbook
+
+Owner: @manemazmand | Area: Docs / QA | Phase: Release | Priority: P0
+
+Verify security fixes before release and make application incident handling reproducible for the team.
+
+Dependencies: [E01](#e01), [E02](#e02), [E03](#e03), [E04](#e04)
+
+Acceptance criteria:
+
+- [ ] Perform scoped manual and automated security checks against owned staging services; record reproduction, impact, fix and retest results, with explicit owner acceptance for unresolved release risks.
+- [ ] Document detection, triage, containment, recovery, evidence handling and post-incident review; rehearse a simulated unauthorized reviewer action or synthetic credential-exposure scenario.
+- [ ] Verify audit events identify actor, action, outcome and UTC time without tokens or sensitive payloads; summarize findings and residual risks for the release demo.
 
 <a id="s01"></a>
 
 ## S01: Configure the Linux environment and secure access
 
-Owner: @manemazmand | Area: Infra / System Administration | Phase: Foundation | Priority: P1
+Owner: @manemazmand | Area: Infra | Phase: Release | Priority: P2
 
-Configure a Linux environment for the Compose application and document access, networking and storage.
+Optional after the core release and security work, only if time remains. Configure a Linux environment for the Compose application and document access, networking and storage.
 
-Dependencies: [C02](implementation-plan.md#c02).
+Dependencies: [C10](#c10), [E05](#e05), [D08](#d08)
 
 Acceptance criteria:
 
@@ -623,11 +702,11 @@ Acceptance criteria:
 
 ## S02: Document service monitoring and Linux troubleshooting
 
-Owner: @manemazmand | Area: Infra / System Administration | Phase: MVP | Priority: P1
+Owner: @manemazmand | Area: Infra | Phase: Release | Priority: P2
 
-Implement service monitoring and document application and host diagnostics.
+Optional after the core release and security work, only if time remains. Implement service monitoring and document application and host diagnostics.
 
-Dependencies: [S01](implementation-plan.md#s01).
+Dependencies: [S01](#s01)
 
 Acceptance criteria:
 
@@ -639,11 +718,11 @@ Acceptance criteria:
 
 ## S03: Implement and verify database backup and restore
 
-Owner: @manemazmand | Area: Infra / System Administration | Phase: MVP | Priority: P1
+Owner: @manemazmand | Area: Infra | Phase: Release | Priority: P2
 
-Implement reproducible PostgreSQL/PostGIS backup and restore procedures and verify recovery using synthetic data.
+Optional after the core release and security work, only if time remains. Implement reproducible PostgreSQL/PostGIS backup and restore procedures and verify recovery using synthetic data.
 
-Dependencies: [S01](implementation-plan.md#s01).
+Dependencies: [S01](#s01)
 
 Acceptance criteria:
 
@@ -655,11 +734,11 @@ Acceptance criteria:
 
 ## S04: Validate service recovery and deliver the operations runbook
 
-Owner: @manemazmand | Area: Infra / System Administration | Phase: Release | Priority: P1
+Owner: @manemazmand | Area: Infra | Phase: Release | Priority: P2
 
-Verify application recovery from service failures and deliver reproducible operating procedures.
+Optional after the core release and security work, only if time remains. Verify application recovery from service failures and deliver reproducible operating procedures.
 
-Dependencies: [S02](implementation-plan.md#s02), [S03](implementation-plan.md#s03).
+Dependencies: [S02](#s02), [S03](#s03)
 
 Acceptance criteria:
 

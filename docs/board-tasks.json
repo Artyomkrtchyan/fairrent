@@ -456,7 +456,8 @@
       "C06",
       "C09",
       "C11",
-      "D09"
+      "D09",
+      "E05"
     ],
     "goal": "Coordinate final integration and produce a reproducible release demonstration.",
     "criteria": [
@@ -665,14 +666,105 @@
     ]
   },
   {
-    "id": "S01",
-    "title": "Configure the Linux environment and secure access",
+    "id": "E01",
+    "title": "Inventory information assets and assess application security risks",
+    "owner": "manemazmand",
+    "area": "Docs / QA",
     "phase": "Foundation",
-    "priority": "P1",
+    "priority": "P0",
+    "deps": [],
+    "goal": "Identify FairRent information assets, trust boundaries and security risks, and agree proportionate controls with component owners.",
+    "criteria": [
+      "Document asset ownership and classification for listing data, reviewer identities, credentials, model artifacts and logs; assess confidentiality, integrity and availability needs.",
+      "Create a data-flow diagram and STRIDE threat model; record likelihood, impact, controls, residual risk and remediation owners in a prioritized risk register.",
+      "Map selected controls to NIST CSF or CIS Controls and document access, secret-handling and incident-reporting procedures; do not claim framework certification."
+    ]
+  },
+  {
+    "id": "E02",
+    "title": "Add security checks and remediate dependency and container findings",
+    "owner": "manemazmand",
+    "area": "Infra",
+    "phase": "MVP",
+    "priority": "P0",
     "deps": [
       "C02"
     ],
-    "goal": "Configure a Linux environment for the Compose application and document access, networking and storage.",
+    "goal": "Integrate actionable secret, dependency and container security checks into the existing delivery workflow with the CI owner.",
+    "criteria": [
+      "Add secret and dependency checks and container-image scanning where supported; verify detection using harmless synthetic fixtures and document severity handling and time-limited exceptions.",
+      "Review workflow token permissions, untrusted PR inputs, action references and artifact access with Artyom; document fixes without introducing cloud credentials into CI.",
+      "Review container runtime privileges, unnecessary packages and exposed ports; fix verified findings and record retest evidence."
+    ]
+  },
+  {
+    "id": "E03",
+    "title": "Verify application authorization and untrusted input handling",
+    "owner": "manemazmand",
+    "area": "Backend",
+    "phase": "Intelligence",
+    "priority": "P0",
+    "deps": [
+      "C05",
+      "D07"
+    ],
+    "goal": "Verify reviewer access controls, frontend sessions and safe handling of untrusted listing and request data.",
+    "criteria": [
+      "Add tests for missing, expired and invalid tokens, incorrect reviewer role, object access, forbidden review updates and concurrency conflicts; distinguish application roles from AWS IAM.",
+      "Verify listing text rendering, external links, session/token handling, query parameterization and safe errors; test representative XSS and injection inputs against owned test environments.",
+      "Verify pagination, bounded geographic queries, request-size/time limits and URL-fetching restrictions where applicable; coordinate implementation fixes and retest with component owners."
+    ]
+  },
+  {
+    "id": "E04",
+    "title": "Verify transport security and data and model artifact integrity",
+    "owner": "manemazmand",
+    "area": "Docs / QA",
+    "phase": "Release",
+    "priority": "P0",
+    "deps": [
+      "C08",
+      "A06",
+      "B07"
+    ],
+    "goal": "Verify protected transport, data handling and model artifact integrity in the deployed application with infrastructure and data owners.",
+    "criteria": [
+      "Inspect the deployed HTTPS certificate chain, hostname and validity using OpenSSL or equivalent tools; verify HTTP-to-HTTPS behavior and absence of mixed content, reporting AWS configuration changes to Artyom.",
+      "Verify dataset and model artifact checksums against a trusted manifest and demonstrate rejection of a modified artifact; distinguish integrity hashes from authentication or digital signatures.",
+      "Review application database privileges, sensitive log fields, data exports and reachable service boundaries; verify agreed protections without changing AWS resources, IAM or cloud permissions."
+    ]
+  },
+  {
+    "id": "E05",
+    "title": "Complete security verification and the incident response runbook",
+    "owner": "manemazmand",
+    "area": "Docs / QA",
+    "phase": "Release",
+    "priority": "P0",
+    "deps": [
+      "E01",
+      "E02",
+      "E03",
+      "E04"
+    ],
+    "goal": "Verify security fixes before release and make application incident handling reproducible for the team.",
+    "criteria": [
+      "Perform scoped manual and automated security checks against owned staging services; record reproduction, impact, fix and retest results, with explicit owner acceptance for unresolved release risks.",
+      "Document detection, triage, containment, recovery, evidence handling and post-incident review; rehearse a simulated unauthorized reviewer action or synthetic credential-exposure scenario.",
+      "Verify audit events identify actor, action, outcome and UTC time without tokens or sensitive payloads; summarize findings and residual risks for the release demo."
+    ]
+  },
+  {
+    "id": "S01",
+    "title": "Configure the Linux environment and secure access",
+    "phase": "Release",
+    "priority": "P2",
+    "deps": [
+      "C10",
+      "E05",
+      "D08"
+    ],
+    "goal": "Optional after the core release and security work, only if time remains. Configure a Linux environment for the Compose application and document access, networking and storage.",
     "criteria": [
       "Document VM OS/resources, a non-root administrator, SSH key access, file permissions and firewall rules; verify access before restricting SSH.",
       "Start the API and PostGIS from the repository instructions, verify health/readiness, and document container networking and persistent storage.",
@@ -684,12 +776,12 @@
   {
     "id": "S02",
     "title": "Document service monitoring and Linux troubleshooting",
-    "phase": "MVP",
-    "priority": "P1",
+    "phase": "Release",
+    "priority": "P2",
     "deps": [
       "S01"
     ],
-    "goal": "Implement service monitoring and document application and host diagnostics.",
+    "goal": "Optional after the core release and security work, only if time remains. Implement service monitoring and document application and host diagnostics.",
     "criteria": [
       "Document checks for API health/readiness, Compose status/logs, listening ports, disk space, memory and host services.",
       "Provide a small shell check script with meaningful exit codes and no credentials in output; demonstrate healthy and unavailable database states.",
@@ -701,12 +793,12 @@
   {
     "id": "S03",
     "title": "Implement and verify database backup and restore",
-    "phase": "MVP",
-    "priority": "P1",
+    "phase": "Release",
+    "priority": "P2",
     "deps": [
       "S01"
     ],
-    "goal": "Implement reproducible PostgreSQL/PostGIS backup and restore procedures and verify recovery using synthetic data.",
+    "goal": "Optional after the core release and security work, only if time remains. Implement reproducible PostgreSQL/PostGIS backup and restore procedures and verify recovery using synthetic data.",
     "criteria": [
       "Provide documented pg_dump/pg_restore commands or shell scripts, backup naming, restricted permissions and a retention policy; exclude backups from Git.",
       "Restore into a separate disposable database or Compose project and verify synthetic rows and PostGIS functionality without overwriting the working database.",
@@ -719,12 +811,12 @@
     "id": "S04",
     "title": "Validate service recovery and deliver the operations runbook",
     "phase": "Release",
-    "priority": "P1",
+    "priority": "P2",
     "deps": [
       "S02",
       "S03"
     ],
-    "goal": "Verify application recovery from service failures and deliver reproducible operating procedures.",
+    "goal": "Optional after the core release and security work, only if time remains. Verify application recovery from service failures and deliver reproducible operating procedures.",
     "criteria": [
       "Reproduce database unavailability, an occupied API port and invalid configuration in a controlled environment; record symptoms, diagnosis and recovery.",
       "Demonstrate recovery after VM reboot and a database restore drill; verify health/readiness and retained synthetic data.",

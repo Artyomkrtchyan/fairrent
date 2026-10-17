@@ -150,12 +150,6 @@
     "owner": "Artyomkrtchyan"
   },
   {
-    "code": "C10",
-    "number": 26,
-    "url": "https://github.com/Artyomkrtchyan/fairrent/issues/26",
-    "owner": "Artyomkrtchyan"
-  },
-  {
     "code": "D01",
     "number": 27,
     "url": "https://github.com/Artyomkrtchyan/fairrent/issues/27",
@@ -219,6 +213,42 @@
     "code": "D09",
     "number": 37,
     "url": "https://github.com/Artyomkrtchyan/fairrent/issues/37",
+    "owner": "manemazmand"
+  },
+  {
+    "code": "C10",
+    "number": 26,
+    "url": "https://github.com/Artyomkrtchyan/fairrent/issues/26",
+    "owner": "Artyomkrtchyan"
+  },
+  {
+    "code": "E01",
+    "number": 47,
+    "url": "https://github.com/Artyomkrtchyan/fairrent/issues/47",
+    "owner": "manemazmand"
+  },
+  {
+    "code": "E02",
+    "number": 48,
+    "url": "https://github.com/Artyomkrtchyan/fairrent/issues/48",
+    "owner": "manemazmand"
+  },
+  {
+    "code": "E03",
+    "number": 49,
+    "url": "https://github.com/Artyomkrtchyan/fairrent/issues/49",
+    "owner": "manemazmand"
+  },
+  {
+    "code": "E04",
+    "number": 50,
+    "url": "https://github.com/Artyomkrtchyan/fairrent/issues/50",
+    "owner": "manemazmand"
+  },
+  {
+    "code": "E05",
+    "number": 51,
+    "url": "https://github.com/Artyomkrtchyan/fairrent/issues/51",
     "owner": "manemazmand"
   },
   {
