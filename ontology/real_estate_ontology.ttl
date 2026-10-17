@@ -1,0 +1,93 @@
+@prefix : <http://example.org/fairrent#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<http://example.org/fairrent> a owl:Ontology ;
+    rdfs:comment "Municipal Real Estate Ontology for Yerevan Fair-Price Estimator" .
+
+#################################################################
+#    Classes
+#################################################################
+
+:Property a owl:Class ; rdfs:label "Property" .
+:Listing a owl:Class ; rdfs:label "Listing" .
+:District a owl:Class ; rdfs:label "District" .
+:InfrastructureNode a owl:Class ; rdfs:label "Infrastructure Node" .
+:ValuationEstimate a owl:Class ; rdfs:label "Valuation Estimate" .
+:RiskEvidence a owl:Class ; rdfs:label "Risk Evidence" .
+
+:MetroStation a owl:Class ; rdfs:subClassOf :InfrastructureNode .
+:University a owl:Class ; rdfs:subClassOf :InfrastructureNode .
+:CentralDistrict a owl:Class ; rdfs:subClassOf :District .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+:describesProperty a owl:ObjectProperty ;
+    rdfs:domain :Listing ;
+    rdfs:range :Property .
+
+:locatedInDistrict a owl:ObjectProperty ;
+    rdfs:domain :Property ;
+    rdfs:range :District .
+
+:isNearNode a owl:ObjectProperty ;
+    rdfs:domain :Property ;
+    rdfs:range :InfrastructureNode .
+
+:evaluatedBy a owl:ObjectProperty ;
+    rdfs:domain :Listing ;
+    rdfs:range :ValuationEstimate .
+
+:flagsRisk a owl:ObjectProperty ;
+    rdfs:domain :Listing ;
+    rdfs:range :RiskEvidence .
+
+#################################################################
+#    Data Properties
+#################################################################
+
+:hasPriceUSD a owl:DatatypeProperty ; rdfs:domain :Listing ; rdfs:range xsd:float .
+:hasAreaSqm a owl:DatatypeProperty ; rdfs:domain :Property ; rdfs:range xsd:float .
+:hasRooms a owl:DatatypeProperty ; rdfs:domain :Property ; rdfs:range xsd:integer .
+:hasDistanceMeters a owl:DatatypeProperty ; rdfs:domain :Property ; rdfs:range xsd:float .
+:hasSeverity a owl:DatatypeProperty ; rdfs:domain :RiskEvidence ; rdfs:range xsd:string .
+
+#################################################################
+#    Yerevan Sample Data (Instances)
+#################################################################
+
+:District_Kentron a :CentralDistrict ; rdfs:label "Kentron" .
+:District_Arabkir a :District ; rdfs:label "Arabkir" .
+
+:Node_Yeritasardakan a :MetroStation ; rdfs:label "Yeritasardakan Metro" .
+:Node_UFAR a :University ; rdfs:label "UFAR - French University in Armenia" .
+
+:Prop_001 a :Property ;
+    :locatedInDistrict :District_Kentron ;
+    :isNearNode :Node_Yeritasardakan ;
+    :hasAreaSqm "65.0"^^xsd:float ;
+    :hasRooms "2"^^xsd:integer .
+
+:Listing_001 a :Listing ;
+    :describesProperty :Prop_001 ;
+    :hasPriceUSD "600.0"^^xsd:float .
+
+:Prop_002 a :Property ;
+    :locatedInDistrict :District_Arabkir ;
+    :isNearNode :Node_UFAR ;
+    :hasAreaSqm "40.0"^^xsd:float ;
+    :hasRooms "1"^^xsd:integer .
+
+:Listing_002 a :Listing ;
+    :describesProperty :Prop_002 ;
+    :hasPriceUSD "1800.0"^^xsd:float .
+
+:Risk_HighPrice a :RiskEvidence ;
+    :hasSeverity "HIGH" ;
+    rdfs:comment "Price significantly exceeds average district baseline per sq.m." .
+
+:Listing_002 :flagsRisk :Risk_HighPrice .
