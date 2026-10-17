@@ -8,6 +8,8 @@ Team board: https://github.com/users/Artyomkrtchyan/projects/4
 
 Team roles: [Responsibilities and GitHub accounts](docs/team.md).
 
+Mane also owns an isolated [system administration learning track](docs/system-administration.md): Linux setup, diagnostics, backup/restore and recovery. It requires no Ansible and does not change the AWS production architecture.
+
 ## Technology stack
 
 React, TypeScript, Vite, Leaflet, and Recharts for the frontend; Python, FastAPI, and Pydantic for the backend; PostgreSQL/PostGIS with SQLAlchemy and Alembic for data storage; pandas, scikit-learn, and CatBoost for ML; Protégé, OWL/RDF, and RDFLib for knowledge engineering.

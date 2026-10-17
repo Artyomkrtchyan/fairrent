@@ -5,7 +5,7 @@
 | A: Data + DB | [alisamanukyann](https://github.com/alisamanukyann) | Normalized data, database, price history, geographic features |
 | B: ML + Ontology | [Lazr22](https://github.com/Lazr22) | Baseline, model, knowledge representation, evaluation |
 | C: Backend + Automation + Deployment | [Artyomkrtchyan](https://github.com/Artyomkrtchyan) | API, risk rules, review queue, application setup |
-| D: Frontend + UX + Analytics | [manemazmand](https://github.com/manemazmand) | Catalogue, map, valuation interface, analytics |
+| D: Frontend + UX + Analytics; S: System Administration Lab | [manemazmand](https://github.com/manemazmand) | Catalogue, map, valuation interface, analytics; Linux lab, diagnostics, backup/restore and recovery |
 
 ## Phases
 
@@ -23,4 +23,4 @@
 - A and B agree on features; C and D agree on requests, errors, filters, and pagination.
 - Establish CI and reproducible setup early.
 
-Hold a short weekly integration demonstration, review blockers, and update the board. If C is overloaded, collection scheduling can move to A. The [implementation plan](implementation-plan.md) links all 37 assigned issues and their dependencies.
+Hold a short weekly integration demonstration, review blockers, and update the board. If C is overloaded, collection scheduling can move to A. The [implementation plan](implementation-plan.md) defines 41 tasks, including S01–S04 for Mane's [system administration lab](system-administration.md). The lab follows frontend MVP priorities and does not block production release. No Ansible is required.
