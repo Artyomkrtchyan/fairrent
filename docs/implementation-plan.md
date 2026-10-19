@@ -8,7 +8,7 @@ Foundation → working baseline and coordinate-valuation MVP → model/ontology 
 
 Start A01, B01, C01, D01 and E01 independently. C01 establishes the shared contract. B09, C11 and D09 cover coordinate valuation and observed price dispersion; C09 covers weekly ingestion.
 
-Mane owns D01–D09 and E01–E05 as regular project tasks. Security work follows component availability and E05 feeds release verification C10. Artyom owns AWS and IAM. S01–S04 are Release/P2, performed only after the core release and security work if time remains. They do not block C10.
+Security verification E05 feeds release verification C10. S01–S04 are optional Release/P2 tasks after the core release, only if time remains; they do not block C10.
 
 <a id="a01"></a>
 
