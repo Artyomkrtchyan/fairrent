@@ -21,15 +21,18 @@ def create_listing_schema() -> Dict[str, Any]:
         "images": []
     }
 
-def parse_price(price_str: str) -> tuple[float, float]:
-    """Extracts numeric value and determines USD vs AMD."""
-    clean_str = re.sub(r'[^\d]', '', price_str)
-    val = float(clean_str) if clean_str else 0.0
-
-    if "֏" in price_str or "AMD" in price_str:
-        # Approximate exchange rate fallback or conversion placeholder
+def parse_price(price_str: str) -> tuple[float | None, float | None]:
+    if not price_str:
+        return None, None
+    
+    cleaned = re.sub(r'[^\d.]', '', price_str)
+    try:
+        val = float(cleaned)
+        if '$' in price_str:
+            return val, val * 385.0  # example exchange rate
         return val / 385.0, val
-    return val, val * 385.0
+    except ValueError:
+        return None, None
 
 def parse_listing_html(html_content: str, external_id: str) -> Dict[str, Any]:
     """Parses raw HTML block from a list.am item page or card."""
