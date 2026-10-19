@@ -6,7 +6,7 @@ Repository: https://github.com/Artyomkrtchyan/fairrent
 
 Team board: https://github.com/users/Artyomkrtchyan/projects/4
 
-Team roles: [Responsibilities and GitHub accounts](docs/team.md). Mane owns frontend, analytics and application security (E01–E05); system administration (S01–S04) is scheduled after the core release, only if time remains. AWS and IAM remain with Artyom.
+Team roles: [Responsibilities and GitHub accounts](docs/team.md).
 
 ## Technology stack
 

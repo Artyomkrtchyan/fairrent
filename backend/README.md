@@ -2,8 +2,6 @@
 
 API, business rules, model integration, and review queue. Start with the API contract and a valuation stub.
 
-Artyom owns backend implementation and AWS/IAM. Mane owns application security verification (E01–E05), coordinating authorization, input-validation and abuse-case tests with the backend owner. See the [implementation plan](../docs/implementation-plan.md).
-
 Stack: Python, FastAPI, Pydantic, SQLAlchemy, Alembic, and pytest. See the [technology stack](../docs/technology-stack.md).
 
 ## Local development with Docker Compose

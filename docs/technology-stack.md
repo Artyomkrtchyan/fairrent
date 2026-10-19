@@ -22,8 +22,8 @@ The team's current stack for FairRent.
 | Infrastructure as Code | Terraform | Reproducible AWS infrastructure provisioning |
 | CI/CD | GitHub Actions | Automated checks, container builds, and deployment |
 | Local Development | Docker + Docker Compose | Consistent local environments for all team members |
-| Application Security | Threat modelling, secret/dependency/image checks, API security tests, OpenSSL and artifact checksums | Mane's E01–E05: risk assessment, verified controls and incident response |
-| System Administration | Ubuntu Linux VM, SSH, shell scripts, Docker Compose, PostgreSQL backup/restore tools | Mane's S01–S04: optional after the core release and security tasks, if time remains |
+| Application Security | Threat modelling, secret/dependency/image checks, API security tests, OpenSSL and artifact checksums | Risk assessment, security verification and incident response |
+| System Administration | Ubuntu Linux VM, SSH, shell scripts, Docker Compose, PostgreSQL backup/restore tools | Environment configuration, diagnostics and recovery |
 
 ## Component boundaries
 

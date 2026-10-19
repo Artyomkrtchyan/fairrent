@@ -8,9 +8,7 @@
 - Each member maintains documentation and appropriate checks for their components.
 - Do not commit secrets, personal data, raw data exports, or large model files.
 - Small synthetic examples are welcome; document the provenance of real data separately.
-- Security changes include a reproducible finding, impact, fix and retest evidence. Coordinate application security with Mane and AWS/IAM changes with Artyom. Test only owned environments within an agreed scope and avoid secrets or sensitive data in logs and reports.
-
-- Optional operations tasks S01–S04 start after the core release and security work, only if time remains. Keep scripts in `infra/operations/` and procedures in `docs/operations/`. Do not commit private keys, VM images or database dumps; coordinate schema changes with Alisa and deployment changes with Artyom.
+- Security changes include a reproducible finding, impact, fix and retest evidence. Test only owned environments within an agreed scope and avoid secrets or sensitive data in logs and reports.
 
 ## Definition of Ready
 
