@@ -1,37 +1,37 @@
-# Initial data contract — draft v0
+# Shared data contract — C01 proposal v0.2.0
 
-This is a proposal for team agreement, not an implemented API.
+The shared contract incorporates B02 ML naming and frontend requirements. Final data-owner confirmation and review of the new integration fields remain pending.
 
-## Listing
+## Contract sources
 
-`id`, `source`, `external_id`, `source_url`, `property_id` (optional), `description`, `price_original`, `currency_original`, `price_monthly_normalized`, `currency_normalized`, `utilities_included` (true/false/unknown), `area_m2`, `rooms`, `floor`, `total_floors`, `condition`, `address`, `district_id`, `latitude`, `longitude`, `published_at`, `first_seen_at`, `last_seen_at`, `status`.
+- [OpenAPI schemas](../contracts/openapi.json): exact requests, responses, required/nullable fields, enums, filters, pagination and errors.
+- [Integration semantics](contract-semantics.md): units, original/historical currency conversion, USD/AMD display, ML/public mapping, freshness, statistics and reviews.
+- [Synthetic examples](../contracts/fixtures.json): normal, empty, sparse, stale, inactive, coordinate-only, missing-field, exchange-rate and error cases. Each entry wraps a schema name and a value; frontend mocks return value.
+- [Generation and verification](../contracts/README.md): reproduce and validate the artifacts.
+- [ML contract](https://github.com/Artyomkrtchyan/fairrent/blob/main/ml/CONTRACT.md): training features, internal imputation, split isolation and evaluation methodology. Additional public fields are documented in integration semantics.
 
-Area is measured in square meters, distances in meters, and timestamps in ISO 8601 UTC. Represent unknown numeric values as null, not zero. Currency normalization preserves the exchange-rate date and source. The source + external_id pair identifies a source listing; store observations separately. Finalize required fields after analyzing source data.
+## Planned endpoints
 
-## Estimate
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | /api/v1/listings | Filtered, sorted and paginated catalogue/map results |
+| GET | /api/v1/listings/{id} | Details, signals and nullable valuation |
+| GET | /api/v1/listings/{id}/estimate | Current listing valuation with source freshness |
+| POST | /api/v1/valuations | Coordinate/property valuation and observed price dispersion |
+| GET | /api/v1/market-index | Weekly neighborhood asking-price statistics |
+| GET | /api/v1/infrastructure | Paginated metro/university points within map bounds |
+| GET | /api/v1/exchange-rate | USD→AMD display rate and provenance |
+| GET | /api/v1/reviews | Protected reviewer queue |
+| PATCH | /api/v1/reviews/{id} | Protected, version-checked decision and saved review |
 
-`listing_id`, `expected_price`, `lower_bound`, `upper_bound`, `currency`, `price_status`, `comparable_count`, `confidence_explanation`, `factors`, `model_version`, `rules_version`, `data_as_of`, `created_at`.
+These are planned business endpoints. C02's implemented health/readiness endpoints do not imply that these routes are operational.
 
-For `insufficient_data`, price and bounds may be null; an explanation is required. Return risk signals separately from price status.
+## Shared conventions
 
-## RiskSignal and Review
+Report monthly asking rent in USD, area_sqm in square meters, distances in meters and UTC timestamps in ISO 8601 with Z. Preserve original source amounts and conversion provenance. Unknown fields are null rather than invented zeros. Listings, physical properties and observations have separate identity; dedup_group_id supports duplicate-group isolation.
 
-RiskSignal: `id`, `listing_id`, `rule_id`, `rules_version`, `evidence`, `created_at`.
+Valuation responses preserve B02 blocks: coordinates, versions, valuation_assessment, observed_market_statistics, ml_prediction_interval and feature_attributions. Public metadata adds cohort selection, freshness, explanation, kind and price_status. Area references disclose any training-fitted reference area; they are not apartment-specific predictions. Observed sample standard deviation uses n−1 and remains separate from calibrated intervals. Price anomalies and risk evidence remain separate.
 
-Review: `id`, `listing_id`, `signal_ids`, `status` (pending/in_review/resolved), `decision` (nullable), `reason`, `reviewed_at` (nullable). Reprocessing the same signal must not duplicate queue entries.
+## Remaining decisions
 
-## Proposed API endpoints
-
-- `POST /api/v1/valuations` — coordinate-based rental valuation and local price standard deviations. Accept latitude/longitude and optional property characteristics; coordinate-only requests return a documented neighborhood reference rather than a precise apartment-specific prediction.
-- `GET /api/v1/listings` — filtering and pagination.
-- `GET /api/v1/listings/{id}` — listing details.
-- `GET /api/v1/listings/{id}/estimate` — valuation and explanation.
-- `GET /api/v1/market-index` — neighborhood, period, observation count.
-- `GET /api/v1/reviews` — reviewer queue.
-- `PATCH /api/v1/reviews/{id}` — reviewer decision.
-
-Agree on access permissions, error formats, pagination, synthetic responses, and OpenAPI before implementation.
-
-## Coordinate valuation statistics
-
-Define a comparable cohort using a documented search radius, observation period, active-inventory policy, and duplicate handling. Return sample count, radius, period, freshness, mean and sample standard deviation in USD/month and USD/m² where supported. Use the n−1 sample convention; return null dispersion for fewer than two observations. Do not return zero for missing data. Missing property characteristics must result in a clearly identified area reference or insufficient_data. Keep dispersion separate from the estimated rental interval, include model/rule versions, and validate coordinate bounds and supported Yerevan coverage.
+A must confirm source fields/currencies, district vocabulary/geography, duplicate identity, observation dates and rate provenance. A/C must select the USD/AMD provider. Freshness defaults, public B09 additions and identity-provider integration are documented proposals requiring the corresponding owners' confirmation. Optional images and advanced filters can follow later. Record actual approval in the integration semantics checklist rather than treating submitted requirements as approval of this revision.

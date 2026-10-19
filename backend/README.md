@@ -2,6 +2,8 @@
 
 API, business rules, model integration, and review queue. Start with the API contract and a valuation stub.
 
+C01: [OpenAPI, synthetic examples and validation](../contracts/README.md). Final owner agreement for the business API is pending. C02 provides the implemented local environment and health/readiness endpoints.
+
 Stack: Python, FastAPI, Pydantic, SQLAlchemy, Alembic, and pytest. See the [technology stack](../docs/technology-stack.md).
 
 ## Local development with Docker Compose
