@@ -69,4 +69,6 @@ assert monthly['cluster_mean_price_per_sqm_usd'] == mean([p / 50 for p in prices
 assert monthly['observed_price_std_dev_per_sqm_usd'] == stdev([p / 50 for p in prices])
 assert fixtures['listings-truncated']['value']['has_more'] is True
 assert fixtures['exchange-rate-unavailable']['value']['amd_per_usd'] is None
+assert fixtures['listing-source-mapping']['value']['building_type_raw'] == 'new_building'
+assert fixtures['listing-source-mapping']['value']['building_type'] is None
 print(f'Valid OpenAPI: {len(schemas)} schemas, {len(fixtures)} fixtures, {len(negative)} rejected inputs, embedded examples.')

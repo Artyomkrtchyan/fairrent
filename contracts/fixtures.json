@@ -37,6 +37,8 @@
           "renovation": null,
           "building_type": null,
           "thumbnail_url": null,
+          "title": "Synthetic apartment",
+          "building_type_raw": null,
           "price_status": "within_range",
           "freshness": {
             "data_as_of": "2026-10-17T08:00:00Z",
@@ -90,6 +92,8 @@
         "renovation": null,
         "building_type": null,
         "thumbnail_url": null,
+        "title": "Synthetic apartment",
+        "building_type_raw": null,
         "price_status": "within_range",
         "freshness": {
           "data_as_of": "2026-10-17T08:00:00Z",
@@ -588,6 +592,8 @@
             "renovation": null,
             "building_type": null,
             "thumbnail_url": null,
+            "title": "Synthetic apartment",
+            "building_type_raw": null,
             "price_status": "within_range",
             "freshness": {
               "data_as_of": "2026-10-17T08:00:00Z",
@@ -685,6 +691,8 @@
         "renovation": null,
         "building_type": null,
         "thumbnail_url": null,
+        "title": "Synthetic apartment",
+        "building_type_raw": null,
         "price_status": "within_range",
         "freshness": {
           "data_as_of": "2026-10-17T08:00:00Z",
@@ -953,6 +961,8 @@
       "renovation": null,
       "building_type": null,
       "thumbnail_url": null,
+      "title": "Synthetic apartment",
+      "building_type_raw": null,
       "price_status": null,
       "freshness": {
         "data_as_of": "2026-10-17T08:00:00Z",
@@ -999,7 +1009,57 @@
       "renovation": null,
       "building_type": null,
       "thumbnail_url": null,
+      "title": "Synthetic apartment",
+      "building_type_raw": null,
       "price_status": "within_range",
+      "freshness": {
+        "data_as_of": "2026-10-17T08:00:00Z",
+        "generated_at": "2026-10-17T08:00:00Z",
+        "is_stale": false,
+        "max_age_days": 14,
+        "policy_version": "freshness-proposal-v1"
+      }
+    }
+  },
+  "listing-source-mapping": {
+    "schema": "Listing",
+    "value": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "source": "list.am",
+      "external_id": "synthetic-001",
+      "source_url": "https://example.org/synthetic-listing",
+      "property_id": null,
+      "description": "Synthetic apartment; no real listing or personal data.",
+      "address": "Synthetic address",
+      "district_id": "kentron",
+      "latitude": null,
+      "longitude": null,
+      "coordinate_confidence": "unknown",
+      "price_original": 600,
+      "currency_original": "USD",
+      "price_monthly_normalized": 600,
+      "currency_normalized": "USD",
+      "conversion": {
+        "rate_to_usd": 1,
+        "rate_date": "2026-10-17",
+        "rate_source": "identity"
+      },
+      "utilities_included": null,
+      "rooms": 3,
+      "floor": null,
+      "total_floors": null,
+      "published_at": null,
+      "first_seen_at": "2026-10-17T08:00:00Z",
+      "last_seen_at": "2026-10-17T08:00:00Z",
+      "status": "active",
+      "area_sqm": 85,
+      "dedup_group_id": null,
+      "renovation": null,
+      "building_type": null,
+      "thumbnail_url": null,
+      "title": "Synthetic new-building apartment",
+      "building_type_raw": "new_building",
+      "price_status": null,
       "freshness": {
         "data_as_of": "2026-10-17T08:00:00Z",
         "generated_at": "2026-10-17T08:00:00Z",
@@ -1045,6 +1105,8 @@
       "renovation": null,
       "building_type": null,
       "thumbnail_url": null,
+      "title": "Synthetic apartment",
+      "building_type_raw": null,
       "price_status": "within_range",
       "freshness": {
         "data_as_of": "2026-09-01T08:00:00Z",
@@ -1137,6 +1199,8 @@
           "renovation": null,
           "building_type": null,
           "thumbnail_url": null,
+          "title": "Synthetic apartment",
+          "building_type_raw": null,
           "price_status": "within_range",
           "freshness": {
             "data_as_of": "2026-10-17T08:00:00Z",

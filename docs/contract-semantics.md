@@ -48,7 +48,7 @@ Transitions: pending → in_review or resolved; in_review → resolved. Resolved
 
 | Owner | Required confirmation | State |
 | --- | --- | --- |
-| A / @alisamanukyann | Source fields/currencies, nullability, conversions, IDs, geography, observations | Pending |
+| A / @alisamanukyann | A01 field mapping, USD/AMD, absent/approximate coordinates and listing identity received through PR #53; confirm preservation of original price/currency and null handling | Input received; two normalization rules pending confirmation |
 | B / @Lazr22 | B02 names, examples, abstention, training-only fitting and split isolation received; public extensions and B09 interface still need confirmation | Input received; integration revision pending |
 | C / @Artyomkrtchyan | Backend accepts B02 as integration basis; v0.2 additions, freshness and auth proposal require final agreement | Integration revision prepared |
 | D / @manemazmand | Screen data, USD/AMD, sorting, maps, reviewer and missing/stale/error requirements received; v0.2 response needs review | Input received; revision pending |
@@ -68,3 +68,25 @@ GET /api/v1/infrastructure requires bbox and supports type=metro/university, the
 MarketIndexPage includes available_from/available_to (earliest/latest weekly bucket starts in the accessible dataset, independent of selected date filters), null when no dataset exists. Sparse bucket values are null, not zero. Fixtures cover empty, sparse, missing, inactive, stale, coordinate-only, paginated/truncated and error states. Loading/refreshing/saving are frontend states rather than fake API payloads. Review responses include listing summary, linked signals and audit history. 409 causes a refetch and explicit conflict UI without discarding the typed reason.
 
 Deferred: optional condition/proximity/valuation-status filters, collection of images, and external identity-provider setup. They do not block frontend mock development. New exchange-rate provider policy, stale thresholds and infrastructure availability are proposals pending data-owner confirmation; do not mark C01 fully agreed yet.
+
+## Source mapping from A01
+
+PR #53 defines a parser record, not the public listing DTO. Backend/normalization owns the following adapter; the parser does not need to rename its fields:
+
+| A01 field | Public/ML field | Handling |
+| --- | --- | --- |
+| external_id | external_id | Preserve source identity; source URL and collection timestamp come from the collector context. |
+| title | title | Preserve as nullable text. |
+| area_sqm | area_sqm | Same name; nonpositive parser defaults become null or quarantine evidence, not real zero area. |
+| rooms_count | rooms | Rename; zero default becomes null, negative/nonintegral values are invalid. |
+| address_raw | address | Preserve as source-provided text without claiming verified geolocation. |
+| district | district_id / ModelInput.district | Resolve the district slug through the shared geographic registry; pass the resolved label to ML. Unknown/unmatched district remains null with traceable enrichment status. |
+| building_type | building_type_raw / building_type | Preserve source text in building_type_raw. Map only known equivalent material categories to monolith/stone/panel. new_building and unknown yield null model building_type; do not infer construction material from newness. |
+| images | thumbnail_url | First valid absolute HTTP(S) image URL or null. Image ingestion/gallery support is deferred; do not fabricate or require images. |
+| price_usd / price_amd | price_monthly_normalized | Use only when original currency/amount and conversion provenance establish the calculation. Two converted amounts alone cannot establish original currency or a historical rate. |
+
+The source currently confirms USD/AMD. The API's wider currency vocabulary describes supported normalization inputs, not evidence that A01 found other currencies. Publishing-date availability is unconfirmed: published_at remains null when unavailable. Collection assigns first_seen_at and last_seen_at; A/B must explicitly agree any observation-date fallback for training rather than pretending it is a publication date.
+
+Current PR #53 uses zero/empty parser defaults and a fixed conversion placeholder. The adapter may convert documented missing defaults to null, but cannot reconstruct discarded original-price provenance. Records without a usable original price are quarantined until normalization can validate them. This is an A03 implementation requirement, not a requirement to finish A03 before agreeing C01. Fallback synthetic fixtures must remain marked as test/import data and cannot imply a successful source observation or deactivate inventory.
+
+The listing-source-mapping fixture demonstrates raw building type preservation and missing coordinates; it is synthetic, not a transformed real listing or proof of collection. Source pagination, access constraints and parser correctness remain A01/A03 responsibilities and do not change public response field names.

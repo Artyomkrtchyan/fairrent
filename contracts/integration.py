@@ -49,6 +49,7 @@ def align(schemas, paths, fixtures):
     listing.pop('duplicate_group_id')
     listing.pop('condition')
     listing.update(renovation=features['renovation'], building_type=features['building_type'],
+        title=null(text), building_type_raw=null(text),
         thumbnail_url=null(uri), price_status=null(enum('within_range','above_range','below_range','insufficient_data')),
         freshness=ref('Freshness'))
     schemas['Listing']['required'] = list(listing)
@@ -149,6 +150,7 @@ def align(schemas, paths, fixtures):
         value['dedup_group_id'] = value.pop('duplicate_group_id')
         value.pop('condition')
         value.update(renovation=None, building_type=None, thumbnail_url=None,
+                     title='Synthetic apartment', building_type_raw=None,
                      price_status='within_range', freshness=deepcopy(freshness))
 
     # Fixtures can share object instances in the base generator.
@@ -226,6 +228,10 @@ def align(schemas, paths, fixtures):
     inactive=deepcopy(listing)
     inactive['status']='inactive'
     fixture('listing-inactive','Listing',inactive)
+    source_mapped=deepcopy(missing_listing)
+    source_mapped.update(title='Synthetic new-building apartment', area_sqm=85, rooms=3,
+        building_type_raw='new_building', building_type=None, address='Synthetic address')
+    fixture('listing-source-mapping','Listing',source_mapped)
     stale_listing=deepcopy(listing)
     stale_listing['last_seen_at']='2026-09-01T08:00:00Z'
     stale_listing['first_seen_at']=stale_listing['last_seen_at']

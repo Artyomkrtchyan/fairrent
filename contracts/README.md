@@ -1,6 +1,6 @@
 # C01 shared contracts
 
-Proposal v0.2.0, incorporating B02 naming and frontend requirements; pending final owner agreement. No business API implementation is implied.
+Proposal v0.2.0, incorporating B02 naming, frontend requirements and the A01 source-field adapter; pending final owner agreement. No business API implementation is implied.
 
 - `openapi.json`: generated OpenAPI 3.1 for nine endpoints, including infrastructure and USD/AMD display rates.
 - `fixtures.json`: synthetic scenarios with `{schema, value}` wrappers; mocks return `value`.
