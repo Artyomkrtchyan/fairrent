@@ -1,0 +1,15 @@
+{
+  "external_id": "19823456",
+  "title": "3-room apartment on Aram Street, 85 sq.m., new building",
+  "price_usd": 1250.0,
+  "price_amd": 481250.0,
+  "district": "Kentron",
+  "address_raw": "Aram St, Center, Yerevan",
+  "area_sqm": 85.0,
+  "rooms_count": 3,
+  "floor": 5,
+  "total_floors": 14,
+  "building_type": "new_building",
+  "description": "Spacious newly renovated apartment in the heart of Yerevan with modern appliances and central heating.",
+  "images": ["https://img.list.am/s/1/234567.jpg"]
+}
