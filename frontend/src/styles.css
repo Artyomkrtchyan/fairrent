@@ -1,0 +1,170 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* FairRent D01 palette. Hex values are the approved brand palette. */
+
+@theme inline {
+  --font-sans: "Manrope", system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-heading: var(--heading);
+  --color-hero: var(--hero);
+  --color-hero-foreground: var(--hero-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-within: var(--within);
+  --color-within-soft: var(--within-soft);
+  --color-above: var(--above);
+  --color-above-soft: var(--above-soft);
+  --color-below: var(--below);
+  --color-below-soft: var(--below-soft);
+  --color-neutral: var(--neutral);
+  --color-neutral-soft: var(--neutral-soft);
+  --color-warn-banner: var(--warn-banner);
+  --color-warn-banner-foreground: var(--warn-banner-foreground);
+  --color-map-land: var(--map-land);
+  --color-map-river: var(--map-river);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: #eef2fa;
+  --foreground: #1e2a44;
+  --heading: #18294c;
+  --hero: #193a90;
+  --hero-foreground: #f4f7ff;
+  --card: #ffffff;
+  --card-foreground: #1e2a44;
+  --popover: #ffffff;
+  --popover-foreground: #1e2a44;
+  --primary: #244ac4;
+  --primary-foreground: #ffffff;
+  --secondary: #dfe6f5;
+  --secondary-foreground: #18294c;
+  --muted: #e4e9f4;
+  --muted-foreground: #55617a;
+  --accent: #d6e0f7;
+  --accent-foreground: #18294c;
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --border: #cfd8ea;
+  --input: #c3cde3;
+  --ring: #244ac4;
+  --within: #146c43;
+  --within-soft: #d9f2e4;
+  --above: #8a5300;
+  --above-soft: #fdebc8;
+  --below: #1d4fb8;
+  --below-soft: #dbe6ff;
+  --neutral: #4b5568;
+  --neutral-soft: #e5e8ee;
+  --warn-banner: #fdf0cf;
+  --warn-banner-foreground: #5b3d00;
+  --map-land: #e3e9f6;
+  --map-river: #9fb7e6;
+  --chart-1: #244ac4;
+  --chart-2: #c2410c;
+  --chart-3: #0f766e;
+  --chart-4: #7c3aed;
+}
+
+.dark {
+  --background: #10192d;
+  --foreground: #dfe6f5;
+  --heading: #eef2fa;
+  --hero: #193a90;
+  --hero-foreground: #f4f7ff;
+  --card: #192640;
+  --card-foreground: #dfe6f5;
+  --popover: #192640;
+  --popover-foreground: #dfe6f5;
+  --primary: #4f74e8;
+  --primary-foreground: #ffffff;
+  --secondary: #22325a;
+  --secondary-foreground: #eef2fa;
+  --muted: #1f2d4b;
+  --muted-foreground: #a3b0cc;
+  --accent: #26386a;
+  --accent-foreground: #eef2fa;
+  --destructive: #f97066;
+  --destructive-foreground: #10192d;
+  --border: #2a3a5e;
+  --input: #34466e;
+  --ring: #7c9bff;
+  --within: #6ee7a8;
+  --within-soft: #123d2b;
+  --above: #fbbf5a;
+  --above-soft: #47320c;
+  --below: #93b4ff;
+  --below-soft: #1c2f61;
+  --neutral: #c0c8d8;
+  --neutral-soft: #2a3550;
+  --warn-banner: #3d2f0d;
+  --warn-banner-foreground: #fde7a8;
+  --map-land: #1c2a48;
+  --map-river: #33508f;
+  --chart-1: #7c9bff;
+  --chart-2: #fb923c;
+  --chart-3: #2dd4bf;
+  --chart-4: #c4b5fd;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+  h1, h2, h3 {
+    color: var(--color-heading);
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
+@utility card-surface {
+  background: var(--color-card);
+  color: var(--color-card-foreground);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+}
