@@ -20,3 +20,4 @@ artifacts/
 .DS_Store
 Thumbs.db
 .venv-wsl/
+.venv-c03/
