@@ -1,15 +1,22 @@
 {
-  "external_id": "19823456",
-  "title": "3-room apartment on Aram Street, 85 sq.m., new building",
+  "external_id": "SYN-0001",
+  "url": "https://example.invalid/item/SYN-0001",
+  "title": "3-room apartment on Sample Street, 85 sq.m., new building (synthetic)",
+  "price": 1250.0,
+  "currency": "USD",
+  "period": "month",
   "price_usd": 1250.0,
   "price_amd": 481250.0,
+  "lat": 40.1812,
+  "lon": 44.5136,
   "district": "Kentron",
-  "address_raw": "Aram St, Center, Yerevan",
+  "address_raw": "Sample St, Center, Yerevan",
   "area_sqm": 85.0,
   "rooms_count": 3,
   "floor": 5,
   "total_floors": 14,
   "building_type": "new_building",
-  "description": "Spacious newly renovated apartment in the heart of Yerevan with modern appliances and central heating.",
-  "images": ["https://img.list.am/s/1/234567.jpg"]
+  "utilities_included": null,
+  "description": "Synthetic record for tests and demos. Not real data.",
+  "images": []
 }
