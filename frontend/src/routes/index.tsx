@@ -59,7 +59,7 @@ function Browse() {
         <h1 className="mt-3 max-w-2xl text-4xl font-semibold text-hero-foreground sm:text-5xl">
           A clearer view of your next home.
         </h1>
-        /////////////////
+
         <p className="mt-2 text-sm text-muted-foreground">
           Catalogue filters and sorting follow in D03. Prices use the selected display currency;
           underlying amounts remain in USD.
@@ -67,7 +67,6 @@ function Browse() {
         <div className="mt-2">
           <RateNote />
         </div>
-        //////////
       </SkylineHero>
 
       <div className="mx-auto -mt-12 max-w-7xl px-4 sm:px-6">
@@ -75,8 +74,8 @@ function Browse() {
           <h2 className="font-sans text-sm font-bold">Browse long-term rentals</h2>
 
           <p className="mt-2 text-sm text-muted-foreground">
-            Catalogue filters and sorting follow in D03. Prices below are shown in USD; shared AMD
-            conversion is not connected yet.
+            Prices use the selected display currency; underlying amounts remain in USD. Filters and
+            sorting follow in D03.
           </p>
         </section>
 

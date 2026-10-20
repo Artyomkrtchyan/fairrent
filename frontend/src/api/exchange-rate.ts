@@ -26,7 +26,6 @@ export function useExchangeRate() {
 
   const canConvert =
     !query.isError &&
-    !query.isFetching &&
     rate !== undefined &&
     rate.status !== "unavailable" &&
     rate.status !== "stale" &&
