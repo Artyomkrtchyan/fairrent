@@ -30,10 +30,16 @@ def sample_dataset():
       "area_sqm": [50.0, 60.0, 100.0, 70.0, 80.0, 40.0],
       "price_usd": [500.0, 600.0, 1000.0, 560.0, 640.0, 240.0],
       "rooms": [2, 2, 3, 2, 3, 1],
+      "listing_date": [
+          "2026-10-01",
+          "2026-10-05",
+          "2026-10-10",
+          "2026-10-02",
+          "2026-10-08",
+          "2026-10-12",
+      ],
   }
-  df = pd.DataFrame(data)
-  df["price_per_sqm"] = df["price_usd"] / df["area_sqm"]
-  return df
+  return pd.DataFrame(data)
 
 
 def test_standard_valuation_success(sample_dataset):
@@ -46,7 +52,7 @@ def test_standard_valuation_success(sample_dataset):
       "area_sqm": 70.0,
   }
 
-  res = model.predict(query)
+  res = model.predict(query, query_date="2026-10-15")
 
   assert (
       res["valuation_assessment"]["assessment_status"] == "VALUATION_SUCCESS"
@@ -57,37 +63,10 @@ def test_standard_valuation_success(sample_dataset):
   assert res["observed_market_statistics"]["insufficient_data"] is False
 
 
-def test_coordinate_only_request(sample_dataset):
-  """Test coordinate-only payload returning reference area baseline."""
-  model = ComparableMedianBaseline(
-      sample_dataset, min_comparables=3, default_reference_area_sqm=60.0
-  )
-  query = {
-      "latitude": 40.1811,
-      "longitude": 44.5136,
-      "district": "Kentron",
-      "area_sqm": None,
-  }
-
-  res = model.predict(query)
-
-  assert (
-      res["valuation_assessment"]["assessment_status"]
-      == "COORDINATE_BASELINE_ONLY"
-  )
-  assert res["valuation_assessment"]["estimated_price_usd"] == 600.0
-  assert res["observed_market_statistics"]["insufficient_data"] is False
-
-
-def test_sparse_comparables_abstention(sample_dataset):
-  """Test model abstention when comparables count is below threshold."""
-  model = ComparableMedianBaseline(sample_dataset, min_comparables=3)
-  query = {
-      "latitude": 40.1450,
-      "longitude": 44.4850,
-      "district": "Shengavit",
-      "area_sqm": 40.0,
-  }
+def test_distance_filtering_out_of_bounds(sample_dataset):
+  """1. Test that coordinate-only request at (0, 0) returns abstention."""
+  model = ComparableMedianBaseline(sample_dataset, min_distance_km=3.0)
+  query = {"latitude": 0.0, "longitude": 0.0, "area_sqm": None}
 
   res = model.predict(query)
 
@@ -96,5 +75,61 @@ def test_sparse_comparables_abstention(sample_dataset):
       == "INSUFFICIENT_DATA_ABSTAIN"
   )
   assert res["valuation_assessment"]["estimated_price_usd"] is None
+  assert res["observed_market_statistics"]["comparables_count"] == 0
+
+
+def test_freshness_outdated_records_abstain():
+  """2. Test that records older than max_freshness_days trigger abstention."""
+  old_data = pd.DataFrame({
+      "listing_id": [1, 2, 3],
+      "district": ["Kentron"] * 3,
+      "latitude": [40.1811] * 3,
+      "longitude": [44.5136] * 3,
+      "area_sqm": [50.0, 60.0, 70.0],
+      "price_usd": [500.0, 600.0, 700.0],
+      "listing_date": ["2020-01-01", "2020-01-02", "2020-01-03"],
+  })
+  model = ComparableMedianBaseline(old_data, max_freshness_days=60)
+  query = {"latitude": 40.1811, "longitude": 44.5136, "area_sqm": 50.0}
+
+  res = model.predict(query, query_date="2026-10-15")
+
+  assert (
+      res["valuation_assessment"]["assessment_status"]
+      == "INSUFFICIENT_DATA_ABSTAIN"
+  )
   assert res["observed_market_statistics"]["insufficient_data"] is True
-  assert res["observed_market_statistics"]["comparables_count"] == 1
+
+
+def test_exclude_zero_area_and_invalid_prices():
+  """3. Test exclusion of zero area and invalid prices."""
+  invalid_data = pd.DataFrame({
+      "listing_id": [1, 2, 3, 4, 5],
+      "district": ["Kentron"] * 5,
+      "latitude": [40.1811] * 5,
+      "longitude": [44.5136] * 5,
+      "area_sqm": [0.0, -10.0, 50.0, 60.0, 70.0],  # 2 invalid areas
+      "price_usd": [500.0, 600.0, 0.0, 600.0, 700.0],  # 1 invalid price
+      "listing_date": ["2026-10-01"] * 5,
+  })
+  model = ComparableMedianBaseline(invalid_data, min_comparables=2)
+  query = {"latitude": 40.1811, "longitude": 44.5136, "area_sqm": 50.0}
+
+  res = model.predict(query, query_date="2026-10-15")
+
+  assert res["observed_market_statistics"]["comparables_count"] == 2
+  assert res["valuation_assessment"]["estimated_price_usd"] == 500.0
+
+
+def test_explanation_configured_reference_area(sample_dataset):
+  """4. Test explanation describes default 60 sqm as configured reference area."""
+  model = ComparableMedianBaseline(
+      sample_dataset, default_reference_area_sqm=60.0
+  )
+  query = {"latitude": 40.1811, "longitude": 44.5136, "area_sqm": None}
+
+  res = model.predict(query, query_date="2026-10-15")
+
+  assert (
+      "configured reference area (60.0 sqm)" in res["selection_explanation"]
+  )
