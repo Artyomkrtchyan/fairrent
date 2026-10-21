@@ -1,0 +1,19 @@
+[
+  {"id": "S-1001", "title": "Synthetic 2-room, Kentron, floor 5", "price": 600, "currency": "USD", "period": "month",
+   "lat": 40.17920, "lon": 44.51510, "url": "https://example.invalid/item/S-1001", "district": "Kentron",
+   "area_sqm": 55, "rooms_count": 2, "floor": 5, "total_floors": 9, "building_type": "stone"},
+  {"id": "S-1002", "title": "Synthetic duplicate of S-1001 (other ad, AMD price)", "price": 230000, "currency": "AMD", "period": "month",
+   "lat": 40.17924, "lon": 44.51512, "url": "https://example.invalid/item/S-1002", "district": "Kentron",
+   "area_sqm": 55.2, "rooms_count": 2, "floor": 5, "total_floors": 9, "building_type": "stone"},
+  {"id": "S-1003", "title": "Synthetic same building, different floor", "price": 580, "currency": "USD", "period": "month",
+   "lat": 40.17920, "lon": 44.51510, "url": "https://example.invalid/item/S-1003", "district": "Kentron",
+   "area_sqm": 55, "rooms_count": 2, "floor": 3, "total_floors": 9, "building_type": "stone"},
+  {"id": "S-1004", "title": "Synthetic same building, bigger flat", "price": 900, "currency": "USD", "period": "month",
+   "lat": 40.17920, "lon": 44.51510, "url": "https://example.invalid/item/S-1004", "district": "Kentron",
+   "area_sqm": 80, "rooms_count": 3, "floor": 5, "total_floors": 9, "building_type": "stone"},
+  {"id": "S-1005", "title": "Synthetic daily rental, Arabkir", "price": 10000, "currency": "AMD", "period": "day",
+   "lat": 40.19000, "lon": 44.53000, "url": "https://example.invalid/item/S-1005", "district": "Arabkir",
+   "area_sqm": 38, "rooms_count": 1, "floor": 2, "total_floors": 5},
+  {"id": "S-1006", "title": "Synthetic record with unknown attributes", "price": 450, "currency": "USD", "period": "month",
+   "lat": 40.17921, "lon": 44.51511, "url": "https://example.invalid/item/S-1006"}
+]
