@@ -13,9 +13,12 @@ except ImportError:
 PUBLIC_NAMESPACE = UUID("1cd63f77-92ca-45ba-b4d5-39a8ce7086a8")
 # Only mappings already represented by C01 fixtures. A05 will supply the full registry.
 DISTRICTS = {"kentron": "kentron", "arabkir": "arabkir"}
-PERIODS = {"month": Decimal(1), "monthly": Decimal(1), "day": Decimal(30),
-           "daily": Decimal(30), "week": Decimal("4.33"), "weekly": Decimal("4.33"),
+# Public catalogue eligibility is separate from pipeline price normalization.
+# No source evidence field currently establishes long-term availability for a
+# daily/weekly quote. Do not infer it from a monthly-equivalent calculation.
+PERIODS = {"month": Decimal(1), "monthly": Decimal(1),
            "year": Decimal(1), "yearly": Decimal(1), "annual": Decimal(1)}
+SHORT_TERM_PERIODS = {"day", "daily", "week", "weekly"}
 
 
 class Unpublishable(ValueError):
@@ -73,6 +76,8 @@ def adapt_source(row) -> ListingData:
     period = text(row.get("original_period"))
     if amount is None or currency not in {"USD", "AMD", "EUR", "RUB"}:
         raise Unpublishable("missing_original_price")
+    if period is not None and period.lower() in SHORT_TERM_PERIODS:
+        raise Unpublishable("short_term_rental")
     if period is None or period.lower() not in PERIODS:
         raise Unpublishable("unsupported_period")
     first_seen, last_seen = utc(row.get("first_seen_at")), utc(row.get("last_seen_at"))
