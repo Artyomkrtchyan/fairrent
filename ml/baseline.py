@@ -1,12 +1,11 @@
 """[B03] Comparable Property Median Baseline Engine.
 
 Provides an explainable valuation baseline using comparable rental listings,
-handling spatial distance filtering, freshness constraints, data cleaning,
-and sparse data abstention aligned with ml/CONTRACT.md.
+handling spatial distance filtering, timezone-safe freshness constraints,
+data cleaning, and sparse data abstention aligned with ml/CONTRACT.md.
 """
 
-from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 import numpy as np
 import pandas as pd
 
@@ -14,7 +13,7 @@ import pandas as pd
 def haversine_distance_km(
     lat1: float, lon1: float, lat2: float, lon2: float
 ) -> float:
-  """Calculates the great-circle distance between two points on the Earth in kilometers."""
+  """Calculates the great-circle distance between two points on Earth in kilometers."""
   r = 6371.0  # Earth's radius in kilometers
   phi1, phi2 = np.radians(lat1), np.radians(lat2)
   delta_phi = np.radians(lat2 - lat1)
@@ -46,15 +45,13 @@ class ComparableMedianBaseline:
     self.default_reference_area_sqm = default_reference_area_sqm
     self.max_distance_km = max_distance_km
 
-    # 3. Clean invalid records: exclude non-positive/non-finite areas and prices
     self._clean_dataset()
 
   def _clean_dataset(self) -> None:
-    """Filter out zero-area, negative/non-finite prices, and invalid coordinates."""
+    """Filter out zero-area, negative/non-finite prices, and normalize dates to UTC."""
     if self.dataset.empty:
       return
 
-    # Ensure numeric types
     self.dataset["price_usd"] = pd.to_numeric(
         self.dataset["price_usd"], errors="coerce"
     )
@@ -62,7 +59,6 @@ class ComparableMedianBaseline:
         self.dataset["area_sqm"], errors="coerce"
     )
 
-    # Filter out non-finite or non-positive values
     valid_mask = (
         self.dataset["price_usd"].notna()
         & np.isfinite(self.dataset["price_usd"])
@@ -73,15 +69,14 @@ class ComparableMedianBaseline:
     )
     self.dataset = self.dataset[valid_mask].copy()
 
-    # Calculate price_per_sqm
     self.dataset["price_per_sqm"] = (
         self.dataset["price_usd"] / self.dataset["area_sqm"]
     )
 
-    # Parse listing_date if present
+    # Convert listing_date to UTC-aware datetime
     if "listing_date" in self.dataset.columns:
       self.dataset["listing_date"] = pd.to_datetime(
-          self.dataset["listing_date"], errors="coerce"
+          self.dataset["listing_date"], utc=True, errors="coerce"
       )
 
   def predict(
@@ -99,17 +94,17 @@ class ComparableMedianBaseline:
           "Inference request requires valid 'latitude' and 'longitude'."
       )
 
-    current_dt = (
-        pd.to_datetime(query_date) if query_date else pd.Timestamp.now()
-    )
+    # Standardize query execution timestamp to UTC-aware datetime
+    if query_date:
+      current_dt = pd.to_datetime(query_date, utc=True)
+    else:
+      current_dt = pd.Timestamp.now(tz="UTC")
 
-    # 1 & 2. Select comparables filtered by distance and freshness
     comparables, freshness_days = self._select_comparables(
         lat, lng, district, rooms, current_dt
     )
     comparables_count = len(comparables)
 
-    # Abstention Check
     if (
         comparables_count < self.min_comparables
         or (
@@ -140,7 +135,6 @@ class ComparableMedianBaseline:
           "selection_explanation": f"{reason} Model abstained.",
       }
 
-    # Compute Median Statistics
     median_price_per_sqm = float(comparables["price_per_sqm"].median())
     observed_mean_price = float(comparables["price_usd"].mean())
     observed_std_dev = (
@@ -155,7 +149,6 @@ class ComparableMedianBaseline:
     estimated_price = round(median_price_per_sqm * effective_area, 2)
     price_per_sqm_rounded = round(median_price_per_sqm, 2)
 
-    # 4. Explanation: Describe default area as configured reference area
     if is_coordinate_only:
       assessment_status = "COORDINATE_BASELINE_ONLY"
       valuation_tier = "Baseline Market Estimate"
@@ -199,11 +192,10 @@ class ComparableMedianBaseline:
       district: Optional[str],
       rooms: Optional[int],
       current_dt: pd.Timestamp,
-  ) -> tuple[pd.DataFrame, Optional[int]]:
+  ) -> Tuple[pd.DataFrame, Optional[int]]:
     """Selects matching comparable listings applying distance and freshness filters."""
     filtered = self.dataset.copy()
 
-    # 1. Distance filtering
     if "latitude" in filtered.columns and "longitude" in filtered.columns:
       distances = [
           haversine_distance_km(lat, lng, r_lat, r_lng)
@@ -214,7 +206,6 @@ class ComparableMedianBaseline:
       filtered["distance_km"] = distances
       filtered = filtered[filtered["distance_km"] <= self.max_distance_km]
 
-    # Optional District filter
     if district and "district" in filtered.columns and not filtered.empty:
       district_matches = filtered[
           filtered["district"].str.lower() == district.lower()
@@ -222,19 +213,17 @@ class ComparableMedianBaseline:
       if len(district_matches) >= self.min_comparables:
         filtered = district_matches
 
-    # Calculate freshness from observation dates
     freshness_days = None
     if "listing_date" in filtered.columns and not filtered.empty:
       valid_dates = filtered["listing_date"].dropna()
       if not valid_dates.empty:
         latest_date = valid_dates.max()
-        freshness_days = int((current_dt - latest_date).days)
+        freshness_days = int((current_dt - latest_date).total_seconds() / 86400)
         freshness_days = max(0, freshness_days)
 
-        # 2. Freshness filtering
         fresh_mask = (
             current_dt - filtered["listing_date"]
-        ).dt.days <= self.max_freshness_days
+        ).dt.total_seconds() / 86400 <= self.max_freshness_days
         filtered = filtered[fresh_mask]
 
     return filtered, freshness_days
