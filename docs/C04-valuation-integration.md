@@ -1,54 +1,118 @@
-# C04 integration progress — 2026-10-21
+# C04: baseline valuation API
 
-Branch: feat/C04-valuation-integration. Base: main ce5055b plus C03 d857b6a.
-C03 remains a separate unmerged PR; this integration branch depends on it.
+MVP implementation on top of C03 and accepted B03 (`23f4244`). Issue #20.
+The final B07 package and B06 ontology rules remain later integration work.
 
-## B03 review
+## Behavior
 
-The three original deterministic tests pass. B03 supplies a callable median
-price-per-area baseline, count, selection explanation and sparse-data abstention.
-It is usable as a calculation primitive, but is not ready as an unguarded API model.
+`POST /api/v1/valuations` accepts the existing C01 flat request and returns the
+C01 `ValuationResponse`. Unknown fields/query parameters, nonfinite numbers,
+invalid coordinates, fractional room counts and invalid feature ranges return
+422. Every response/error carries the current request ID.
 
-Reproduced on synthetic data:
-- Three observations dated 2020-01-01 produce a successful USD 840 estimate and
-  freshness=10 on 2026-10-21. max_freshness_days is unused.
-- A coordinate-only request at (0, 0) returns USD 720 from Yerevan observations.
-  Coordinates are checked only for presence, never used for distance selection.
-- Zero reference area produces an infinite estimated price.
-- Coordinate-only explanation calls the configured 60 sqm constant a district
-  median, although no median is fitted.
+Example (after configuring authoritative coverage):
 
-No trained-model metrics or real-data accuracy claims were evaluated.
+```bash
+curl -X POST http://localhost:8000/api/v1/valuations \
+  -H 'Content-Type: application/json' \
+  -d '{"latitude":40.18,"longitude":44.51,"area_sqm":50,"rooms":2}'
+```
 
-## Implemented first C04 slice
+- Select active, normalized long-term inventory from C03. Daily/weekly entries
+  remain excluded by C03 publication, not reinterpreted as long-term comparables.
+- Use a bounded indexed PostGIS candidate query (maximum 10,000 candidates,
+  five-second statement timeout). A limit overflow returns 422 asking the user
+  to reduce radius/window. Exact distance uses B03's Haversine calculation;
+  the indexed PostGIS query uses a small conservative radius margin.
+- Deduplicate by supplied duplicate group, latest last_seen_at first, UUID
+  ascending on timestamp ties. Without a group, each listing counts once.
+  Apply exact rooms when supplied; do not silently widen the cohort.
+- Window dates use Asia/Yerevan, including the start date and observations no
+  later than execution time. B03's 60-day age cap also applies to requests for
+  longer windows; effective dates and this cap are disclosed in the response.
+- last_seen_at is explicitly an observation date. This is a live observed-market
+  baseline, not a training export or an assertion about unknown publication dates.
+- Compute monthly statistics even when area is unknown; per-m2 statistics and
+  prediction require usable area. Sample standard deviation is null for n < 2.
+- Fewer than three usable unit-price comparables abstains with null valuation.
+  Empty snapshots have null data_as_of and is_stale=true. No historical estimate
+  is substituted when current data is insufficient or the model fails.
+- Missing area OR rooms returns an area reference using B03's configured 60 m2,
+  explicitly disclosed rather than claimed as a fitted district median.
+- B03 has no calibrated interval or attribution factors: interval fields are
+  null and factors empty. Therefore price_status remains insufficient_data even
+  when a point estimate exists. Asking price never enters model inputs.
+- rule_engine_version is `ontology-not-connected`: the demo's price-only fraud
+  labels are not production B06 rules. No fraud verdict is generated.
 
-backend/valuation_gateway.py wraps the unchanged B03 implementation. It accepts
-an explicit versioned reference snapshot, applies radius and observation-window
-bounds, excludes future/invalid observations and the subject duplicate group,
-keeps one observation per group, applies district and optional room selection,
-and recomputes unit prices. Actual freshness replaces B03's hardcoded number.
-Model exceptions become ModelUnavailable rather than insufficient_data.
-Intervals and attributions remain absent because B03 does not supply them.
+## Persistence and freshness
 
-This is an internal integration seam, not the C01 public response schema.
-The configured 60 sqm coordinate reference is explicitly labeled; it is not
-represented as a fitted district median. The snapshot owner must supply an
-appropriate frozen reference/training snapshot with a reproducible version.
+Apply `backend/sql/002_valuation_estimates.sql` using the CLI below. The append-only
+application path saves request, validated response, observation/computation times,
+model/policy versions, candidate-snapshot SHA-256 and coverage provenance checksum
+inside the same repeatable-read transaction used to read inventory. An invalid
+model result is rejected before persistence. Persistence/commit failure fails the
+request; it does not claim a saved success. The migration is repeatable.
 
-Validation: 12 passed (3 original B03 tests + 9 C04 adapter cases).
-Runtime used pandas 2.3.3 and numpy 2.2.2. No new runtime dependency is added to
-the deployed API while this module is not imported by an HTTP route.
+Saved records are an audit trail, not a response cache. Each POST recomputes from
+current inventory; changes to source data cannot silently reuse an old valuation.
+No public historical-estimate endpoint is introduced. Listing details retain
+`estimate: null`; attaching a subject-specific persisted estimate requires a
+subject identity/exclusion contract and is not guessed from matching coordinates.
 
-## Remaining C04 work
+## Deployment
 
-- Agree reference snapshot provenance and versioning with the ML owner; district
-  reference areas and municipal boundaries are not supplied by B03.
-- Add the C01 valuation endpoint and complete typed response mapping, including
-  cohort, freshness, version, area-reference, and explicit failure semantics.
-- Persist estimates with input/dataset/model/policy versions and source timestamps;
-  define expiry and invalidation rather than silently reuse stale results.
-- Connect listing details, verify PostgreSQL round trips and contract validation.
-- Package pandas/numpy for API deployment and add CI coverage.
-- Provide a replaceable B07 provider when the versioned package is delivered.
+Docker build context is now the repository root so it can package the accepted
+ML module and canonical response schema. `.dockerignore` allows only required
+runtime sources; raw data, local configuration and Git files stay out.
 
-C04 is started, not complete. No public API or database migration was changed.
+```bash
+docker build -f backend/Dockerfile -t fairrent-api .
+docker compose up --build -d
+# After pipeline ingestion/migrations, initialize or refresh the C03 projection:
+docker compose exec api python -m sync_listings
+# Initialize the estimate table and candidate geography index:
+docker compose exec api python -m valuation_repository
+```
+
+Supply the authoritative A05 GeoJSON Feature as
+`infra/valuation-coverage/coverage.geojson`; Compose mounts it read-only. See
+[coverage configuration](../infra/valuation-coverage/README.md). Outside coverage
+returns 400/outside_coverage. Missing/invalid configuration returns 503 rather
+than inventing a municipal boundary. Non-Compose use sets
+`VALUATION_COVERAGE_FILE` to the absolute GeoJSON path.
+
+Health/readiness and listing routes remain independent of coverage configuration.
+A DB without PostGIS/migrations returns a dependency error for valuations.
+
+## Model provider seam and remaining dependencies
+
+`ValuationService(provider=...)` accepts a versioned provider factory with the
+same internal `assess` interface as BaselineGateway. C01 response validation,
+calibrated-interval consistency, asking-price isolation, failure mapping and
+persistence stay in the service. A synthetic provider verifies interval and
+attribution mapping; it is not a real B07 model or measured accuracy claim.
+
+B07 will need an adapter to its delivered package API, artifact/version provenance
+and a fitted area-reference policy. B06 will supply authoritative rule results.
+A05 supplies the real coverage boundary and district registry. Those artifacts
+are not fabricated in this PR; C04 final delivery remains open until available.
+Affected owners should review the disclosed MVP configured reference-area policy.
+
+## Validation
+
+Run on a disposable PostgreSQL/PostGIS DB, using isolated schemas per backend test:
+
+```bash
+C03_TEST_DATABASE_URL=postgresql://... \
+TEST_DATABASE_URL=postgresql+psycopg://... \
+python -m pytest backend/tests data_pipeline ml/tests -q
+python contracts/validate.py
+```
+
+The backend workflow runs all three suites and builds the API from repository root.
+
+Verified locally on 2026-10-21: **238 tests passed** across backend, pipeline and
+ML. C01 validation passed (32 schemas, 35 fixtures, 16 rejected inputs); pip check
+passed. Final Docker build, packaged API/schema imports, repeatable C04 migration,
+synthetic coverage, assessment and PostgreSQL persistence smoke checks passed.

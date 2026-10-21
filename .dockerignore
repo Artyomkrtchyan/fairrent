@@ -1,0 +1,10 @@
+**
+!backend/
+!backend/*.py
+!backend/requirements.txt
+!backend/sql/
+!backend/sql/*.sql
+!ml/
+!ml/baseline.py
+!contracts/
+!contracts/openapi.json

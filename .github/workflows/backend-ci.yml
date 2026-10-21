@@ -55,7 +55,7 @@ jobs:
         run: python -m pip check
 
       - name: Run backend tests
-        run: python -m pytest backend/tests data_pipeline -v
+        run: python -m pytest backend/tests data_pipeline ml/tests -v
 
   docker-build:
     name: Backend Docker build
@@ -69,7 +69,7 @@ jobs:
           persist-credentials: false
 
       - name: Build API image
-        run: docker build --tag fairrent-api:ci-${{ github.sha }} ./backend
+        run: docker build --tag fairrent-api:ci-${{ github.sha }} --file backend/Dockerfile .
 
   contract-validation:
     name: Contract validation

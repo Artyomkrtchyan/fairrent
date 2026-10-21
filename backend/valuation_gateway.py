@@ -1,8 +1,4 @@
-"""C04 baseline integration seam over an explicit, versioned reference snapshot.
-
-The caller supplies training/reference data, never the request as an observation.
-This adapter does not implement HTTP or persistence yet.
-"""
+"""C04 adapter for a versioned observed-inventory snapshot, not model training."""
 from datetime import datetime
 from math import asin, cos, radians, sin, sqrt
 
@@ -16,7 +12,7 @@ class ModelUnavailable(RuntimeError):
 
 
 class BaselineGateway:
-    model_version = "b03-ce5055b+c04-scope-v1"
+    model_version = "b03-23f4244+c04-scope-v2"
 
     def __init__(self, snapshot, *, dataset_version, predictor=ComparableMedianBaseline):
         if not dataset_version:
@@ -36,7 +32,7 @@ class BaselineGateway:
         lat, lon = payload.get("latitude"), payload.get("longitude")
         if lat is None or lon is None or not (-90 <= lat <= 90 and -180 <= lon <= 180):
             raise ValueError("Valid coordinates are required")
-        if not 0 < radius_m <= 5000 or not 1 <= window_days <= 60:
+        if not 0 < radius_m <= 5000 or not 1 <= window_days <= 90:
             raise ValueError("Invalid comparable radius or age window")
         area = payload.get("area_sqm")
         if area is not None and (not pd.notna(area) or not 0 < area < float("inf")):
@@ -62,15 +58,17 @@ class BaselineGateway:
         district = payload.get("district")
         if district:
             frame = frame[frame.district.str.casefold() == district.casefold()]
-        frame = frame.sort_values("listing_date", ascending=False, kind="stable").drop_duplicates("dedup_group_id")
+        sort_columns = ["listing_date"] + (["listing_id"] if "listing_id" in frame.columns else [])
+        frame = frame.sort_values(sort_columns, ascending=[False] + ([True] if len(sort_columns) > 1 else []), kind="stable").drop_duplicates("dedup_group_id")
         rooms = payload.get("rooms")
         matches = frame[frame.rooms == rooms] if rooms is not None else frame
-        if len(matches) >= 3:
+        if rooms is not None:
             frame = matches
         # Always recompute: an incoming price_per_sqm column is not trusted.
         frame["price_per_sqm"] = frame.price_usd / frame.area_sqm
         try:
-            result = self.predictor(frame).predict(payload)
+            result = self.predictor(frame, max_distance_km=radius_m / 1000,
+                                    max_freshness_days=60).predict(payload, query_date=as_of.isoformat())
         except Exception as exc:
             raise ModelUnavailable("Baseline prediction failed") from exc
         result["observed_market_statistics"]["data_freshness_days"] = (

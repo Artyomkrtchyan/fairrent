@@ -21,3 +21,6 @@ artifacts/
 Thumbs.db
 .venv-wsl/
 .venv-c03/
+
+.worktrees/
+infra/valuation-coverage/coverage.geojson

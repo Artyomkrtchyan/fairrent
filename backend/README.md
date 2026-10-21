@@ -81,3 +81,12 @@ python -m pytest backend/tests -v
 Tests cover `/health`, successful database readiness, and database connection
 failure. Database connections are mocked; Docker and a running database are
 not required. Real PostGIS connectivity is verified separately through Compose.
+
+## C04 valuation integration
+
+POST `/api/v1/valuations` integrates the accepted B03 observed-inventory baseline
+and persists validated responses with dataset/model/policy/freshness metadata.
+See [C04 behavior, configuration and verification](../docs/C04-valuation-integration.md).
+The endpoint requires PostGIS, the C03 projection, the C04 migration and
+operator-supplied A05 coverage. The old `model_stub.py` remains a legacy example;
+it is not used by the C04 endpoint.

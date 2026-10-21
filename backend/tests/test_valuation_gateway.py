@@ -41,7 +41,7 @@ def test_excludes_subject_duplicate_group():
 
 def test_model_failure_is_not_insufficient_data():
     class Broken:
-        def __init__(self, frame):
+        def __init__(self, frame, **kwargs):
             raise RuntimeError("failure")
     with pytest.raises(ModelUnavailable):
         BaselineGateway(snapshot(), dataset_version="test", predictor=Broken).assess(QUERY, as_of=NOW)
