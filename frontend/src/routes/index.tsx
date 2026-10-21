@@ -1,4 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { CatalogueFilters } from "@/components/CatalogueFilters";
+
+import { usePrefs } from "@/lib/prefs";
+
+import { createFileRoute, Link, type SearchSchemaInput } from "@tanstack/react-router";
+
+import { parseCatalogueSearch, type CatalogueSearch } from "@/lib/catalogue-search";
+
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -13,6 +20,9 @@ import type { components } from "@/api/schema";
 type Listing = components["schemas"]["Listing"];
 
 export const Route = createFileRoute("/")({
+  validateSearch: (search: SearchSchemaInput & Partial<CatalogueSearch>) =>
+    parseCatalogueSearch(search),
+
   component: Browse,
 });
 
@@ -42,11 +52,72 @@ function formatRent(amount: number | null): string {
 }
 
 function Browse() {
+  const search = Route.useSearch();
+  const { format } = usePrefs();
+
+  const activeFilters: {
+    key: "district_id" | "rooms" | "price_min" | "price_max" | "area_min" | "area_max";
+    label: string;
+  }[] = [];
+
+  if (search.district_id !== undefined) {
+    activeFilters.push({
+      key: "district_id",
+      label: `District: ${search.district_id}`,
+    });
+  }
+
+  if (search.rooms !== undefined) {
+    activeFilters.push({
+      key: "rooms",
+      label: `Rooms: ${search.rooms}`,
+    });
+  }
+
+  if (search.price_min !== undefined) {
+    activeFilters.push({
+      key: "price_min",
+      label: `Min rent: ${format(search.price_min)}`,
+    });
+  }
+
+  if (search.price_max !== undefined) {
+    activeFilters.push({
+      key: "price_max",
+      label: `Max rent: ${format(search.price_max)}`,
+    });
+  }
+
+  if (search.area_min !== undefined) {
+    activeFilters.push({
+      key: "area_min",
+      label: `Min area: ${search.area_min} m²`,
+    });
+  }
+
+  if (search.area_max !== undefined) {
+    activeFilters.push({
+      key: "area_max",
+      label: `Max area: ${search.area_max} m²`,
+    });
+  }
+  const navigate = Route.useNavigate();
+
+  const [filterRevision, setFilterRevision] = useState(0);
+
+  function applyFilters(next: CatalogueSearch) {
+    setFilterRevision((value) => value + 1);
+
+    void navigate({
+      search: next,
+      resetScroll: false,
+    });
+  }
   const [view, setView] = useState<"list" | "map">("list");
 
   const { data, isPending, isError, isFetching, refetch } = useQuery({
-    queryKey: ["listings", apiMode],
-    queryFn: ({ signal }) => getListings(signal),
+    queryKey: ["listings", apiMode, search],
+    queryFn: ({ signal }) => getListings(signal, search),
     retry: false,
   });
 
@@ -70,14 +141,60 @@ function Browse() {
       </SkylineHero>
 
       <div className="mx-auto -mt-12 max-w-7xl px-4 sm:px-6">
-        <section className="card-surface relative p-4 shadow-lg">
-          <h2 className="font-sans text-sm font-bold">Browse long-term rentals</h2>
+        <CatalogueFilters
+          key={`${JSON.stringify(search)}-${filterRevision}`}
+          search={search}
+          onApply={applyFilters}
+        />
 
-          <p className="mt-2 text-sm text-muted-foreground">
-            Prices use the selected display currency; underlying amounts remain in USD. Filters and
-            sorting follow in D03.
-          </p>
-        </section>
+        {activeFilters.length > 0 && (
+          <div aria-label="Active filters" className="mt-3 flex flex-wrap gap-2">
+            {activeFilters.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                aria-label={`Remove filter: ${filter.label}`}
+                onClick={() => {
+                  const next = {
+                    ...search,
+                    page: 1,
+                  };
+
+                  delete next[filter.key];
+
+                  setFilterRevision((value) => value + 1);
+
+                  void navigate({
+                    search: next,
+                    resetScroll: false,
+                  });
+                }}
+                className="inline-flex items-center gap-2 rounded-full border bg-card px-3 py-2 text-xs font-semibold hover:border-primary"
+              >
+                {filter.label}
+                <span aria-hidden="true">×</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() =>
+                applyFilters({
+                  page: 1,
+                  page_size: search.page_size,
+                  sort: search.sort,
+                  status: "active",
+                })
+              }
+              className="rounded-full border px-3 py-2 text-xs font-semibold hover:border-primary"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+
+        <div className="mt-3">
+          <RateNote />
+        </div>
 
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm" aria-live="polite">
@@ -85,8 +202,49 @@ function Browse() {
               ? "Loading listings…"
               : isError
                 ? "Listings unavailable"
-                : `${data?.items.length ?? 0} listings on this page`}
+                : `${data?.total ?? 0} ${data?.total === 1 ? "rental" : "rentals"} found`}
           </p>
+
+          {isFetching && !isPending && (
+            <span role="status" className="text-sm text-muted-foreground">
+              Updating results…
+            </span>
+          )}
+
+          <label className="flex items-center gap-2 text-sm">
+            <span className="font-semibold">Sort by</span>
+
+            <select
+              value={search.sort}
+              onChange={(event) => {
+                const sort = event.target.value;
+
+                if (
+                  sort === "newest" ||
+                  sort === "price_asc" ||
+                  sort === "price_desc" ||
+                  sort === "area_asc" ||
+                  sort === "area_desc"
+                ) {
+                  void navigate({
+                    search: {
+                      ...search,
+                      sort,
+                      page: 1,
+                    },
+                    resetScroll: false,
+                  });
+                }
+              }}
+              className="rounded-md border bg-card px-3 py-2"
+            >
+              <option value="newest">Newest first</option>
+              <option value="price_asc">Rent: low to high</option>
+              <option value="price_desc">Rent: high to low</option>
+              <option value="area_asc">Area: small to large</option>
+              <option value="area_desc">Area: large to small</option>
+            </select>
+          </label>
 
           <div
             role="group"
@@ -146,8 +304,39 @@ function Browse() {
             <div className="mt-4 grid gap-6 lg:grid-cols-2">
               <ul className={`${view === "list" ? "grid" : "hidden"} content-start gap-3 lg:grid`}>
                 {data.items.length === 0 && (
-                  <li className="card-surface p-6 text-sm">
-                    No listings are available in this response.
+                  <li className="card-surface p-6">
+                    <h3 className="font-sans text-base font-bold">
+                      {search.page > 1
+                        ? "No rentals on this page"
+                        : activeFilters.length > 0
+                          ? "No rentals match your filters"
+                          : "No rentals available"}
+                    </h3>
+
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {search.page > 1
+                        ? "Return to the first page to see the available results."
+                        : activeFilters.length > 0
+                          ? "Try a wider rent or area range, or clear your filters."
+                          : "Please check again later."}
+                    </p>
+
+                    {activeFilters.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          applyFilters({
+                            page: 1,
+                            page_size: search.page_size,
+                            sort: search.sort,
+                            status: "active",
+                          })
+                        }
+                        className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
+                      >
+                        Clear filters
+                      </button>
+                    )}
                   </li>
                 )}
 
@@ -174,6 +363,68 @@ function Browse() {
                 </p>
               </aside>
             </div>
+
+            <nav
+              aria-label="Listing pages"
+              className="mt-6 flex flex-wrap items-center justify-center gap-4"
+            >
+              <button
+                type="button"
+                disabled={search.page <= 1 || isFetching}
+                onClick={() => {
+                  void navigate({
+                    search: {
+                      ...search,
+                      page: search.page - 1,
+                    },
+                  });
+                }}
+                className="rounded-md border px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Previous
+              </button>
+
+              <span className="text-sm" aria-live="polite">
+                Page {search.page} · {data.total} matching rentals
+              </span>
+
+              <button
+                type="button"
+                disabled={!data.has_more || isFetching}
+                onClick={() => {
+                  void navigate({
+                    search: {
+                      ...search,
+                      page: search.page + 1,
+                    },
+                  });
+                }}
+                className="rounded-md border px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next
+              </button>
+            </nav>
+
+            {data.items.length === 0 && search.page > 1 && (
+              <div className="mt-3 text-center">
+                <p className="text-sm text-muted-foreground">There are no listings on this page.</p>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigate({
+                      search: {
+                        ...search,
+                        page: 1,
+                      },
+                    });
+                  }}
+                  className="mt-2 rounded-md border px-4 py-2 text-sm font-semibold"
+                >
+                  Return to first page
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -190,6 +441,7 @@ function ListingCard({ listing }: { listing: Listing }) {
       <Link
         to="/listings/$id"
         params={{ id: listing.id }}
+        state={{ fromCatalogue: true }}
         className="card-surface block overflow-hidden transition hover:border-primary"
       >
         <ListingPhoto photoKey={null} title={title} size="card" />

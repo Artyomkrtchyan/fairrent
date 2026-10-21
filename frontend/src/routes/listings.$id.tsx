@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useRouter, useRouterState } from "@tanstack/react-router";
 
 import { getListingDetails, ListingApiError } from "@/api/listings";
 
@@ -28,15 +28,31 @@ export const Route = createFileRoute("/listings/$id")({
 });
 
 function ListingPage() {
+  const router = useRouter();
+
+  const fromCatalogue = useRouterState({
+    select: (state) => state.location.state.fromCatalogue === true,
+  });
+
   const { listing, signals } = Route.useLoaderData();
 
   const title = listing.title || "Apartment in Yerevan";
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <Link to="/" className="text-sm font-semibold text-primary">
-        ← Back to rentals
-      </Link>
+      {fromCatalogue ? (
+        <button
+          type="button"
+          onClick={() => router.history.back()}
+          className="text-sm font-semibold text-primary"
+        >
+          ← Back to rentals
+        </button>
+      ) : (
+        <Link to="/" className="text-sm font-semibold text-primary">
+          ← Browse rentals
+        </Link>
+      )}
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {apiMode === "mock" && (
