@@ -7,10 +7,11 @@ C01: [OpenAPI, synthetic examples and validation](../contracts/README.md). Final
 Stack: Python, FastAPI, Pydantic, SQLAlchemy, Alembic, and pytest. See the [technology stack](../docs/technology-stack.md).
 
 C03 now implements listing search, details and bounded map queries. See
-[C03 setup, read projection and pending pipeline integration](../docs/C03-listing-api.md).
-Provision the projection before using `/api/v1/listings`; it starts empty until
-validated normalized listings are explicitly published. Real A03/A04 integration
-is pending; C03 is not yet marked done.
+[C03 setup, source mapping and publication](../docs/C03-listing-api.md).
+After A03/A04 ingestion finishes, run `docker compose exec api python -m sync_listings`
+to publish its inventory atomically to the API read model. The command initializes
+the projection and reports records excluded for missing evidence. Source tables
+remain owned by the pipeline.
 
 ## Local development with Docker Compose
 

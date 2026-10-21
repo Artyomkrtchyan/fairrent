@@ -12,6 +12,7 @@ services:
       PGDATABASE: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
       PGUSER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
     depends_on:
       db:
         condition: service_healthy

@@ -28,7 +28,7 @@ def database(monkeypatch):
     with original_connect(dsn, autocommit=True) as connection:
         connection.execute(sql.SQL("CREATE SCHEMA {}").format(sql.Identifier(schema)))
     def connect(**kwargs):
-        return original_connect(dsn, options=f"-csearch_path={schema}", **kwargs)
+        return original_connect(dsn, options=f"-csearch_path={schema},public", **kwargs)
     try:
         with connect() as connection:
             migration = Path(__file__).resolve().parents[1] / "sql" / "001_listing_projection.sql"

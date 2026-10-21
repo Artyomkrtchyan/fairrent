@@ -1,7 +1,6 @@
 """PostgreSQL read projection. Only validated, explicitly published records are served.
 
-This boundary is intentionally independent of A02's unfinished ingestion schema.
-The future pipeline adapter calls publish_listing in its own transaction.
+The sync_listings command adapts accepted A02/A04 inventory in one transaction.
 """
 import psycopg
 from psycopg.types.json import Jsonb

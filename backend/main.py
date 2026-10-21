@@ -1,9 +1,11 @@
 import psycopg
+import os
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException
 from pydantic import ValidationError
 
@@ -13,6 +15,14 @@ except ImportError:
     from listing_routes import router
 
 app = FastAPI(title="FairRent API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[value.strip() for value in os.environ.get(
+        "FRONTEND_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",") if value.strip()],
+    allow_methods=["GET"],
+    expose_headers=["X-Request-ID"],
+)
 app.include_router(router)
 
 

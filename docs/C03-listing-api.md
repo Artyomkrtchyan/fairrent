@@ -1,8 +1,8 @@
-# C03 listing APIs — implementation in progress
+# C03 listing APIs — integrated implementation
 
-Implemented against the existing C01 proposal; owner agreement is still pending.
-No C01 response shapes or A02 source tables are changed. A03/A04 pipeline
-integration remains a follow-up after Alice's PR fixes and provenance agreement.
+Implemented against the existing C01 proposal and the accepted A02/A03/A04 schema
+merged in PR #57 (`628f5cb`). No C01 response shapes or source tables are changed.
+Implementation and integration tests are ready for teammate review.
 
 ## Implemented routes
 
@@ -25,34 +25,52 @@ Errors use the C01 envelope and a generated request UUID, also in X-Request-ID.
 Queries use bound parameters, fixed SQL sort expressions and a five-second
 statement timeout. Business endpoints use the same PG* configuration as C02.
 
-## Temporary integration boundary
+## Source integration and publication
 
-The existing A02 schema lacks mandatory C01 provenance and lifecycle fields.
-Serving it directly would require inventing status, first/last observation times,
-original currency or historical rates. C03 therefore reads a backend-owned
-`api_listing_projection`, provisioned explicitly by
-`backend/sql/001_listing_projection.sql`. It contains only explicitly published,
-validated canonical listing records, plus indexed search columns. It is an API
-read model, not a second source of ingestion history.
+`backend/source_adapter.py` maps Alice's accepted storage schema into C01.
+`backend/sync_listings.py` publishes a consistent snapshot to the indexed
+`api_listing_projection` read model. Source ingestion and history stay owned by
+the pipeline. The API has no write endpoint and does not run ingestion itself.
 
-The table starts empty. Current A02 rows and pipeline mock records are **not**
-automatically imported. Applying this migration does not modify Alice's tables.
-An unavailable/unprovisioned projection returns 503; an initialized empty table
-returns an ordinary empty page.
+Run publication after ingestion completes. The command creates the projection if
+needed, validates eligible `source='list.am'` records, upserts active AND inactive
+listings, and removes records that no longer qualify from the API projection only.
+It returns counts and safe exclusion reason codes; it never prints raw records or
+database credentials. Demo/fixture/synthetic sources are excluded. Legacy rows
+without a source run or original-price evidence are excluded until re-observed.
 
-After A03/A04 is fixed, implement the source adapter at `publish_listing` in
-`backend/listing_repository.py`. It accepts `ListingData` or an equivalent dict,
-validates required source metadata and updates one record atomically. The caller
-owns commit/rollback, allowing source and projection changes in one transaction.
-Public UUIDs must be stable across re-ingestion and the later schema adaptation;
-source/external_id pairs are unique. A02 integer IDs are not exposed as UUIDs.
-No HTTP endpoint permits publishing records.
+Publication is atomic: repeatable-read source snapshot, a session advisory lock
+serializing publishers, and one transaction for all projection updates/removals.
+Readers see either the previous publication or the complete next one. Any failure
+preserves the previous snapshot. A running list.am ingestion run blocks
+publication; finish or resolve interrupted runs first. The command does not infer
+inactivity: it copies Alice's explicit `is_active` state.
 
-Unknown nullable fields stay null. A usable original monthly amount, currency,
-source URL, UTC first/last observation times and explicit status are required
-before publishing. Missing historical conversion yields null conversion and
-normalized price. USD conversion also needs explicit observation-date identity
-provenance. Fixed-rate A01 prices alone cannot establish these fields.
+### Mapping decisions
+
+- Public listing UUID = UUIDv5 of `(source, external_id)` in a fixed namespace;
+  repeat publication or source schema changes cannot change it. Property UUIDs
+  are separately namespaced from the storage property ID. Integer IDs are not
+  exposed as public UUIDs. Dedup group remains null until its public policy is agreed.
+- `price_original` is the monthly equivalent of the original quote; day x30,
+  week x4.33, year /12. Original quotation and period remain in source storage.
+  Conversion uses Decimal arithmetic and half-up cents, not stored rounded floats.
+- Source `exchange_rate` means original currency per USD; C01 `rate_to_usd` is
+  its reciprocal. Preserve `rate_source` and effective `rate_date`, separately
+  from conversion time. USD uses identity rate 1 on the source observation date.
+  Missing/future-dated historical rate evidence gives null conversion AND null
+  normalized rent; no current-rate substitution. Static configured rates stay
+  labeled `static-config`; this does not certify an official/live provider.
+- `url` -> source_url; first/last seen -> UTC timestamps; published_at remains null
+  because the source has not supplied a publication date. Unknown values stay null.
+- Geolocation comes from Property.geom and is labeled approximate, never verified
+  exact. Missing coordinates preserve catalogue/detail records but exclude markers.
+- District aliases Kentron/kentron and Arabkir/arabkir map to existing C01 fixture
+  slugs. Other names remain null until the A05 registry is supplied. Current raw
+  district/address enrichment takes precedence over older stored property text.
+- Rooms/floor/area are validated; unsupported building materials remain null while
+  building_type_raw is preserved. Thumbnails and renovation remain null until
+  their collection is integrated. Missing source URL excludes the record.
 
 Freshness is computed at response time from last_seen_at using C01's provisional
 14-day policy. API price_status is insufficient_data until valuation integration;
@@ -60,17 +78,29 @@ no ML or fraud conclusions are fabricated.
 
 ## Provisioning
 
-With the C02 Compose database running, apply from a shell that supports input
-redirection (for example WSL):
+Apply Alice's Alembic migrations first (see database documentation), then finish
+an A03 crawl/import using the pipeline's DATABASE_URL configuration. With the C02
+Compose database running:
 
 ```bash
-docker compose exec -T db sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backend/sql/001_listing_projection.sql
 docker compose up --build -d api
+docker compose exec api python -m sync_listings
 ```
 
-The SQL is repeatable for this initial schema; it is not an automatic migration
-runner. Future schema changes need versioned migrations. `/ready` retains its
-C02 meaning (database connectivity), not ingestion readiness.
+From a Python environment instead: set the same PGHOST/PGPORT/PGDATABASE/PGUSER/
+PGPASSWORD as C02 and run `python -m backend.sync_listings`. Pipeline DATABASE_URL
+and backend PG* settings must refer to the same database. Re-run publication
+after each completed ingestion; scheduling is C09. No live source is contacted by
+the publisher. A fixture import with its default `fixture` source does not become
+live inventory. Before initial publication, listing endpoints return 503.
+
+The initial projection SQL is repeatable, not an automatic source migration runner.
+`/ready` retains its C02 meaning (database connectivity), not ingestion readiness.
+
+For the D02 frontend, use VITE_API_MODE=real and VITE_API_BASE_URL pointing at
+the API. CORS permits localhost:5173 and 127.0.0.1:5173 GET requests by default.
+Set FRONTEND_ORIGINS to an explicit comma-separated allowlist for other origins;
+it is passed through Compose. No credentialed cross-origin requests are enabled.
 
 Example queries after provisioning:
 
@@ -84,24 +114,27 @@ Example queries after provisioning:
 
 ```bash
 python -m pip install -r backend/requirements-dev.txt
-python -m pytest backend/tests -v
+python -m pytest backend/tests data_pipeline -v
 # Optional locally; mandatory in backend CI. Use a disposable test database.
 export C03_TEST_DATABASE_URL=postgresql://postgres:c03-test-only@127.0.0.1:55433/c03_test
-python -m pytest backend/tests -v
+export TEST_DATABASE_URL=postgresql+psycopg://postgres:c03-test-only@127.0.0.1:55433/c03_test
+python -m pytest backend/tests data_pipeline -v
 ```
 
-Database tests create/drop only their own randomly named schemas. They use
-synthetic C01 fixtures and verify actual SQL filters, sort ties/nulls, pagination,
-bounding-box edges, inactive details, empty results and transactional updates.
-Actual responses are validated against the committed C01 JSON schemas. Without
-the test DSN, PostgreSQL tests are explicitly skipped; ordinary API tests run.
+Backend database tests create/drop only their own randomly named schemas. Alice's
+pipeline tests rebuild their source tables, so TEST_DATABASE_URL must point to a
+disposable database, never development/production inventory. CI uses a dedicated
+PostgreSQL 16/PostGIS service. Actual API payloads are checked against C01 JSON
+schemas. Without test DSNs, database tests are explicitly skipped.
 
-Before marking C03 done:
+Integration tests use HTTP MockTransport against project-owned fairrent.test
+pages and run collection -> validation/normalization -> source PostGIS tables ->
+atomic publication -> HTTP API. They exercise monthly AMD prices, source URLs,
+missing coordinates, filters/map bounds, stable UUIDs, changed prices, inactive
+details, repeat publication, legacy/demo exclusions and rollback on failure.
 
-- Agree source URL, stable UUID ownership, district slugs, observation times,
-  lifecycle status and conversion provenance with Alice.
-- Implement and verify the real A03/A04 publishing adapter and backfill policy.
-- Run the full collection → normalization → database → API flow, including
-  inactive and missing-data records, after her changes land.
-- Obtain teammate review and final contract agreement. Do not count synthetic
-  database tests as proof of real source ingestion.
+Remaining external work: teammate PR review, the A05 district registry, an agreed
+production exchange-rate provider and C09 scheduling. These do not add fake data
+or block testing the C03 storage/API integration. Live list.am selector/access
+verification remains A03's documented operational work; tests do not claim a live
+collection succeeded. Signals/valuation integration stays in C04.

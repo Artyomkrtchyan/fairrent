@@ -128,3 +128,15 @@ def test_unknown_values_remain_null(listing_document):
     listing = public_listing(ListingData.model_validate(listing_document))
     assert listing.latitude is listing.longitude is listing.rooms is listing.area_sqm is None
     assert listing.conversion is listing.price_monthly_normalized is None
+
+
+def test_cors_allows_local_frontend_only(client):
+    allowed = client.options("/api/v1/listings", headers={
+        "Origin": "http://localhost:5173", "Access-Control-Request-Method": "GET",
+    })
+    assert allowed.status_code == 200
+    assert allowed.headers["access-control-allow-origin"] == "http://localhost:5173"
+    rejected = client.options("/api/v1/listings", headers={
+        "Origin": "https://unconfigured.example", "Access-Control-Request-Method": "GET",
+    })
+    assert "access-control-allow-origin" not in rejected.headers
