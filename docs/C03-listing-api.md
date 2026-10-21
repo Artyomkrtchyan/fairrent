@@ -52,9 +52,19 @@ inactivity: it copies Alice's explicit `is_active` state.
   repeat publication or source schema changes cannot change it. Property UUIDs
   are separately namespaced from the storage property ID. Integer IDs are not
   exposed as public UUIDs. Dedup group remains null until its public policy is agreed.
-- `price_original` is the monthly equivalent of the original quote; day x30,
-  week x4.33, year /12. Original quotation and period remain in source storage.
-  Conversion uses Decimal arithmetic and half-up cents, not stored rounded floats.
+- The public long-term catalogue accepts only `month`/`monthly` and
+  `year`/`yearly`/`annual` quotations. Daily and weekly quotations are excluded
+  with `short_term_rental`: monthly-equivalent arithmetic is not evidence of
+  long-term availability. No source evidence field currently authorizes an
+  exception. Unknown periods remain excluded as `unsupported_period`.
+- `price_original` is the monthly equivalent of an eligible quote (year /12).
+  Original quotation and period remain in source storage. Conversion uses
+  Decimal arithmetic and half-up cents, not stored rounded floats.
+- Re-running publication removes newly ineligible records from the public
+  projection, including search, bounded map queries and details. Source records
+  and pipeline short-term normalization remain unchanged. Deployments must run
+  `sync_listings` after updating the adapter to remove previously published
+  short-term records.
 - Source `exchange_rate` means original currency per USD; C01 `rate_to_usd` is
   its reciprocal. Preserve `rate_source` and effective `rate_date`, separately
   from conversion time. USD uses identity rate 1 on the source observation date.

@@ -25,8 +25,8 @@ def test_usd_identity_is_observation_dated(source_row):
     assert record.coordinate_confidence == "unknown"
 
 
-def test_amd_daily_is_monthly_and_rate_direction_is_inverted(source_row):
-    source_row.update(original_price=10000, original_currency="AMD", original_period="day",
+def test_amd_monthly_rate_direction_is_inverted(source_row):
+    source_row.update(original_price=300000, original_currency="AMD", original_period="month",
                       exchange_rate=385, rate_date=date(2026, 10, 20), rate_source="static-config")
     record = adapt_source(source_row)
     assert record.price_original == 300000
@@ -66,3 +66,17 @@ def test_current_raw_enrichment_and_unknown_materials(source_row):
 def test_insufficient_records_have_explicit_exclusion_reasons(source_row, changes, reason):
     with pytest.raises(Unpublishable, match=reason):
         adapt_source({**source_row, **changes})
+
+
+@pytest.mark.parametrize("period", ["day", "daily", "week", "weekly", " DAILY "])
+def test_short_term_quotes_are_not_long_term_evidence(source_row, period):
+    source_row.update(original_period=period)
+    with pytest.raises(Unpublishable, match="short_term_rental"):
+        adapt_source(source_row)
+
+
+@pytest.mark.parametrize("period", ["month", "monthly", "year", "yearly", "annual"])
+def test_long_term_quotes_remain_eligible(source_row, period):
+    source_row.update(original_period=period)
+    expected = 50 if period in {"year", "yearly", "annual"} else 600
+    assert adapt_source(source_row).price_monthly_normalized == expected
