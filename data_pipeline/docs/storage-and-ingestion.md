@@ -11,7 +11,7 @@ erDiagram
 
     PROPERTIES {
         int id PK
-        geometry geom "POINT, SRID 4326, GiST index"
+        geometry geom "POINT, SRID 4326, GiST index; NULL = no coordinates"
         string district
         string address_raw
         timestamptz created_at
@@ -28,7 +28,9 @@ erDiagram
         string original_currency
         string original_period
         float exchange_rate
-        timestamptz exchange_rate_at
+        timestamptz exchange_rate_at "when converted"
+        string rate_source "origin of the rate"
+        date rate_date "effective date of the rate"
         bool utilities_included "NULL = unknown"
         float area_sqm "NULL = unknown"
         int rooms_count "NULL = unknown"
@@ -52,6 +54,8 @@ erDiagram
         string original_period
         float exchange_rate
         timestamptz exchange_rate_at
+        string rate_source
+        date rate_date
         timestamptz recorded_at
     }
     INGESTION_RUNS {
@@ -85,10 +89,12 @@ GiST index on `properties.geom`, indexes on `listings(source, is_active)`, `list
 
 ```
 89c3800d8fdf  init schema with postgis and price history   (A02)
-3f9a6c2e1b84  ingestion runs, provenance, lifecycle        (this change)
+3f9a6c2e1b84  ingestion runs, provenance, lifecycle
+5b7d2e91c4a6  exchange-rate provenance: rate_source, rate_date
 ```
 
-Verified on an empty PostgreSQL 16 + PostGIS 3.4 database: `alembic upgrade head`, `alembic check`
+Verified on an empty PostgreSQL 16 + PostGIS 3.4 database (also with `postgis_topology`, `postgis_tiger_geocoder`
+and `fuzzystrmatch` installed, as in the standard postgis image): `alembic upgrade head`, `alembic check`
 (models == migrated schema), `alembic downgrade base`, `alembic upgrade head`; and on a database that already
 contained rows (backfill: `source='list.am'`, `url` from `raw_data`, first/last seen from `created_at`).
 Requires the `postgis` extension to exist (`CREATE EXTENSION postgis`) before the first revision.
@@ -108,9 +114,11 @@ its timestamp are stored on the listing and on every price observation. Rates ar
 **Idempotency.** A listing is identified by `(source, external_id)`. Re-running never duplicates listings; a
 `price_observations` row is added only when the original price, currency, period or normalized amounts change.
 
-**Run completeness.** A run is *complete* only if pagination reached its end (empty page after page 1), no
-index page failed, and neither `--pages` nor `--max-listings` stopped it early. Everything else (including a
-crash or a file import) is not complete.
+**Run completeness.** A run is *complete* only if pagination reached its end, no index page failed, and neither
+`--pages` nor `--max-listings` stopped it early. "Reached its end" means an empty page after page 1 **that is
+recognised as a genuine catalogue page** (same wrapper as page 1, no CAPTCHA/"Access denied" wording). A blocked,
+unrecognised or markup-changed page is an index failure, so the run is partial and deactivates nothing.
+Everything else (including a crash or a file import) is not complete.
 
 **Staleness policy.** Only a complete run evaluates inactivity:
 
@@ -123,6 +131,32 @@ crash or a file import) is not complete.
 Safeguards: a complete run that saw fewer than `MIN_SEEN_RATIO` (default 50%) of the currently active listings is
 recorded as `partial` with a note and deactivates nothing (blocked/empty pages); a failed run deactivates
 nothing; staleness is scoped per `--source-name`, so use one name per collected segment.
+
+**Coordinates.** Both missing is valid: the listing is stored with a `Property` whose `geom` is NULL, stays available
+for search and detail views, and is excluded from map results (`queries.map_listings`). Exactly one coordinate, or a
+non-numeric/out-of-range value, is rejected. Listings without coordinates are never grouped. If coordinates later
+arrive or are corrected for an existing listing:
+
+* property used only by this listing: its `geom` is updated in place (or the listing joins the matching property
+  if the corrected position matches a known flat; the emptied property is left in place, never deleted);
+* property shared with other listings: it is **never moved**. If the corrected position is within 15 m the listing
+  stays; otherwise it joins the matching property or gets its own new property at the corrected position;
+* moves under 1 m are treated as rounding noise; missing coordinates never erase a known position.
+
+**Integer fields.** `rooms_count`, `floor`, `total_floors` accept only integral values (`2`, `2.0`, `"2"`). A
+non-integral value such as `2.9` is stored as unknown (NULL), not truncated, and the original value is kept in
+`raw_data.rejected_fields` (also used for values refused as contradictory, e.g. floor above total floors).
+
+**Exchange-rate provenance.** `rate_source` (where the rate comes from) and `rate_date` (its effective date) are
+stored separately from `exchange_rate_at`, which is only when the conversion ran. The rates are static approximate
+constants (`rate_source = "static-config"`, `rate_date` = the date they were set; both overridable with the
+`EXCHANGE_RATE_SOURCE` / `EXCHANGE_RATE_DATE` environment variables). Rows stored before this revision have
+`rate_source = 'static-config'` and `rate_date = NULL` (unknown). Replace the static table with a real feed when
+one is chosen.
+
+**Alembic scope.** `database/alembic_filters.py` restricts autogenerate to the tables declared in the models and to
+the default schema, so extension-owned tables (`spatial_ref_sys`, `tiger.*`, `topology.*`, ...) are never reported by
+`alembic check`.
 
 **Duplicate grouping** (`grouping.py`). A new listing joins an existing `Property` only if, within the same
 source, area, rooms and floor are all known; rooms and floor are equal; total floors are equal when both are
@@ -143,5 +177,7 @@ prices and unknown attributes: `python -m data_pipeline.cli import-file data_pip
 * `price_usd` / `price_amd` are **monthly** amounts; use `original_*` for what the ad actually said.
 * Unknown values are `NULL`, never `0`; use `is_active` and `last_seen_at` to filter stale inventory.
 * All new timestamps are `timestamptz` (existing ones converted, assuming UTC).
+* `Property.geom` can be NULL (listing without coordinates): use `queries.map_listings` or `geom IS NOT NULL` for maps.
+* Rate provenance: `rate_source`, `rate_date`; `exchange_rate_at` is the conversion time only.
 * `(source, external_id)` replaced the old unique index on `external_id` alone.
 * Breaking changes should be announced to backend before merge. This still needs to be agreed with them.

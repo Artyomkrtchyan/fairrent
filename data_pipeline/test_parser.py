@@ -36,3 +36,10 @@ def test_parser_reads_floor_rooms_and_daily_price():
     r = parse_listing_html(html, external_id="2")
     assert (r["floor"], r["total_floors"], r["rooms_count"], r["area_sqm"]) == (5, 9, 2, 55.5)
     assert (r["price"], r["currency"], r["period"]) == (10000.0, "AMD", "day")
+
+
+def test_parser_does_not_truncate_fractional_rooms():
+    r = parse_listing_html('<div class="pattr">Rooms: 2.5</div><div class="pattr">Floor: 3.5</div>', "9")
+    assert r["rooms_count"] == 2.5 and r["floor"] == 3.5     # validation then marks them unknown
+    r = parse_listing_html('<div class="pattr">Rooms: 2</div>', "9")
+    assert r["rooms_count"] == 2 and isinstance(r["rooms_count"], int)

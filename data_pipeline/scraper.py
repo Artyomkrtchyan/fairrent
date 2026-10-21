@@ -51,6 +51,52 @@ def extract_listing_urls(index_html: str, base_url: str) -> List[str]:
     return urls
 
 
+_BLOCK_RE = re.compile(
+    r"captcha|access denied|forbidden|are you (?:a )?(?:human|robot)|unusual traffic|"
+    r"verify (?:that )?you are|just a moment|attention required|too many requests|rate limit",
+    re.I,
+)
+
+
+def catalogue_signature(index_html: str) -> Optional[tuple]:
+    """Structural fingerprint of a genuine catalogue page: (tag, id, classes) of the nearest
+    identifiable element wrapping the listing links. Taken from a page that DID contain listings."""
+    soup = BeautifulSoup(index_html, "html.parser")
+    link = soup.find("a", href=_ITEM_RE)
+    if link is None:
+        return None
+    for parent in link.parents:
+        if parent.name in (None, "[document]", "html", "body"):
+            break
+        classes = tuple(sorted(parent.get("class") or []))
+        if parent.get("id") or classes:
+            return (parent.name, parent.get("id"), classes)
+    return None
+
+
+def has_catalogue_structure(index_html: str, signature: Optional[tuple]) -> bool:
+    if signature is None:
+        return False
+    tag, elem_id, classes = signature
+    soup = BeautifulSoup(index_html, "html.parser")
+    return any(
+        el.get("id") == elem_id and tuple(sorted(el.get("class") or [])) == classes
+        for el in soup.find_all(tag)
+    )
+
+
+def looks_blocked(index_html: str) -> bool:
+    """CAPTCHA / 'Access denied' style pages (only consulted when a page has no listings)."""
+    soup = BeautifulSoup(index_html, "html.parser")
+    text = " ".join(filter(None, [soup.title.get_text(" ") if soup.title else "",
+                                  soup.get_text(" ", strip=True)[:2000]]))
+    return bool(_BLOCK_RE.search(text))
+
+
+def _is_blank(value: Any) -> bool:
+    return value is None or (isinstance(value, str) and not value.strip())
+
+
 def _to_number(value: Any, field: str) -> float:
     """Converts int/float/numeric-string to a finite float, otherwise raises ValueError."""
     if value is None or isinstance(value, bool):
@@ -83,7 +129,11 @@ def _optional_number(value: Any, minimum: float, integer: bool = False) -> Optio
         return None
     if number < minimum:
         return None
-    return int(number) if integer else number
+    if integer:
+        if number != int(number):      # 2.9 rooms is not "2 rooms": unknown, not truncated
+            return None
+        return int(number)
+    return number
 
 
 class ListingPipeline:
@@ -106,6 +156,7 @@ class ListingPipeline:
         self.reached_end = False          # an index page past page 1 had no listings
         self.capped = False               # stopped early because of --max-listings
         self.finished = False             # generator ran to a normal end
+        self.catalogue_signature = None   # structure of page 1; later pages must look the same
 
     @property
     def crawl_complete(self) -> bool:
@@ -152,14 +203,23 @@ class ListingPipeline:
             self.pages_fetched += 1
 
             item_urls = extract_listing_urls(index_html, index_url)
+            if item_urls and page == 1:
+                self.catalogue_signature = catalogue_signature(index_html)
             if not item_urls:
                 if page == 1:
                     # An empty first page is more likely a block/markup change than an empty market.
                     self.index_failures += 1
                     logger.warning("First index page has no listings; treating the crawl as incomplete.")
-                else:
+                elif (not looks_blocked(index_html)
+                      and has_catalogue_structure(index_html, self.catalogue_signature)):
                     self.reached_end = True
                     logger.info("No listings on page %d; end of pagination.", page)
+                else:
+                    # CAPTCHA / access denied / changed markup: NOT evidence that the catalogue ended.
+                    self.index_failures += 1
+                    self.quarantine({"url": index_url},
+                                    f"Index page {page} is not a recognizable catalogue page "
+                                    "(blocked, CAPTCHA or changed markup); not treated as end of pagination")
                 break
 
             for url in item_urls:
@@ -194,11 +254,6 @@ class ListingPipeline:
         logger.warning("Quarantined record due to: %s", reason)
 
     def parse_and_validate_record(self, raw_item: dict) -> Optional[dict]:
-        """
-        Validates a raw record and returns a COPY with typed values
-        (price, lat, lon as floats; id as str; currency upper-cased; period defaulted).
-        Quarantines the record and returns None if anything critical is missing/invalid.
-        """
         try:
             item_id = raw_item.get("id")
             if item_id is None or not str(item_id).strip():
@@ -208,12 +263,19 @@ class ListingPipeline:
             if price <= 0:
                 raise ValueError("Price must be greater than zero")
 
-            lat = _to_number(raw_item.get("lat"), "latitude")
-            lon = _to_number(raw_item.get("lon"), "longitude")
-            if not -90 <= lat <= 90:
-                raise ValueError(f"Latitude out of range [-90, 90]: {lat}")
-            if not -180 <= lon <= 180:
-                raise ValueError(f"Longitude out of range [-180, 180]: {lon}")
+            # Coordinates: both missing is allowed (listing stays searchable, just not on the map);
+            # exactly one missing, non-numeric or out-of-range is invalid.
+            lat_blank, lon_blank = _is_blank(raw_item.get("lat")), _is_blank(raw_item.get("lon"))
+            if lat_blank != lon_blank:
+                raise ValueError("latitude and longitude must both be present or both be missing")
+            lat = lon = None
+            if not lat_blank:
+                lat = _to_number(raw_item.get("lat"), "latitude")
+                lon = _to_number(raw_item.get("lon"), "longitude")
+                if not -90 <= lat <= 90:
+                    raise ValueError(f"Latitude out of range [-90, 90]: {lat}")
+                if not -180 <= lon <= 180:
+                    raise ValueError(f"Longitude out of range [-180, 180]: {lon}")
 
             currency = str(raw_item.get("currency") or "").upper()
             if currency not in EXCHANGE_RATES:
@@ -227,6 +289,10 @@ class ListingPipeline:
             total_floors = _optional_number(raw_item.get("total_floors"), minimum=1, integer=True)
             if floor is not None and total_floors is not None and floor > total_floors:
                 floor = total_floors = None  # contradictory -> unknown rather than wrong
+            checked = {"area_sqm": area, "rooms_count": rooms, "floor": floor, "total_floors": total_floors}
+            # Values the source supplied but we refused (non-integral rooms, contradictions, ...):
+            rejected = {k: raw_item.get(k) for k, v in checked.items()
+                        if v is None and not _is_blank(raw_item.get(k))}
 
             cleaned = {
                 **raw_item,
@@ -248,10 +314,12 @@ class ListingPipeline:
             }
             # Explicit list so the API/analysts can tell "unknown" from a real value.
             cleaned["missing_fields"] = sorted(
-                k for k in ("area_sqm", "rooms_count", "floor", "total_floors", "building_type",
-                            "district", "address_raw", "description", "title")
-                if cleaned.get(k) is None
+                [k for k in ("area_sqm", "rooms_count", "floor", "total_floors", "building_type",
+                             "district", "address_raw", "description", "title")
+                 if cleaned.get(k) is None]
+                + (["coordinates"] if lat is None else [])
             )
+            cleaned["rejected_fields"] = rejected   # {field: original value} for traceability
             return cleaned
         except ValueError as e:
             self.quarantine(raw_item, str(e))

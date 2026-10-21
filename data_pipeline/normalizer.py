@@ -1,11 +1,15 @@
-from datetime import datetime, timezone
+import os
+from datetime import date, datetime, timezone
 
+# Approximate exchange rates (units of currency per 1 USD).
 AMD_PER_USD = 385.0
 EXCHANGE_RATES = {
     "USD": 1.0,
     "AMD": AMD_PER_USD,
     "EUR": 0.92,
 }
+EXCHANGE_RATE_SOURCE = os.environ.get("EXCHANGE_RATE_SOURCE", "static-config")
+EXCHANGE_RATE_DATE = date.fromisoformat(os.environ.get("EXCHANGE_RATE_DATE", "2026-10-21"))
 
 DAYS_PER_MONTH = 30
 WEEKS_PER_MONTH = 4.33
@@ -24,7 +28,8 @@ def monthly_multiplier(period: str | None) -> float:
         return 1.0
     raise ValueError(f"Unsupported rental period: {period!r}")
 
-def normalize_price(raw_price: float, currency: str, period: str, 
+
+def normalize_price(raw_price: float, currency: str, period: str,
                     includes_utilities: bool | None = None) -> dict:
     curr = (currency or "").upper()
     if curr not in EXCHANGE_RATES:
@@ -44,7 +49,10 @@ def normalize_price(raw_price: float, currency: str, period: str,
         "original_period": period,
         "period_multiplier": multiplier,
         "exchange_rate_used": EXCHANGE_RATES[curr],
-        "conversion_timestamp": datetime.now(timezone.utc).isoformat(),
+        "rate_source": EXCHANGE_RATE_SOURCE,
+        "rate_date": EXCHANGE_RATE_DATE.isoformat(),          # effective date of the rate
+        "conversion_timestamp": datetime.now(timezone.utc).isoformat(),   # when we converted
         "utilities_included": includes_utilities,
+        # True when we do not know whether utilities are part of the price.
         "utility_cost_uncertainty": includes_utilities is None,
     }

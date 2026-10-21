@@ -1,6 +1,6 @@
 from geoalchemy2 import Geometry
 from sqlalchemy import (
-    JSON, Boolean, CheckConstraint, Column, DateTime, Float, ForeignKey, Index,
+    JSON, Boolean, CheckConstraint, Column, Date, DateTime, Float, ForeignKey, Index,
     Integer, String, Text, UniqueConstraint, func,
 )
 from sqlalchemy.orm import declarative_base, relationship
@@ -67,7 +67,9 @@ class Listing(Base):
     original_currency = Column(String(3))
     original_period = Column(String)
     exchange_rate = Column(Float)          # units of original currency per 1 USD
-    exchange_rate_at = Column(DateTime(timezone=True))
+    exchange_rate_at = Column(DateTime(timezone=True))   # when the conversion was performed
+    rate_source = Column(String)           # where the rate comes from (e.g. "static-config")
+    rate_date = Column(Date)               # effective date of the rate (not the processing time)
     utilities_included = Column(Boolean)   # NULL = unknown
 
     # Optional attributes: NULL means "unknown", 0 is a real zero.
@@ -116,6 +118,8 @@ class PriceObservation(Base):
     original_period = Column(String)
     exchange_rate = Column(Float)
     exchange_rate_at = Column(DateTime(timezone=True))
+    rate_source = Column(String)
+    rate_date = Column(Date)
     utilities_included = Column(Boolean)
     recorded_at = Column(DateTime(timezone=True), nullable=False, index=True,
                          server_default=func.now())

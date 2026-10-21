@@ -1,13 +1,64 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
+from geoalchemy2 import Geography
 from geoalchemy2.elements import WKTElement
+from sqlalchemy import cast, func, select
 from sqlalchemy.orm import Session
 from database.models import Listing, PriceObservation, Property
 from .config import DEFAULT_SOURCE_NAME
-from .grouping import find_matching_property
+from .grouping import GROUP_RADIUS_M, find_matching_property
 
+# Optional attributes: a known value is never overwritten by "unknown" (None).
 _OPTIONAL_FIELDS = ("url", "title", "area_sqm", "rooms_count", "floor", "total_floors",
                     "building_type", "description")
+
+COORD_EPSILON_M = 1.0
+
+
+def _has_coords(data: dict) -> bool:
+    return data.get("lat") is not None and data.get("lon") is not None
+
+def _geom(data: dict) -> Optional[WKTElement]:
+    if not _has_coords(data):
+        return None
+    return WKTElement(f"POINT({data['lon']} {data['lat']})", srid=4326)
+
+def _new_property(session: Session, data: dict, now: datetime) -> Property:
+    # geom stays NULL when the source gave no coordinates: the listing is still stored and
+    # searchable, it is just excluded from map results (see queries.map_listings).
+    prop = Property(geom=_geom(data), district=data.get("district"),
+                    address_raw=data.get("address_raw"), created_at=now)
+    session.add(prop)
+    session.flush()
+    return prop
+
+
+def _reassess_property(session: Session, listing: Listing, prop: Property, data: dict,
+                       source: str, now: datetime) -> Property:
+    others = session.query(Listing).filter(
+        Listing.property_id == prop.id, Listing.id != listing.id).count()
+    new_point = func.ST_SetSRID(func.ST_MakePoint(data["lon"], data["lat"]), 4326)
+    distance = session.scalar(
+        select(func.ST_Distance(cast(Property.geom, Geography), cast(new_point, Geography)))
+        .where(Property.id == prop.id))          # NULL when the property has no position yet
+
+    if distance is not None and distance <= (GROUP_RADIUS_M if others else COORD_EPSILON_M):
+        return prop                              # same place (or noise): nothing to do
+
+    matched = find_matching_property(session, data, source)
+    if matched is not None and matched.id != prop.id:
+        return matched                           # the corrected position belongs to a known flat
+
+    if others == 0:
+        prop.geom = _geom(data)                  # exclusive property: move it in place
+        if data.get("district") is not None:
+            prop.district = data["district"]
+        if data.get("address_raw") is not None:
+            prop.address_raw = data["address_raw"]
+        session.flush()
+        return prop
+    return _new_property(session, data, now)     # shared property stays where it is; only this
+                                                 # listing gets a property at the corrected spot
 
 
 def process_scraped_item(session: Session, data: dict, normalized: dict,
@@ -23,22 +74,13 @@ def process_scraped_item(session: Session, data: dict, normalized: dict,
     )
 
     # 1. Property (spatial identity)
-    if listing is not None and listing.property_id is not None:
-        property_id = listing.property_id
+    if listing is None or listing.property_id is None:
+        prop = find_matching_property(session, data, source) or _new_property(session, data, now)
     else:
-        matched = find_matching_property(session, data, source)
-        if matched is not None:
-            property_id = matched.id
-        else:
-            prop = Property(
-                geom=WKTElement(f"POINT({data['lon']} {data['lat']})", srid=4326),
-                district=data.get("district"),
-                address_raw=data.get("address_raw"),
-                created_at=now,
-            )
-            session.add(prop)
-            session.flush()
-            property_id = prop.id
+        prop = session.get(Property, listing.property_id)
+        if _has_coords(data):          # coordinates unknown now: keep what we already know
+            prop = _reassess_property(session, listing, prop, data, source, now)
+    property_id = prop.id
 
     # 2. Listing upsert
     provenance = {
@@ -49,6 +91,8 @@ def process_scraped_item(session: Session, data: dict, normalized: dict,
         "original_period": normalized["original_period"],
         "exchange_rate": normalized["exchange_rate_used"],
         "exchange_rate_at": datetime.fromisoformat(normalized["conversion_timestamp"]),
+        "rate_source": normalized.get("rate_source"),
+        "rate_date": date.fromisoformat(normalized["rate_date"]) if normalized.get("rate_date") else None,
         "utilities_included": normalized.get("utilities_included"),
     }
 

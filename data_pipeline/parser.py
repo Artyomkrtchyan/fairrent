@@ -53,7 +53,6 @@ def parse_price_text(price_str: str) -> Tuple[Optional[float], Optional[str], Op
 
 
 def parse_price(price_str: str) -> Tuple[Optional[float], Optional[float]]:
-    """Legacy helper: returns (usd, amd) for the amount as quoted (no period conversion)."""
     amount, currency, _ = parse_price_text(price_str)
     if amount is None:
         return None, None
@@ -69,11 +68,6 @@ _MAPS_RE = re.compile(r"[?&@](?:ll=|q=)?(-?\d{1,2}\.\d{3,}),\s*(-?\d{1,3}\.\d{3,
 
 
 def extract_coordinates(soup: BeautifulSoup, html_content: str) -> Tuple[Optional[float], Optional[float]]:
-    """Best-effort coordinate extraction. Returns (lat, lon) or (None, None).
-
-    NOTE: verify these strategies against the real list.am markup; records
-    without coordinates are quarantined by the pipeline.
-    """
     # 1. data-lat / data-lng attributes on any element
     el = soup.find(attrs={"data-lat": True})
     if el is not None:
@@ -93,7 +87,14 @@ def extract_coordinates(soup: BeautifulSoup, html_content: str) -> Tuple[Optiona
         m = _MAPS_RE.search(a["href"])
         if m:
             return float(m.group(1)), float(m.group(2))
+
     return None, None
+
+
+def _number(text: str):
+    """int when integral, float otherwise, so '2.5 rooms' is never silently read as 2."""
+    value = float(text)
+    return int(value) if value == int(value) else value
 
 
 def parse_listing_html(html_content: str, external_id: str) -> Dict[str, Any]:
@@ -124,13 +125,13 @@ def parse_listing_html(html_content: str, external_id: str) -> Dict[str, Any]:
                 if pair:
                     listing["floor"], listing["total_floors"] = int(pair.group(1)), int(pair.group(2))
                 else:
-                    single = re.search(r"(\d+)", text)
+                    single = re.search(r"(\d+(?:\.\d+)?)", text)
                     if single:
-                        listing["floor"] = int(single.group(1))
+                        listing["floor"] = _number(single.group(1))
             elif "rooms" in lowered or "սենյակ" in lowered:
-                room_match = re.search(r"(\d+)", text)
+                room_match = re.search(r"(\d+(?:\.\d+)?)", text)
                 if room_match:
-                    listing["rooms_count"] = int(room_match.group(1))
+                    listing["rooms_count"] = _number(room_match.group(1))
             elif any(keyword in lowered for keyword in ["area", "մ²", "sq", "մ"]):
                 area_match = re.search(r"(\d+(?:\.\d+)?)", text)
                 if area_match:
@@ -147,8 +148,6 @@ def parse_listing_html(html_content: str, external_id: str) -> Dict[str, Any]:
 
 
 def fetch_or_fallback_listing(url: str, fixture_path: str = "fallback_fixture.json") -> Dict[str, Any]:
-    """Fetches live listing or falls back to a local fixture. For offline demos/tests only;
-    the ingestion CLI does NOT use it, so fixture data never reaches the database."""
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) FairRentBot/1.0"}
     try:
         response = httpx.get(url, headers=headers, timeout=10.0)
