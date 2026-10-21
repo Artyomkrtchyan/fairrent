@@ -65,7 +65,7 @@ def test_standard_valuation_success(sample_dataset):
 
 def test_distance_filtering_out_of_bounds(sample_dataset):
   """1. Test that coordinate-only request at (0, 0) returns abstention."""
-  model = ComparableMedianBaseline(sample_dataset, min_distance_km=3.0)
+  model = ComparableMedianBaseline(sample_dataset, max_distance_km=3.0)
   query = {"latitude": 0.0, "longitude": 0.0, "area_sqm": None}
 
   res = model.predict(query)
@@ -101,6 +101,32 @@ def test_freshness_outdated_records_abstain():
   assert res["observed_market_statistics"]["insufficient_data"] is True
 
 
+def test_timezone_aware_utc_timestamps():
+  """2b. Regression test: ensure predict() without query_date handles ISO UTC strings."""
+  utc_data = pd.DataFrame({
+      "listing_id": [1, 2, 3],
+      "district": ["Kentron"] * 3,
+      "latitude": [40.1811] * 3,
+      "longitude": [44.5136] * 3,
+      "area_sqm": [50.0, 60.0, 70.0],
+      "price_usd": [500.0, 600.0, 700.0],
+      "listing_date": [
+          "2026-10-20T00:00:00Z",
+          "2026-10-20T00:00:00Z",
+          "2026-10-20T00:00:00Z",
+      ],
+  })
+  model = ComparableMedianBaseline(utc_data, min_comparables=3)
+  query = {"latitude": 40.1811, "longitude": 44.5136, "area_sqm": 50.0}
+
+  # Should not raise TypeError when query_date is None (uses pd.Timestamp.now(tz='UTC'))
+  res = model.predict(query)
+  assert res["valuation_assessment"]["assessment_status"] in [
+      "VALUATION_SUCCESS",
+      "INSUFFICIENT_DATA_ABSTAIN",
+  ]
+
+
 def test_exclude_zero_area_and_invalid_prices():
   """3. Test exclusion of zero area and invalid prices."""
   invalid_data = pd.DataFrame({
@@ -108,8 +134,8 @@ def test_exclude_zero_area_and_invalid_prices():
       "district": ["Kentron"] * 5,
       "latitude": [40.1811] * 5,
       "longitude": [44.5136] * 5,
-      "area_sqm": [0.0, -10.0, 50.0, 60.0, 70.0],  # 2 invalid areas
-      "price_usd": [500.0, 600.0, 0.0, 600.0, 700.0],  # 1 invalid price
+      "area_sqm": [0.0, -10.0, 50.0, 60.0, 70.0],
+      "price_usd": [500.0, 600.0, 0.0, 600.0, 700.0],
       "listing_date": ["2026-10-01"] * 5,
   })
   model = ComparableMedianBaseline(invalid_data, min_comparables=2)
