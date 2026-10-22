@@ -72,9 +72,24 @@ with the team. Do not claim these controls are currently configured.
 
 ## Validation evidence
 
-A controlled negative PR will temporarily contain a failing backend pytest and a
-frontend TypeScript error. Both checks must report failure on GitHub. The probe
-is never merged; after collecting evidence it is closed and its branch removed.
-The final C07 PR contains only CI/dependency/documentation changes and must pass
-all four real GitHub checks. Links and observed results are recorded below after
-execution, so a planned negative test is not confused with a completed one.
+Verified on 2026-10-22 using actual GitHub-hosted runners:
+
+- [Positive run 39832185123](https://github.com/Artyomkrtchyan/fairrent/actions/runs/39832185123)
+  for implementation commit `dbc534a`: all four jobs succeeded. Backend/data/ML:
+  **203 passed**. Frontend: **39 passed**, TypeScript and production build passed.
+  API image build, dependency compatibility and C01 validation/regeneration passed.
+- [Controlled negative run 39832209500](https://github.com/Artyomkrtchyan/fairrent/actions/runs/39832209500)
+  from [temporary PR #67](https://github.com/Artyomkrtchyan/fairrent/pull/67): the
+  intentional backend assertion produced **1 failed, 203 passed** and a failed
+  Backend tests check. The intentional TypeScript mismatch produced **TS2322**
+  and a failed Frontend checks check. Later frontend steps were skipped rather
+  than reporting success after that failure. The independent Docker and C01
+  checks still succeeded.
+- PR #67 was closed without merge, and its temporary branch was removed. Neither
+  intentional fault is present in the implementation PR. The failed run remains
+  as audit evidence; it is not an unresolved product failure.
+
+Implementation: [PR #66](https://github.com/Artyomkrtchyan/fairrent/pull/66).
+C07 is ready for teammate review and merge after its current revision is green.
+The issue closes on merge, not merely when this document is committed. Plan-limited
+branch protection remains explicitly documented, not claimed as configured.
