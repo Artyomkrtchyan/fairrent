@@ -123,7 +123,6 @@ Implemented:
 - Loading, error, missing-value and not-found handling.
 
 Later tasks:
-- Full listing valuation and evidence presentation: D04.
 - Interactive map and infrastructure layers: D05.
 - Integrated analytics: D06.
 - Reviewer authentication and mutations: D07.
@@ -165,3 +164,25 @@ The latest test run passed all 39 tests.
 
 Real backend catalogue integration still requires the C03 endpoint.
 The interactive map remains D05 work.
+
+## D04 listing details
+
+The detail page now includes:
+- Property facts and description, with explicit missing-value labels.
+- A source photo or an unavailable-photo placeholder.
+- Asking rent, estimated rent and supported prediction ranges.
+- Assessment explanation, comparable count, source date and model/rule versions.
+- Individual valuation factors when supplied.
+- Separate price signals and other risk evidence.
+- Original price/currency and a validated external source link.
+- USD/AMD display and return-to-catalogue navigation.
+
+Synthetic examples do not demonstrate real model accuracy.
+Observed price variation is not used to invent a prediction interval.
+An empty signal list does not establish that a listing is safe.
+
+The page currently reads the estimate embedded in the C01 listing-detail
+response. Real backend integration remains dependent on C04 availability.
+
+Validation: TypeScript, 56 tests and production build passed.
+Lint has zero errors and eight existing Fast Refresh warnings.
