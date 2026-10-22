@@ -165,24 +165,12 @@ The latest test run passed all 39 tests.
 Real backend catalogue integration still requires the C03 endpoint.
 The interactive map remains D05 work.
 
-## D04 listing details
+## Planned map renderer (D05)
 
-The detail page now includes:
-- Property facts and description, with explicit missing-value labels.
-- A source photo or an unavailable-photo placeholder.
-- Asking rent, estimated rent and supported prediction ranges.
-- Assessment explanation, comparable count, source date and model/rule versions.
-- Individual valuation factors when supplied.
-- Separate price signals and other risk evidence.
-- Original price/currency and a validated external source link.
-- USD/AMD display and return-to-catalogue navigation.
-
-Synthetic examples do not demonstrate real model accuracy.
-Observed price variation is not used to invent a prediction interval.
-An empty signal list does not establish that a listing is safe.
-
-The page currently reads the estimate embedded in the C01 listing-detail
-response. Real backend integration remains dependent on C04 availability.
-
-Validation: TypeScript, 56 tests and production build passed.
-Lint has zero errors and eight existing Fast Refresh warnings.
+The agreed renderer is MapLibre GL JS. The target opening screen is a map filling
+the viewport below the header, with compact filters, linked listings and a 2D/3D
+building mode. This remains planned: no renderer dependency or live tiles are
+installed by the documentation update. Provider, Yerevan height-data coverage,
+attribution and costs must be validated in D05. Rental color layers need a legend,
+counts/freshness and suitable aggregate data; no-data areas remain neutral.
+See [the revised map design](../docs/design/D01-screen-contracts.md#map-first-revision--agreed-2026-10-22).
