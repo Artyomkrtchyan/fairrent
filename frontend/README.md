@@ -165,3 +165,13 @@ The latest test run passed all 39 tests.
 
 Real backend catalogue integration still requires the C03 endpoint.
 The interactive map remains D05 work.
+
+## Planned map renderer (D05)
+
+The agreed renderer is MapLibre GL JS. The target opening screen is a map filling
+the viewport below the header, with compact filters, linked listings and a 2D/3D
+building mode. This remains planned: no renderer dependency or live tiles are
+installed by the documentation update. Provider, Yerevan height-data coverage,
+attribution and costs must be validated in D05. Rental color layers need a legend,
+counts/freshness and suitable aggregate data; no-data areas remain neutral.
+See [the revised map design](../docs/design/D01-screen-contracts.md#map-first-revision--agreed-2026-10-22).

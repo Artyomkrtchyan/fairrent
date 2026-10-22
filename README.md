@@ -10,7 +10,7 @@ Team roles: [Responsibilities and GitHub accounts](docs/team.md).
 
 ## Technology stack
 
-React, TypeScript, Vite, Leaflet, and Recharts for the frontend; Python, FastAPI, and Pydantic for the backend; PostgreSQL/PostGIS with SQLAlchemy and Alembic for data storage; pandas, scikit-learn, and CatBoost for ML; Protégé, OWL/RDF, and RDFLib for knowledge engineering.
+React, TypeScript, Vite, MapLibre GL JS, and Recharts for the frontend; Python, FastAPI, and Pydantic for the backend; PostgreSQL/PostGIS with SQLAlchemy and Alembic for data storage; pandas, scikit-learn, and CatBoost for ML; Protégé, OWL/RDF, and RDFLib for knowledge engineering.
 
 AWS hosting with Terraform, Docker, and GitHub Actions. See the [complete technology stack and architecture](docs/technology-stack.md).
 
