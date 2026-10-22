@@ -5,7 +5,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY main.py model_stub.py ./
+COPY main.py model_stub.py listing_models.py listing_repository.py listing_routes.py source_adapter.py sync_listings.py ./
+COPY sql/ ./sql/
 
 EXPOSE 8000
 

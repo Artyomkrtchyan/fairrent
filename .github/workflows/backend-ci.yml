@@ -15,6 +15,23 @@ jobs:
     name: Backend tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: c03-test-only
+          POSTGRES_DB: c03_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d c03_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      C03_TEST_DATABASE_URL: postgresql://postgres:c03-test-only@127.0.0.1:5432/c03_test
+      TEST_DATABASE_URL: postgresql+psycopg://postgres:c03-test-only@127.0.0.1:5432/c03_test
 
     steps:
       - name: Checkout repository
@@ -38,7 +55,7 @@ jobs:
         run: python -m pip check
 
       - name: Run backend tests
-        run: python -m pytest backend/tests -v
+        run: python -m pytest backend/tests data_pipeline -v
 
   docker-build:
     name: Backend Docker build
