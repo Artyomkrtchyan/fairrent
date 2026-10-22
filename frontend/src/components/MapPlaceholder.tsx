@@ -17,7 +17,7 @@ function project(lat: number, lng: number) {
   };
 }
 
-/** Schematic placeholder — the interactive Leaflet map is deferred. */
+/** Schematic placeholder — the interactive MapLibre GL JS map is deferred. */
 export function MapPlaceholder({
   listings,
   highlight,
