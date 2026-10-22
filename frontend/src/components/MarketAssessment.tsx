@@ -34,11 +34,6 @@ export function MarketAssessment({ askingUsd, estimate }: Props) {
 
   const estimatedUsd = !insufficient ? (assessment?.estimated_price_usd ?? null) : null;
 
-  const status =
-    !isAreaReference && !insufficient && askingUsd !== null && estimatedUsd !== null
-      ? (estimate?.price_status ?? "insufficient_data")
-      : "insufficient_data";
-
   const interval = estimate?.ml_prediction_interval;
 
   const lower = interval && "lower_bound_usd" in interval ? interval.lower_bound_usd : null;
@@ -67,6 +62,17 @@ export function MarketAssessment({ askingUsd, estimate }: Props) {
     calibration.trim() !== ""
       ? { lower, upper, confidence }
       : null;
+
+  // Use the same supported range for both the badge and the displayed interval.
+  // A supplied price_status may refer to an older asking rent.
+  const status: keyof typeof statusLabels =
+    validInterval && askingUsd !== null && Number.isFinite(askingUsd)
+      ? askingUsd < validInterval.lower
+        ? "below_range"
+        : askingUsd > validInterval.upper
+          ? "above_range"
+          : "within_range"
+      : "insufficient_data";
 
   return (
     <section className="card-surface overflow-hidden" aria-labelledby="market-assessment-title">

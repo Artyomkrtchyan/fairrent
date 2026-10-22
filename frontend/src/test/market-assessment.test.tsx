@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import fixtures from "../../../contracts/fixtures.json";
@@ -46,6 +46,53 @@ describe("market assessment", () => {
       screen.getByText(/These figures do not demonstrate real model accuracy/),
     ).toBeInTheDocument();
   });
+
+  it.each([
+    [900, "above_range", "Above estimated range"],
+    [400, "below_range", "Below estimated range"],
+    [520, "within_range", "Within estimated range"],
+    [680, "within_range", "Within estimated range"],
+    [600, "within_range", "Within estimated range"],
+  ] as const)(
+    "compares asking rent %s against the displayed interval, ignoring the supplied status",
+    (askingUsd, expectedStatus, label) => {
+      const estimate: Estimate = {
+        ...example,
+        price_status: expectedStatus === "within_range" ? "above_range" : "within_range",
+      };
+
+      render(<MarketAssessment askingUsd={askingUsd} estimate={estimate} />);
+
+      expect(screen.getByText(label)).toBeInTheDocument();
+      const range = screen.getByRole("heading", { name: "Prediction range" }).parentElement!;
+      expect(within(range).getByText(/520 USD/)).toBeInTheDocument();
+      expect(within(range).getByText(/680 USD/)).toBeInTheDocument();
+    },
+  );
+
+  it.each([null, "", "   "])(
+    "makes the comparison unavailable when calibration metadata is %s",
+    (calibrationVersion) => {
+      const estimate: Estimate = {
+        ...example,
+        price_status: "within_range",
+        ml_prediction_interval: {
+          lower_bound_usd: 520,
+          upper_bound_usd: 680,
+          confidence_level: 0.95,
+          interval_width_usd: 160,
+          calibration_version: calibrationVersion,
+        },
+      };
+
+      render(<MarketAssessment askingUsd={600} estimate={estimate} />);
+
+      expect(screen.getByText("Comparison unavailable")).toBeInTheDocument();
+      expect(screen.queryByText("Within estimated range")).not.toBeInTheDocument();
+      expect(screen.queryByText(/520 USD/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/680 USD/)).not.toBeInTheDocument();
+    },
+  );
 
   it("handles an unavailable assessment without inventing a price", () => {
     render(<MarketAssessment askingUsd={600} estimate={null} />);
