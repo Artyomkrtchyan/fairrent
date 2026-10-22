@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional, Tuple
 import httpx
 from bs4 import BeautifulSoup
 from .normalizer import AMD_PER_USD, EXCHANGE_RATES
+from .geography import DISTRICTS, normalize_district
 
 def create_listing_schema() -> Dict[str, Any]:
     return {
@@ -18,7 +19,10 @@ def create_listing_schema() -> Dict[str, Any]:
         "period": "month",
         "lat": None,
         "lon": None,
+        "coordinate_source": None,
+        "coordinate_confidence": "unknown",
         "district": None,
+        "district_source": None,
         "address_raw": None,
         "area_sqm": None,
         "rooms_count": None,
@@ -67,28 +71,86 @@ _LON_RE = re.compile(r'\b(?:lng|lon|long|longitude)\b["\']?\s*[:=]\s*["\']?(-?\d
 _MAPS_RE = re.compile(r"[?&@](?:ll=|q=)?(-?\d{1,2}\.\d{3,}),\s*(-?\d{1,3}\.\d{3,})")
 
 
-def extract_coordinates(soup: BeautifulSoup, html_content: str) -> Tuple[Optional[float], Optional[float]]:
+def extract_coordinates_with_source(
+    soup: BeautifulSoup, html_content: str
+) -> Tuple[Optional[float], Optional[float], Optional[str]]:
     # 1. data-lat / data-lng attributes on any element
     el = soup.find(attrs={"data-lat": True})
     if el is not None:
         lon = el.get("data-lng") or el.get("data-lon")
         try:
-            return float(el["data-lat"]), float(lon)
+            return float(el["data-lat"]), float(lon), "list.am:data-lat-data-lng"
         except (TypeError, ValueError):
             pass
 
     # 2. lat/lng key-value pairs in inline JSON / scripts
     lat_m, lon_m = _LAT_RE.search(html_content), _LON_RE.search(html_content)
     if lat_m and lon_m:
-        return float(lat_m.group(1)), float(lon_m.group(1))
+        return float(lat_m.group(1)), float(lon_m.group(1)), "list.am:inline-coordinate"
 
     # 3. map links such as ...?ll=40.18,44.51 or .../@40.18,44.51
     for a in soup.find_all("a", href=True):
         m = _MAPS_RE.search(a["href"])
         if m:
-            return float(m.group(1)), float(m.group(2))
+            return float(m.group(1)), float(m.group(2)), "list.am:map-link"
 
+    return None, None, None
+
+
+def extract_coordinates(soup: BeautifulSoup, html_content: str) -> Tuple[Optional[float], Optional[float]]:
+    """Backward-compatible coordinate parser; provenance is available in the companion API."""
+    latitude, longitude, _ = extract_coordinates_with_source(soup, html_content)
+    return latitude, longitude
+
+
+def extract_district(soup: BeautifulSoup) -> Tuple[Optional[str], Optional[str]]:
+    """Read only explicit source location fields whose value maps to an official district alias."""
+    candidates = []
+    for element in soup.find_all(attrs={"data-district": True}):
+        candidates.append((element.get("data-district"), "list.am:data-district"))
+    for element in soup.find_all(attrs={"itemprop": re.compile(r"addressRegion|addressLocality", re.I)}):
+        candidates.append((element.get("content") or element.get_text(" ", strip=True),
+                           "list.am:structured-address"))
+    for element in soup.find_all("meta", attrs={"name": re.compile(r"district", re.I)}):
+        candidates.append((element.get("content"), "list.am:district-metadata"))
+    for candidate, source in candidates:
+        if not isinstance(candidate, str):
+            continue
+        district_id = normalize_district(candidate)
+        if district_id:
+            canonical = DISTRICTS[district_id][0]
+            return canonical, source
     return None, None
+
+
+def extract_address(soup: BeautifulSoup) -> Optional[str]:
+    """Return an explicit street/address field; never infer it from the listing title."""
+    elements = [
+        soup.find("meta", attrs={"itemprop": re.compile(r"^(streetAddress|address)$", re.I)}),
+        soup.find("meta", attrs={"property": re.compile(r"^og:street-address$", re.I)}),
+        soup.find(attrs={"itemprop": re.compile(r"^(streetAddress|address)$", re.I)}),
+    ]
+    for element in elements:
+        if element is None:
+            continue
+        value = element.get("content") or element.get_text(" ", strip=True)
+        if value and value.strip():
+            return value.strip()
+    return None
+
+
+def extract_images(soup: BeautifulSoup) -> list[str]:
+    """Collect explicit listing image URLs, preferring the page's OpenGraph image."""
+    urls = []
+    for meta in soup.find_all("meta", attrs={"property": re.compile(r"^og:image$", re.I)}):
+        value = meta.get("content")
+        if value and value.strip() and value.strip() not in urls:
+            urls.append(value.strip())
+    for meta in soup.find_all("meta", attrs={"name": re.compile(r"^twitter:image$", re.I)}):
+        value = meta.get("content")
+        if value and value.strip() and value.strip() not in urls:
+            urls.append(value.strip())
+    return urls
 
 
 def _number(text: str):
@@ -114,7 +176,15 @@ def parse_listing_html(html_content: str, external_id: str) -> Dict[str, Any]:
             listing["price_usd"], listing["price_amd"] = parse_price(price_text)
             listing["price"], listing["currency"], listing["period"] = parse_price_text(price_text)
 
-        listing["lat"], listing["lon"] = extract_coordinates(soup, html_content)
+        listing["lat"], listing["lon"], listing["coordinate_source"] = extract_coordinates_with_source(
+            soup, html_content
+        )
+        if listing["coordinate_source"]:
+            # list.am commonly returns rounded/map-pin coordinates, not a surveyed address point.
+            listing["coordinate_confidence"] = "approximate"
+        listing["district"], listing["district_source"] = extract_district(soup)
+        listing["address_raw"] = extract_address(soup)
+        listing["images"] = extract_images(soup)
 
         # Parameters block (Floor, Rooms, Area, ...). Anything not found stays None.
         for p in soup.find_all("div", class_="pattr"):

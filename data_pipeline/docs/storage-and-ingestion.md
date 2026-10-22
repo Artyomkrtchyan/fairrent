@@ -13,6 +13,17 @@ erDiagram
         int id PK
         geometry geom "POINT, SRID 4326, GiST index; NULL = no coordinates"
         string district
+        string district_id "Canonical A05 id; NULL when source district is unresolved"
+        string district_source
+        string coordinate_source
+        string coordinate_confidence "exact|approximate|unknown"
+        float distance_metro_m "Haversine metres to nearest reference station"
+        string nearest_metro_id
+        float distance_university_m "Haversine metres to nearest campus reference"
+        string nearest_university_id
+        float distance_center_m "Haversine metres to Republic Square reference"
+        string geo_status "resolved|unresolved"
+        string geography_version
         string address_raw
         timestamptz created_at
     }
@@ -74,11 +85,21 @@ erDiagram
         json params
         text notes
     }
+    GEOGRAPHIC_REFERENCE_POINTS {
+        string id PK
+        string name
+        string kind "metro|university|city_center"
+        geometry geom "POINT, SRID 4326"
+        string coordinate_source
+        string coordinate_confidence
+        text source_url
+        string geography_version
+    }
 ```
 
-**Not implemented yet:** `infrastructure`, `estimates`, `signals`, `reviews`. They are part of the A02 goal but
-their columns depend on the backend/analytics contract and were not specified, so they are deliberately not
-invented here. Add them as further Alembic revisions once the contract is agreed.
+**Not implemented yet:** the public infrastructure browsing endpoint, `estimates`, `signals`, and `reviews`.
+The A05 `geographic_reference_points` table is the versioned source registry; consumer endpoints and their
+remaining columns depend on the backend/analytics contract. Add those in later Alembic revisions once agreed.
 
 Constraints and indexes that protect the data: `UNIQUE (source, external_id)` (source identity),
 `CHECK` on positive original price / exchange rate, non-negative miss counter and run status values,
@@ -91,6 +112,7 @@ GiST index on `properties.geom`, indexes on `listings(source, is_active)`, `list
 89c3800d8fdf  init schema with postgis and price history   (A02)
 3f9a6c2e1b84  ingestion runs, provenance, lifecycle
 5b7d2e91c4a6  exchange-rate provenance: rate_source, rate_date
+a05_geo_20261022  A05 coordinate provenance, normalized districts, proximity fields and consumer view
 ```
 
 Verified on an empty PostgreSQL 16 + PostGIS 3.4 database (also with `postgis_topology`, `postgis_tiger_geocoder`
@@ -142,6 +164,12 @@ arrive or are corrected for an existing listing:
 * property shared with other listings: it is **never moved**. If the corrected position is within 15 m the listing
   stays; otherwise it joins the matching property or gets its own new property at the corrected position;
 * moves under 1 m are treated as rounding noise; missing coordinates never erase a known position.
+
+**A05 geographic features.** The property also retains district/coordinate provenance and coordinate confidence.
+The parser assigns approximate confidence to source map coordinates; absent or unprovenanced coordinates remain
+unknown. `property_geographic_features` exposes normalized districts and proximity features to downstream
+consumers. Run `python -m data_pipeline.enrich_geography` once after applying the A05 migration to backfill
+existing properties. See [A05 reference data, district handling, units and limitations](../../docs/A05-geographic-features.md).
 
 **Integer fields.** `rooms_count`, `floor`, `total_floors` accept only integral values (`2`, `2.0`, `"2"`). A
 non-integral value such as `2.9` is stored as unknown (NULL), not truncated, and the original value is kept in

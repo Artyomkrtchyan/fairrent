@@ -43,8 +43,54 @@ class Property(Base):
     # PostGIS Point for geospatial queries (WGS 84 / SRID 4326)
     geom = Column(Geometry(geometry_type="POINT", srid=4326), nullable=True)
     district = Column(String, index=True)
+    district_id = Column(String, index=True)
+    district_source = Column(String)
     address_raw = Column(String)
+    coordinate_source = Column(String)
+    coordinate_confidence = Column(String, nullable=False, default="unknown", server_default="unknown")
+    distance_metro_m = Column(Float)
+    nearest_metro_id = Column(String)
+    distance_university_m = Column(Float)
+    nearest_university_id = Column(String)
+    distance_center_m = Column(Float)
+    geo_status = Column(String, nullable=False, default="unresolved", server_default="unresolved")
+    geography_version = Column(String, nullable=False, default="yerevan-geo-v1",
+                               server_default="yerevan-geo-v1")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        CheckConstraint("coordinate_confidence IN ('exact', 'approximate', 'unknown')",
+                        name="ck_properties_coordinate_confidence"),
+        CheckConstraint("geo_status IN ('resolved', 'unresolved')", name="ck_properties_geo_status"),
+        CheckConstraint(
+            "(distance_metro_m IS NULL OR distance_metro_m >= 0) AND "
+            "(distance_university_m IS NULL OR distance_university_m >= 0) AND "
+            "(distance_center_m IS NULL OR distance_center_m >= 0)",
+            name="ck_properties_geographic_distances_nonnegative"),
+    )
+
+
+class GeographicReferencePoint(Base):
+    """Versioned Metro, campus and center point with per-record provenance."""
+    __tablename__ = "geographic_reference_points"
+
+    id = Column(String, primary_key=True)
+    name = Column(String, nullable=False)
+    kind = Column(String, nullable=False)
+    geom = Column(Geometry(geometry_type="POINT", srid=4326, spatial_index=False), nullable=False)
+    coordinate_source = Column(String, nullable=False)
+    coordinate_confidence = Column(String, nullable=False, default="approximate",
+                                   server_default="approximate")
+    source_url = Column(Text, nullable=False)
+    geography_version = Column(String, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("kind IN ('metro', 'university', 'city_center')",
+                        name="ck_geographic_reference_points_kind"),
+        CheckConstraint("coordinate_confidence IN ('exact', 'approximate', 'unknown')",
+                        name="ck_geographic_reference_points_confidence"),
+        Index("ix_geographic_reference_points_geom", "geom", postgresql_using="gist"),
+    )
 
 
 class Listing(Base):

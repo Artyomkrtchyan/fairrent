@@ -349,6 +349,18 @@ def test_missing_coordinates_later_do_not_erase_a_known_position(session):
     assert listing(session, "A").property_id == pid and xy(session, pid) == pytest.approx((44.50, 40.10))
 
 
+def test_geographic_provenance_is_persisted_with_the_property(session):
+    record = flat("geo-1", lat=40.18592, lon=44.51963, district="Արաբկիր",
+                  coordinate_source="list.am:data-lat-data-lng",
+                  coordinate_confidence="approximate", district_source="list.am:structured-address")
+    run(session, [record])
+    prop = session.get(Property, listing(session, "geo-1").property_id)
+    assert prop.district == "Արաբկիր"
+    assert prop.district_source == "list.am:structured-address"
+    assert prop.coordinate_source == "list.am:data-lat-data-lng"
+    assert prop.coordinate_confidence == "approximate"
+
+
 # ---- item 3: listings without coordinates --------------------------------------------------------
 
 def test_listing_without_coordinates_is_stored_searchable_but_not_on_the_map(session):

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from database.models import Listing, PriceObservation, Property
 from .config import DEFAULT_SOURCE_NAME
 from .grouping import GROUP_RADIUS_M, find_matching_property
+from .geography import normalize_district, proximity_features
 
 # Optional attributes: a known value is never overwritten by "unknown" (None).
 _OPTIONAL_FIELDS = ("url", "title", "area_sqm", "rooms_count", "floor", "total_floors",
@@ -23,11 +24,24 @@ def _geom(data: dict) -> Optional[WKTElement]:
         return None
     return WKTElement(f"POINT({data['lon']} {data['lat']})", srid=4326)
 
+
+def _geo_fields(data: dict) -> dict:
+    features = proximity_features(data.get("lat"), data.get("lon"))
+    return {
+        **features,
+        "district_id": normalize_district(data.get("district")),
+        "district_source": data.get("district_source") or
+                           ((data.get("source") or DEFAULT_SOURCE_NAME) if data.get("district") else None),
+        "coordinate_source": data.get("coordinate_source") if _has_coords(data) else None,
+        "coordinate_confidence": (data.get("coordinate_confidence") or "unknown")
+                                  if _has_coords(data) else "unknown",
+    }
+
 def _new_property(session: Session, data: dict, now: datetime) -> Property:
     # geom stays NULL when the source gave no coordinates: the listing is still stored and
     # searchable, it is just excluded from map results (see queries.map_listings).
     prop = Property(geom=_geom(data), district=data.get("district"),
-                    address_raw=data.get("address_raw"), created_at=now)
+                    address_raw=data.get("address_raw"), created_at=now, **_geo_fields(data))
     session.add(prop)
     session.flush()
     return prop
@@ -43,6 +57,13 @@ def _reassess_property(session: Session, listing: Listing, prop: Property, data:
         .where(Property.id == prop.id))          # NULL when the property has no position yet
 
     if distance is not None and distance <= (GROUP_RADIUS_M if others else COORD_EPSILON_M):
+        if prop.coordinate_confidence == "unknown" and data.get("coordinate_confidence"):
+            prop.coordinate_confidence = data["coordinate_confidence"]
+            prop.coordinate_source = data.get("coordinate_source")
+        if prop.district is None and data.get("district"):
+            prop.district = data["district"]
+            prop.district_id = normalize_district(data["district"])
+            prop.district_source = data.get("district_source") or source
         return prop                              # same place (or noise): nothing to do
 
     matched = find_matching_property(session, data, source)
@@ -51,6 +72,8 @@ def _reassess_property(session: Session, listing: Listing, prop: Property, data:
 
     if others == 0:
         prop.geom = _geom(data)                  # exclusive property: move it in place
+        for key, value in _geo_fields(data).items():
+            setattr(prop, key, value)
         if data.get("district") is not None:
             prop.district = data["district"]
         if data.get("address_raw") is not None:

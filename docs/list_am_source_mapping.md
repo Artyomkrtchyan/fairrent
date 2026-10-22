@@ -1,21 +1,17 @@
 # [A01] List.am Source Mapping & Field Analysis
 
 ## 1. Available Fields & Missing Values
-* **Core Fields Collected:** 
-  * Listing ID / External URL hash (`external_id`)
-  * Title / Header description (`title`)
-  * Price in original currency and normalized USD/AMD (`price_usd`, `price_amd`)
-  * Location details: Administrative district, raw address string (`district`, `address_raw`)
-  * Property parameters: Area in square meters (`area_sqm`), room count (`rooms_count`), floor and total building floors (`floor`, `total_floors`), building type (`building_type`)
-  * Full description text block (`description`)
-  * Image URLs gallery (`images`)
-* **Frequently Missing or Optional Fields:**
-  * Exact street numbers or building numbers (often generalized by landlords to street names only).
-  * Precise geospatial coordinates (lat/long markers are frequently omitted or generalized).
-  * Specific interior attributes (ceiling heights, exact balcony types, precise renovation year).
+The parser implementation supports URL identity, title, price text, area, rooms, floor, description, coordinates,
+explicit district metadata, explicit address metadata, and OpenGraph/Twitter image metadata. Its selectors are
+tested against synthetic fixtures; they have **not** been confirmed against live List.am pages. See the detailed
+[source analysis](../data_pipeline/docs/source-analysis.md) for each selector and its verification status.
+
+Building type is not extracted yet. Utilities remain unknown unless the source explicitly states them. Missing
+optional values stay null (images use an empty list); the parser does not infer districts or addresses from ad text.
+Coordinates may be omitted, rounded, or approximate. Exact address data and interior attributes may be absent.
 
 ## 2. Currencies & Rental Periods
-* **Currencies:** Prices appear in **USD ($)** and **Armenian Drams (AMD / ֏)**. The pipeline normalizes these into a standard base currency (USD) using daily exchange rate mappings.
+* **Currencies:** The source analysis currently identifies USD and AMD as expected source currencies. The parser also recognizes EUR, but that has not been verified against live source pages. Conversion currently uses static configured rates, with rate source/date recorded; it is not a live daily-rate feed.
 * **Rental Periods:** The target category is strictly **Long-term Rent** (Armenian: երկարաժամկետ, Russian: долгосрочная аренда), distinguished from daily or short-term vacation rentals.
 
 ## 3. Geographic Coordinates & Accuracy
@@ -24,7 +20,7 @@
 
 ## 4. Identification & Duplicate Handling
 * **Listing Identification:** Each listing is uniquely identified by its native `external_id` extracted from the URL path (enforced by a unique constraint in PostgreSQL to ensure idempotency during weekly cron sweeps).
-* **Duplicate Groups:** Deduplication logic flags and merges reposted or duplicate listings by evaluating fuzzy matches across key attributes: matching area ($\text{m}^2$), rooms, district, building type, and identical or heavily overlapping image URLs/hashes posted within short time windows.
+* **Duplicate Groups:** Listings are not deleted or merged. The implemented grouping links listings to a shared property only when source, known area, rooms, floor, and coordinate distance satisfy the documented thresholds. Image similarity and repost timing are not part of the current algorithm; see [storage and ingestion](../data_pipeline/docs/storage-and-ingestion.md).
 
 ## 5. Synthetic / Sanitized Example Record
 ```json
