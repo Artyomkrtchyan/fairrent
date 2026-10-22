@@ -123,7 +123,6 @@ Implemented:
 - Loading, error, missing-value and not-found handling.
 
 Later tasks:
-- Full listing valuation and evidence presentation: D04.
 - Interactive map and infrastructure layers: D05.
 - Integrated analytics: D06.
 - Reviewer authentication and mutations: D07.
