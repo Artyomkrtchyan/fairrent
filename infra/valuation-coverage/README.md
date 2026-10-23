@@ -48,7 +48,10 @@ python infra/valuation-coverage/build_coverage.py
 
 The importer verifies the pinned source SHA-256 and exactly 12 expected community
 codes. Changed input requires source review and a new pin/version. The union
-stores the normalized district snapshot checksum. City and district versions
+stores a SHA-256 of canonical JSON (sorted keys, compact separators, UTF-8,
+unescaped Unicode, finite numbers only), so LF/CRLF and indentation do not alter
+the district snapshot checksum. The algorithm is recorded in the Feature.
+City and district versions
 plus content checksums are recorded with each estimate.
 
 To reproduce the older HDX comparison file, download `source_download` from its

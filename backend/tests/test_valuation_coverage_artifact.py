@@ -19,8 +19,11 @@ def test_boundary_identity_provenance_and_coordinate_order(monkeypatch):
     assert props['source'].startswith('https://gis.yerevan.am/')
     assert 'Not specified' in props['license']
     assert len(props['source_export_sha256']) == 64
-    district_bytes = BOUNDARY.with_name('districts.geojson').read_bytes()
-    assert props['district_snapshot_sha256'] == hashlib.sha256(district_bytes).hexdigest()
+    districts = json.loads(BOUNDARY.with_name('districts.geojson').read_text(encoding='utf-8'))
+    canonical = json.dumps(districts, sort_keys=True, separators=(',', ':'),
+                           ensure_ascii=False, allow_nan=False).encode('utf-8')
+    assert props['district_snapshot_hash_algorithm'] == 'sha256-canonical-json-v1'
+    assert props['district_snapshot_sha256'] == hashlib.sha256(canonical).hexdigest()
     geometry = feature['geometry']
     polygons = [geometry['coordinates']] if geometry['type'] == 'Polygon' else geometry['coordinates']
     for polygon in polygons:
