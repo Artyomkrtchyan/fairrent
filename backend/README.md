@@ -88,5 +88,6 @@ POST `/api/v1/valuations` integrates the accepted B03 observed-inventory baselin
 and persists validated responses with dataset/model/policy/freshness metadata.
 See [C04 behavior, configuration and verification](../docs/C04-valuation-integration.md).
 The endpoint requires PostGIS, the C03 projection, the C04 migration and
-operator-supplied A05 coverage. The old `model_stub.py` remains a legacy example;
+the supplied municipal coverage/district snapshots and accepted A05 code.
+Apply the source A05 migration before publishing inventory. The old `model_stub.py` remains a legacy example;
 it is not used by the C04 endpoint.

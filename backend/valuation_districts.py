@@ -5,12 +5,12 @@ from pathlib import Path
 
 try:
     from .valuation_coverage import CoverageUnavailable
+    from .geographic_features import DISTRICTS
 except ImportError:
     from valuation_coverage import CoverageUnavailable
+    from geographic_features import DISTRICTS
 
-DISTRICT_IDS = frozenset(('ajapnyak', 'avan', 'arabkir', 'davtashen', 'erebuni',
-    'kentron', 'malatia-sebastia', 'nor-nork', 'nork-marash', 'nubarashen',
-    'shengavit', 'kanaker-zeytun'))
+DISTRICT_IDS = frozenset(DISTRICTS)
 
 
 class DistrictRegistry:
@@ -28,7 +28,7 @@ class DistrictRegistry:
             for feature in features:
                 if (feature['geometry']['type'] not in {'Polygon', 'MultiPolygon'}
                         or not isinstance(feature['properties']['name'], str)
-                        or not feature['properties']['name'].strip()):
+                        or feature['properties']['name'] != DISTRICTS[feature['properties']['district_id']][0]):
                     raise ValueError('Invalid district feature')
             self.features = features
             self.version = props['version'] + ':' + sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()

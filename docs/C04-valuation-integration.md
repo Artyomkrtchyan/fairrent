@@ -32,6 +32,13 @@ curl -X POST http://localhost:8000/api/v1/valuations \
   labels to ML and restrict both statistics and prediction to the subject's
   district when uniquely resolved. Shared borders/gaps remain unknown with an
   explicitly disclosed radius-only fallback. No source property is overwritten.
+- Use accepted A05 code for the full district vocabulary and current versioned
+  straight-line distances to metro, university and center. Canonical district
+  labels and nullable distance fields reach the model for subject and comparables.
+  B03 currently ignores proximity distances; they are supplied for the B07 adapter,
+  not presented as trained distance effects. Recomputing with the same A05 version
+  avoids mixing stale stored features. The A05 geography version is saved with
+  each estimate's geography provenance.
 - Window dates use Asia/Yerevan, including the start date and observations no
   later than execution time. B03's 60-day age cap also applies to requests for
   longer windows; effective dates and this cap are disclosed in the response.
@@ -121,15 +128,15 @@ python contracts/validate.py
 
 The backend workflow runs all three suites and builds the API from repository root.
 
-Verified locally on 2026-10-21: **238 tests passed** across backend, pipeline and
-ML. C01 validation passed (32 schemas, 35 fixtures, 16 rejected inputs); pip check
-passed. Final Docker build, packaged API/schema imports, repeatable C04 migration,
-synthetic coverage, assessment and PostgreSQL persistence smoke checks passed.
+Verified on 2026-10-24: **271 tests passed, none skipped** across backend,
+pipeline and ML using a disposable PostGIS 16/3.4 container. C01 validation passed
+(32 schemas, 35 fixtures, 16 rejected inputs). The root-context Docker build and
+packaged API/A05 imports passed. Native PostGIS checks cover district lookup,
+coverage, shared borders and persistence. The end-to-end test runs mock source
+HTML through A05 ingestion, source PostgreSQL tables, API publication, real B03
+valuation and the estimate audit record, checking district/proximity features,
+coordinate provenance, geography versions and asking-price isolation.
 
-Geography update verified on 2026-10-23: **170 tests passed, 80 skipped** across
-backend, pipeline and ML in the available WSL environment. Skips include the
-PostgreSQL/PostGIS suites because no test database was configured; the new native
-district/coverage checks and valuation persistence regressions still require CI.
 Independent Shapely checks confirmed all 12 district geometries are valid, city
 coverage equals their union, six known locations resolve correctly, a shared
 district junction is ambiguous, and Gyumri lies outside coverage. Importer output

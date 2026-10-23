@@ -9,6 +9,7 @@ import pytest
 from backend.valuation_gateway import BaselineGateway
 from backend.valuation_models import ValuationRequest
 from backend.valuation_service import ValuationService
+from data_pipeline.geography import GEOGRAPHY_VERSION, proximity_features
 
 NOW = datetime(2026, 10, 23, 12, tzinfo=timezone.utc)
 
@@ -45,6 +46,7 @@ def test_canonical_district_and_consistent_cohort_reach_model_and_audit(monkeypa
         def assess(self, payload, **kwargs):
             seen['payload'] = payload
             seen['labels'] = set(self.snapshot.district)
+            seen['distances'] = self.snapshot[['distance_metro_m', 'distance_center_m', 'distance_university_m']].iloc[0].to_dict()
             return super().assess(payload, **kwargs)
     repository = Repository()
     service = ValuationService(repository=repository, provider=Provider,
@@ -57,4 +59,7 @@ def test_canonical_district_and_consistent_cohort_reach_model_and_audit(monkeypa
     assert result['observed_market_statistics']['comparables_count'] == (3 if subject else 4)
     assert result['observed_market_statistics']['cluster_mean_price_usd'] == (600 if subject else 1700)
     assert ('District Kentron (kentron)' if subject else 'District unresolved') in result['explanation']
-    assert repository.saved[1] == 'city:checksum;districts=district-snapshot:checksum'
+    expected = proximity_features(query.latitude, query.longitude)
+    for key, value in seen['distances'].items():
+        assert seen['payload'][key] == value == expected[key]
+    assert repository.saved[1] == 'city:checksum;districts=district-snapshot:checksum;a05=' + GEOGRAPHY_VERSION

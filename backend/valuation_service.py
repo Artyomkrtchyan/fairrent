@@ -13,14 +13,16 @@ try:
     from .valuation_repository import ValuationRepository, period
     from .valuation_coverage import Coverage
     from .valuation_districts import DistrictRegistry
+    from .geographic_features import GEOGRAPHY_VERSION, MODEL_DISTANCE_FIELDS, district_label, model_distances
 except ImportError:
     from valuation_gateway import BaselineGateway, ModelUnavailable
     from valuation_models import validate_response
     from valuation_repository import ValuationRepository, period
     from valuation_coverage import Coverage
     from valuation_districts import DistrictRegistry
+    from geographic_features import GEOGRAPHY_VERSION, MODEL_DISTANCE_FIELDS, district_label, model_distances
 
-POLICY_VERSION = 'c04-observed-cohort-v2-district'
+POLICY_VERSION = 'c04-observed-cohort-v3-a05'
 
 
 def timestamp(value):
@@ -73,14 +75,16 @@ class ValuationService:
             data_as_of = max((r.last_seen_at for r, _ in selected), default=None)
             stale = data_as_of is None or (now - data_as_of).total_seconds() > 60 * 86400
             columns = ['listing_id','price_usd','area_sqm','latitude','longitude',
-                       'district','rooms','listing_date','dedup_group_id']
+                       'district','rooms','listing_date','dedup_group_id', *MODEL_DISTANCE_FIELDS]
             frame = pd.DataFrame([dict(listing_id=str(r.id), price_usd=r.price_monthly_normalized,
                 area_sqm=r.area_sqm, latitude=r.latitude, longitude=r.longitude,
                 district=(record_districts[str(r.id)][1] if record_districts[str(r.id)]
-                          else None) if districts else r.district_id,
+                          else None) if districts else district_label(r.district_id),
                 rooms=r.rooms, listing_date=r.last_seen_at,
-                dedup_group_id=key) for r, key in selected], columns=columns)
+                dedup_group_id=key, **model_distances(r.latitude, r.longitude))
+                for r, key in selected], columns=columns)
             payload = query.model_dump(exclude={'asking_price_usd_month', 'radius_m', 'window_days'})
+            payload.update(model_distances(query.latitude, query.longitude))
             if districts:
                 payload['district'] = subject_district[1] if subject_district else None
             area_reference = query.area_sqm is None or query.rooms is None
@@ -157,6 +161,7 @@ class ValuationService:
                 raise
             except Exception as exc:
                 raise ModelUnavailable('Invalid model result') from exc
-            geography_version = coverage.version + (';districts=' + districts.version if districts else '')
+            geography_version = (coverage.version + (';districts=' + districts.version if districts else '')
+                                 + ';a05=' + GEOGRAPHY_VERSION)
             self.repository.save(connection, query, result, dataset_version, geography_version)
         return result

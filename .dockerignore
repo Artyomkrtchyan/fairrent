@@ -6,5 +6,7 @@
 !backend/sql/*.sql
 !ml/
 !ml/baseline.py
+!data_pipeline/
+!data_pipeline/geography.py
 !contracts/
 !contracts/openapi.json

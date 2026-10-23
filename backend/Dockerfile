@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/*.py ./
 COPY backend/sql/ ./sql/
 COPY ml/baseline.py /app/ml/baseline.py
+COPY data_pipeline/geography.py /app/data_pipeline/geography.py
 COPY contracts/openapi.json /contracts/openapi.json
 
 EXPOSE 8000

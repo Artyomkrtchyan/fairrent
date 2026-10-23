@@ -6,13 +6,13 @@ from uuid import UUID, uuid5
 
 try:
     from .listing_models import ListingData
+    from .geographic_features import DISTRICTS, normalize_district
 except ImportError:
     from listing_models import ListingData
+    from geographic_features import DISTRICTS, normalize_district
 
 # Permanent public identity namespace. Never change it when migrating storage IDs.
 PUBLIC_NAMESPACE = UUID("1cd63f77-92ca-45ba-b4d5-39a8ce7086a8")
-# Only mappings already represented by C01 fixtures. A05 will supply the full registry.
-DISTRICTS = {"kentron": "kentron", "arabkir": "arabkir"}
 # Public catalogue eligibility is separate from pipeline price normalization.
 # No source evidence field currently establishes long-term availability for a
 # daily/weekly quote. Do not infer it from a monthly-equivalent calculation.
@@ -105,7 +105,15 @@ def adapt_source(row) -> ListingData:
     latitude, longitude = row.get("latitude"), row.get("longitude")
     if latitude is None or longitude is None:
         latitude = longitude = None
-    district = text(raw.get("district")) or text(row.get("district"))
+    raw_district = text(raw.get("district"))
+    district_id = (normalize_district(raw_district) if raw_district else
+                   row.get("district_id") if row.get("district_id") in DISTRICTS else
+                   normalize_district(text(row.get("district"))))
+    # A05's persisted confidence must survive publication. Only pre-A05 callers
+    # without the field use the legacy approximate-pin policy.
+    coordinate_confidence = row.get("coordinate_confidence", "approximate")
+    if latitude is None or coordinate_confidence not in {"exact", "approximate", "unknown"}:
+        coordinate_confidence = "unknown"
     building = text(row.get("building_type"))
     floor = optional_number(row.get("floor"), integer=True, zero=True)
     total_floors = optional_number(row.get("total_floors"), integer=True)
@@ -117,9 +125,9 @@ def adapt_source(row) -> ListingData:
         property_id=uuid5(PUBLIC_NAMESPACE, f"property:{row['property_id']}") if row.get("property_id") else None,
         title=text(row.get("title")), description=text(row.get("description")),
         address=text(raw.get("address_raw")) or text(row.get("address_raw")),
-        district_id=DISTRICTS.get(district.lower()) if district else None,
+        district_id=district_id,
         latitude=latitude, longitude=longitude,
-        coordinate_confidence="approximate" if latitude is not None else "unknown",
+        coordinate_confidence=coordinate_confidence,
         price_original=float(monthly), currency_original=currency,
         price_monthly_normalized=normalized, currency_normalized="USD", conversion=conversion,
         utilities_included=row.get("utilities_included"),
