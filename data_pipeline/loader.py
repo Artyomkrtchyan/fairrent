@@ -72,7 +72,12 @@ def _reassess_property(session: Session, listing: Listing, prop: Property, data:
 
     if others == 0:
         prop.geom = _geom(data)                  # exclusive property: move it in place
-        for key, value in _geo_fields(data).items():
+        geographic_fields = _geo_fields(data)
+        if data.get("district") is None:
+            # Coordinate corrections must not erase a previously resolved district or its provenance.
+            geographic_fields.pop("district_id")
+            geographic_fields.pop("district_source")
+        for key, value in geographic_fields.items():
             setattr(prop, key, value)
         if data.get("district") is not None:
             prop.district = data["district"]

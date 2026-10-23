@@ -303,6 +303,19 @@ def test_corrected_coordinates_move_an_exclusive_property(session):
     assert session.query(PriceObservation).count() == 1               # not a price change
 
 
+def test_coordinate_correction_without_district_preserves_district_provenance(session):
+    run(session, [flat("A", lat=40.10, lon=44.50, district="Kentron",
+                       district_source="list.am:structured-address")])
+    pid = listing(session, "A").property_id
+
+    run(session, [flat("A", lat=40.20, lon=44.60, district=None, district_source=None)])
+
+    prop = session.get(Property, pid)
+    assert listing(session, "A").property_id == pid
+    assert (prop.district, prop.district_id, prop.district_source) == (
+        "Kentron", "kentron", "list.am:structured-address")
+
+
 def test_tiny_coordinate_noise_does_not_touch_the_property(session):
     run(session, [flat("A", lat=40.10000, lon=44.50000)])
     pid = listing(session, "A").property_id
