@@ -98,3 +98,9 @@ Start the next task from this updated main.
 - Include tests and documentation with the implementation.
 - Report integration problems in the relevant issue with reproducible steps.
 - Keep incomplete work on task branches so main remains usable.
+
+## Pull-request checks
+
+See [C07 CI checks and review gate](C07-continuous-integration.md) for the four
+component checks, image tag conventions, failure-test evidence and the current
+private-repository plan limitation on enforced main protection.

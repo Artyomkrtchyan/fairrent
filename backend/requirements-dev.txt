@@ -8,3 +8,5 @@ beautifulsoup4==4.15.0
 tenacity==9.2.1
 httpx==0.28.1
 alembic==1.20.0
+
+-r ../ml/requirements.txt

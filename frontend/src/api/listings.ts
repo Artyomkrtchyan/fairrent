@@ -1,4 +1,7 @@
 import { api } from "./client";
+import type { paths } from "./schema";
+
+export type ListingQuery = NonNullable<paths["/api/v1/listings"]["get"]["parameters"]["query"]>;
 
 export class ListingApiError extends Error {
   constructor(
@@ -10,8 +13,11 @@ export class ListingApiError extends Error {
   }
 }
 
-export async function getListings(signal?: AbortSignal) {
+export async function getListings(signal?: AbortSignal, query: ListingQuery = {}) {
   const { data, error, response } = await api.GET("/api/v1/listings", {
+    params: {
+      query,
+    },
     ...(signal ? { signal } : {}),
   });
 

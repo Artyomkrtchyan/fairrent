@@ -276,6 +276,9 @@ class ListingPipeline:
                     raise ValueError(f"Latitude out of range [-90, 90]: {lat}")
                 if not -180 <= lon <= 180:
                     raise ValueError(f"Longitude out of range [-180, 180]: {lon}")
+            coordinate_confidence = raw_item.get("coordinate_confidence", "unknown") if not lat_blank else "unknown"
+            if coordinate_confidence not in {"exact", "approximate", "unknown"}:
+                coordinate_confidence = "unknown"
 
             currency = str(raw_item.get("currency") or "").upper()
             if currency not in EXCHANGE_RATES:
@@ -300,10 +303,13 @@ class ListingPipeline:
                 "price": price,
                 "lat": lat,
                 "lon": lon,
+                "coordinate_source": _clean_text(raw_item.get("coordinate_source")) if not lat_blank else None,
+                "coordinate_confidence": coordinate_confidence,
                 "currency": currency,
                 "period": period,
                 "title": _clean_text(raw_item.get("title")),
                 "district": _clean_text(raw_item.get("district")),
+                "district_source": _clean_text(raw_item.get("district_source")),
                 "address_raw": _clean_text(raw_item.get("address_raw")),
                 "building_type": _clean_text(raw_item.get("building_type")),
                 "description": _clean_text(raw_item.get("description")),

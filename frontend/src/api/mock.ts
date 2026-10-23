@@ -1,4 +1,5 @@
 import fixtures from "../../../contracts/fixtures.json";
+import { mockListingPage } from "./mock-listings";
 
 type FixtureName = keyof typeof fixtures;
 
@@ -30,7 +31,12 @@ export const mockFetch: typeof fetch = async (input, init) => {
 
   switch (pathname) {
     case "/api/v1/listings":
-      return fixtureResponse("listings");
+      return new Response(JSON.stringify(mockListingPage(new URL(request.url))), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
     case "/api/v1/exchange-rate":
       return fixtureResponse("exchange-rate");

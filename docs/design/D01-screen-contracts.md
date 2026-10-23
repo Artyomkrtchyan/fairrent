@@ -3,6 +3,8 @@
 Owner: Mane (@manemazmand). Status: design draft for Mane and backend review.
 Based on C01 v0.2.0 at `ce2265e`; this document does not approve C01 on behalf of any owner.
 
+> **Design update, 2026-10-22:** The map-first revision below supersedes the earlier split-view/map-placeholder opening layout for D05. The linked HTML remains the historical D01 prototype and does not show the new full-screen map or 3D mode.
+
 Open [the responsive visual wireframe](D01-wireframes.html) in a browser. It uses embedded styles and schematic geography, with no external dependencies, tracking, live tiles, or real listing data. Screen tabs, the light/dark toggle and the mobile List/Map switch work; forms, markers, currency and review actions illustrate future behavior. All sample numbers and locations are synthetic.
 
 ## Design and shared shell
@@ -122,3 +124,40 @@ Repeat USD/AMD next to prices, including cards and map markers. Place a synchron
 Within-range badges use green; above-range badges amber; below-range badges blue with an explicit label; unavailable estimates neutral gray. Reserve red for errors and any future severe-price category only after a validated threshold and coordinated contract change. Median remains a statistical value, not a warning level. Text labels accompany every color in both themes.
 
 Navigation includes Reviewer sign in; it opens an authorized-state mock solely for design inspection, not a real login. Public profiles, favorites and saved searches remain future features. Light/dark mode works across the design screens.
+
+
+## Map-first revision — agreed 2026-10-22
+
+Mane has approved a map-first opening experience and reports Artyom's agreement
+to MapLibre GL JS. This supersedes the earlier hero-before-filters and desktop
+split-map opening arrangement when D05 is implemented; the current D03 catalogue
+remains usable until then. The existing HTML wireframe is historical, not evidence
+that this revision is implemented.
+
+- On opening Browse, the map fills the screen below the shared header, before
+  the full catalogue/filter content. Compact filter controls float over the map
+  or open a collapsible panel. On mobile, use a compact control/sheet with a
+  clearly available list alternative; avoid forcing users to interact only with
+  a map. Preserve keyboard access, map attribution and readable overlays.
+- Price markers open a property preview linked to D04 details. Keep D03's URL
+  search, canonical USD filters, USD/AMD display and return navigation. Missing
+  coordinates exclude a marker, not the catalogue entry. Partial map results
+  remain explicitly labeled; changing renderer does not change C01 bbox limits.
+- Provide 2D/3D controls. The 3D view tilts the map and extrudes buildings where
+  suitable footprint and height data is verified. Report coverage limitations;
+  do not present fabricated heights as facts or promise photorealistic buildings.
+  Preserve a 2D/list fallback for unsupported rendering or missing data.
+- Use a colorful rental-data layer with a clear measure, units, legend, counts
+  and freshness. A gradient is a data display, not a fraud score or decoration
+  presented as measured prices. Sparse/no-data areas remain neutral. District
+  shading is acceptable before any separately agreed interpolation; live
+  aggregates require A07/C06. Synthetic previews must be clearly identified.
+- Preserve the FairRent identity, navy/blue controls, light/dark themes and
+  accessible contrast. Map colors describe the selected data measure and must
+  remain distinct from listing price-comparison badges and risk evidence.
+
+The illustration supplied in chat is a visual reference, not an asset licensed
+for copying or proof of Yerevan tile/building coverage. Provider selection,
+attribution, keys and cost checks remain open. No credentials or paid services
+are provisioned by this documentation change. D04 remains property details;
+interactive mapping and 3D implementation remain D05.

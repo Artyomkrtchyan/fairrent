@@ -5,7 +5,7 @@ The team's current stack for FairRent.
 | Area | Technologies | Purpose |
 | --- | --- | --- |
 | Frontend | React + TypeScript + Vite | Listing catalogue, filters, property details, and review interface |
-| Maps & Charts | Leaflet + Recharts | Property and infrastructure maps, neighborhood price trends |
+| Maps & Charts | MapLibre GL JS + Recharts | Map-first property exploration, 2D/3D building views and neighborhood price trends |
 | Backend | Python + FastAPI + Pydantic | REST API, business logic, data validation, and OpenAPI documentation |
 | Database | PostgreSQL + PostGIS | Listings, price history, neighborhoods, and geographic queries |
 | Database Access & Migrations | SQLAlchemy + Alembic | Data models, database access, and versioned schema migrations |
@@ -37,3 +37,29 @@ The team's current stack for FairRent.
 - Terraform defines AWS resources; GitHub Actions runs checks and deployment workflows.
 
 Docker Compose provides the local development environment. AWS resources are provisioned during deployment; this document records the architecture and does not indicate that infrastructure is already deployed.
+
+
+## Mapping direction — agreed 2026-10-22
+
+MapLibre GL JS replaces the previously planned 2D map library. D05 will implement
+an opening map that fills the viewport below the header, with compact floating
+filters or a collapsible panel, price markers, and linked property previews.
+Users can switch between a flat 2D view and a tilted 3D building view. Recharts
+remains the charting library; React, TypeScript, Vite and AWS hosting are unchanged.
+
+The renderer is separate from its data provider. D05 must select a compatible
+vector-tile/style provider and verify Yerevan building footprints and available
+height attributes, licensing, attribution, browser-visible key restrictions and
+costs before enabling external services. A 3D view uses building extrusions where
+suitable data exists, not automatically photorealistic buildings. Unsupported
+areas/devices need a usable 2D/list fallback; do not fabricate building heights.
+
+A colorful gradient layer must represent a defined rental measure, such as
+median asking rent per m², with units, legend, sample counts and source freshness.
+Sparse or unavailable areas stay neutral. Any interpolation needs an agreed
+method and must not imply measured values where none exist. Authoritative
+aggregates depend on A07/C06; this layer is not provided by changing renderers.
+
+This records the target design and technology choice, not an installed map,
+selected provider, deployed feature or new C01 endpoint. See the D05 criteria and
+[D01 design revision](design/D01-screen-contracts.md#map-first-revision--agreed-2026-10-22).

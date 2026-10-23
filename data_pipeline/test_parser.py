@@ -20,12 +20,44 @@ def test_parse_listing_html():
     assert result["area_sqm"] == 55.0
     assert (result["price"], result["currency"], result["period"]) == (600.0, "USD", "month")
     assert (result["lat"], result["lon"]) == (40.19, 44.53)
+    assert result["coordinate_source"] == "list.am:data-lat-data-lng"
+    assert result["coordinate_confidence"] == "approximate"
 
 
 def test_parser_leaves_unknown_fields_as_none():
     r = parse_listing_html("<html><h1 class='pTitle'>x</h1></html>", external_id="1")
     assert r["area_sqm"] is None and r["rooms_count"] is None and r["floor"] is None
     assert r["price"] is None and r["lat"] is None and r["building_type"] is None
+    assert r["coordinate_source"] is None and r["coordinate_confidence"] == "unknown"
+
+
+def test_parser_accepts_only_explicit_official_district_fields():
+    explicit = parse_listing_html(
+        '<meta itemprop="addressLocality" content="Արաբկիր">', external_id="district-1")
+    assert explicit["district"] == "Arabkir"
+    assert explicit["district_source"] == "list.am:structured-address"
+    title_only = parse_listing_html('<h1>Apartment in Kentron</h1>', external_id="district-2")
+    assert title_only["district"] is None
+    assert title_only["district_source"] is None
+
+
+def test_parser_keeps_explicit_address_and_page_image_but_does_not_guess_from_title():
+    parsed = parse_listing_html(
+        '<h1>Apartment on Example Street in Kentron</h1>'
+        '<meta itemprop="streetAddress" content="Example Street 12">'
+        '<meta property="og:image" content="https://images.example.invalid/listing-1.jpg">',
+        external_id="metadata-1",
+    )
+    assert parsed["address_raw"] == "Example Street 12"
+    assert parsed["images"] == ["https://images.example.invalid/listing-1.jpg"]
+    assert parsed["district"] is None
+
+
+def test_parser_leaves_address_and_images_unknown_without_explicit_metadata():
+    parsed = parse_listing_html("<h1>Apartment on Example Street in Kentron</h1>", "metadata-2")
+    assert parsed["address_raw"] is None
+    assert parsed["images"] == []
+    assert parsed["district"] is None
 
 
 def test_parser_reads_floor_rooms_and_daily_price():

@@ -47,8 +47,9 @@ Optional local settings can be placed in `.env.local`, using `.env.example`
 as a reference. Restart the development server after changing settings.
 All VITE_* variables are browser-visible: never put credentials in them.
 
-Mock transport does not implement server-side filtering, authentication
-or database writes.
+Mock transport supports catalogue filtering, sorting and pagination using
+the shared synthetic fixture. It does not implement authentication or
+database writes.
 
 ## Currency and theme
 
@@ -122,8 +123,6 @@ Implemented:
 - Loading, error, missing-value and not-found handling.
 
 Later tasks:
-- Complete filters, sorting, pagination and URL state: D03.
-- Full listing valuation and evidence presentation: D04.
 - Interactive map and infrastructure layers: D05.
 - Integrated analytics: D06.
 - Reviewer authentication and mutations: D07.
@@ -133,3 +132,45 @@ Later tasks:
 Analytics, coordinate and reviewer preview screens may still use separate
 synthetic demonstration data. Their presence does not mean backend
 integration is complete. Demo photographs do not depict actual listings.
+
+## D03 catalogue
+
+The catalogue supports:
+- District, exact room count, rent range and area range filters.
+- Apply, Clear all and individual filter removal.
+- Sorting by newest, rent and area.
+- Pagination with the filtered total.
+- Applied search choices stored in the URL.
+- Return from listing details to the previous search and scroll position.
+- Expandable mobile filters, with Clear all outside the panel.
+- Loading, error, empty-result and missing-value messages.
+
+Prices in API queries and URLs remain USD. Rent inputs follow the selected
+display currency. AMD conversion uses the shared exchange-rate response;
+mock rates are synthetic.
+
+Filters are applied before pagination. Missing numeric values do not match
+numeric filters and appear last when sorting by that value.
+
+The current district suggestions are Kentron and Arabkir. Other district
+IDs can be entered; a complete agreed district list remains to be supplied.
+
+The mock catalogue uses the existing C01 listing. Additional listings used
+in tests do not appear on the website.
+
+Automated checks include URL parsing, combined filters, inclusive ranges,
+exact rooms, missing values, sorting, stable ordering and pagination.
+The latest test run passed all 39 tests.
+
+Real backend catalogue integration still requires the C03 endpoint.
+The interactive map remains D05 work.
+
+## Planned map renderer (D05)
+
+The agreed renderer is MapLibre GL JS. The target opening screen is a map filling
+the viewport below the header, with compact filters, linked listings and a 2D/3D
+building mode. This remains planned: no renderer dependency or live tiles are
+installed by the documentation update. Provider, Yerevan height-data coverage,
+attribution and costs must be validated in D05. Rental color layers need a legend,
+counts/freshness and suitable aggregate data; no-data areas remain neutral.
+See [the revised map design](../docs/design/D01-screen-contracts.md#map-first-revision--agreed-2026-10-22).

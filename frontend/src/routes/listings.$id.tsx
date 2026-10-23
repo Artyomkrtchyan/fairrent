@@ -1,9 +1,16 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { ListingSource } from "@/components/ListingSource";
+
+import { PropertyPhoto } from "@/components/PropertyPhoto";
+
+import { RiskEvidence } from "@/components/RiskEvidence";
+
+import { MarketAssessment } from "@/components/MarketAssessment";
+
+import { createFileRoute, Link, notFound, useRouter, useRouterState } from "@tanstack/react-router";
 
 import { getListingDetails, ListingApiError } from "@/api/listings";
 
 import { apiMode } from "@/api/client";
-import { Money, RateNote } from "@/components/ui-bits";
 
 export const Route = createFileRoute("/listings/$id")({
   loader: async ({ params, abortController }) => {
@@ -28,15 +35,31 @@ export const Route = createFileRoute("/listings/$id")({
 });
 
 function ListingPage() {
-  const { listing, signals } = Route.useLoaderData();
+  const router = useRouter();
+
+  const fromCatalogue = useRouterState({
+    select: (state) => state.location.state.fromCatalogue === true,
+  });
+
+  const { listing, signals, estimate } = Route.useLoaderData();
 
   const title = listing.title || "Apartment in Yerevan";
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <Link to="/" className="text-sm font-semibold text-primary">
-        ← Back to rentals
-      </Link>
+      {fromCatalogue ? (
+        <button
+          type="button"
+          onClick={() => router.history.back()}
+          className="text-sm font-semibold text-primary"
+        >
+          ← Back to rentals
+        </button>
+      ) : (
+        <Link to="/" className="text-sm font-semibold text-primary">
+          ← Browse rentals
+        </Link>
+      )}
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         {apiMode === "mock" && (
@@ -51,85 +74,100 @@ function ListingPage() {
       <h1 className="mt-4 text-3xl font-semibold sm:text-4xl">{title}</h1>
 
       <p className="mt-2 text-muted-foreground">{listing.address ?? "Address unavailable"}</p>
+      <PropertyPhoto key={listing.id} url={listing.thumbnail_url} title={title} />
 
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        <section className="card-surface p-5 md:col-span-2">
-          <h2 className="text-xl font-semibold">Property information</h2>
+      <div className="mt-6 grid items-start gap-6 lg:grid-cols-2">
+        <section className="card-surface p-5" aria-labelledby="property-information-title">
+          <h2 id="property-information-title" className="text-xl font-semibold">
+            Property information
+          </h2>
 
-          <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
+          <dl className="mt-4 grid grid-cols-2 gap-5 text-sm">
             <div>
               <dt className="text-muted-foreground">District</dt>
-              <dd>{listing.district_id ?? "Not available"}</dd>
+              <dd className="mt-1 font-semibold">{listing.district_id ?? "Not available"}</dd>
             </div>
 
             <div>
               <dt className="text-muted-foreground">Rooms</dt>
-              <dd>{listing.rooms ?? "Not available"}</dd>
+              <dd className="mt-1 font-semibold">{listing.rooms ?? "Not available"}</dd>
             </div>
 
             <div>
               <dt className="text-muted-foreground">Area</dt>
-              <dd>{listing.area_sqm === null ? "Not available" : `${listing.area_sqm} m²`}</dd>
+              <dd className="mt-1 font-semibold">
+                {listing.area_sqm === null ? "Not available" : `${listing.area_sqm} m²`}
+              </dd>
             </div>
 
             <div>
               <dt className="text-muted-foreground">Floor</dt>
-              <dd>{listing.floor ?? "Not available"}</dd>
+              <dd className="mt-1 font-semibold">{listing.floor ?? "Not available"}</dd>
+            </div>
+
+            <div>
+              <dt className="text-muted-foreground">Floors in building</dt>
+              <dd className="mt-1 font-semibold">{listing.total_floors ?? "Not available"}</dd>
+            </div>
+
+            <div>
+              <dt className="text-muted-foreground">Utilities included</dt>
+              <dd className="mt-1 font-semibold">
+                {listing.utilities_included === null
+                  ? "Not available"
+                  : listing.utilities_included
+                    ? "Yes"
+                    : "No"}
+              </dd>
+            </div>
+
+            <div>
+              <dt className="text-muted-foreground">Renovation</dt>
+              <dd className="mt-1 font-semibold">{listing.renovation ?? "Not available"}</dd>
+            </div>
+
+            <div>
+              <dt className="text-muted-foreground">Building type</dt>
+              <dd className="mt-1 font-semibold">
+                {listing.building_type ?? listing.building_type_raw ?? "Not available"}
+              </dd>
             </div>
           </dl>
 
-          <h3 className="mt-6 font-sans text-sm font-bold">Description</h3>
+          <div className="mt-6 border-t pt-5">
+            <h3 className="font-sans text-sm font-bold">Description</h3>
 
-          <p className="mt-2 whitespace-pre-wrap text-sm">
-            {listing.description ?? "Description unavailable."}
-          </p>
-        </section>
-
-        <aside className="card-surface p-5" aria-label="Asking rent and freshness">
-          <h2 className="text-sm font-semibold text-muted-foreground">Monthly asking rent</h2>
-
-          <p className="mt-3 text-2xl font-bold text-heading">
-            {listing.price_monthly_normalized === null ? (
-              "Rent unavailable"
-            ) : (
-              <Money usd={listing.price_monthly_normalized} suffix="/ month" />
-            )}
-          </p>
-
-          <div className="mt-3">
-            <RateNote />
-          </div>
-
-          <p className="mt-5 text-sm">
-            Last seen:{" "}
-            <time dateTime={listing.last_seen_at}>
-              {new Date(listing.last_seen_at).toLocaleDateString("en-GB", {
-                timeZone: "Asia/Yerevan",
-              })}
-            </time>
-          </p>
-
-          {listing.freshness.is_stale && (
-            <p className="mt-3 rounded-md border p-3 text-sm">
-              Source data is marked stale. Check its date before relying on this information.
+            <p className="mt-2 whitespace-pre-wrap break-words text-sm">
+              {listing.description ?? "Description unavailable."}
             </p>
-          )}
-        </aside>
+          </div>
+        </section>
+        <div className="space-y-4">
+          <MarketAssessment askingUsd={listing.price_monthly_normalized} estimate={estimate} />
+
+          <section className="card-surface p-5 text-sm" aria-label="Listing freshness">
+            <h2 className="font-sans font-bold">Listing freshness</h2>
+
+            <p className="mt-3">
+              Last seen:{" "}
+              <time dateTime={listing.last_seen_at}>
+                {new Date(listing.last_seen_at).toLocaleString("en-GB", {
+                  timeZone: "Asia/Yerevan",
+                })}
+              </time>
+            </p>
+
+            {listing.freshness.is_stale && (
+              <p className="mt-3 rounded-md border p-3">
+                This listing’s source data is marked stale. Check the date before relying on it.
+              </p>
+            )}
+          </section>
+        </div>
       </div>
+      <ListingSource listing={listing} />
 
-      <section className="card-surface mt-4 p-5">
-        <h2 className="text-xl font-semibold">Valuation and risk evidence</h2>
-
-        <p className="mt-2 text-sm text-muted-foreground">
-          Full valuation and evidence presentation follows in D04. High asking rent alone does not
-          establish fraud.
-        </p>
-
-        <p className="mt-3 text-sm">
-          Linked signals in this response: {signals.length}. Their evidence is not evaluated by this
-          preview.
-        </p>
-      </section>
+      <RiskEvidence signals={signals} />
     </main>
   );
 }

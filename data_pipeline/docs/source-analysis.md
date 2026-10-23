@@ -22,8 +22,15 @@ Scope: the rental-apartments segment configured by `--source-url` (default `http
 | `listings.rooms_count` | `div.pattr` containing `rooms`/`սենյակ` | NULL (never 0) | VERIFY selector |
 | `listings.floor`, `total_floors` | `div.pattr` containing `floor`/`հարկ`, `5/9` or `5` | NULL; `floor > total_floors` -> both NULL | VERIFY selector |
 | `listings.description` | `div.pDesc` | NULL | VERIFY selector |
-| `listings.building_type`, `properties.district`, `properties.address_raw` | not extracted yet | NULL | follow-up |
+| `properties.district` | explicit `data-district`, structured `addressRegion` / `addressLocality`, or district metadata; accepted only if the value exactly maps to a known district alias | NULL; never inferred from title/description | implemented against synthetic fixtures; VERIFY live markup |
+| `properties.address_raw` | explicit structured `streetAddress` / `address` metadata | NULL; never inferred from title/description | implemented against synthetic fixtures; VERIFY live markup |
+| `listings.building_type` | no verified source selector or stable label mapping | NULL | not extracted; follow-up after source inspection |
+| `listings.images` | OpenGraph / Twitter image metadata | empty list | implemented against synthetic fixtures; VERIFY live markup |
 | `listings.utilities_included` | not stated reliably by the source | NULL = unknown (`utility_cost_uncertainty = true`) | by design |
+
+This is field-aware parsing for the documented selectors, not a claim that every List.am page layout or field is
+covered. The real-site selector checks remain open above; parser fixtures establish behavior only for controlled
+HTML examples.
 
 Missing values: optional attributes are `NULL` when unknown. A real `0` is kept only where it is meaningful
 (ground floor `floor = 0`). Each stored record carries `raw_data.missing_fields` listing what was unknown.
