@@ -15,6 +15,7 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
       FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
       VALUATION_COVERAGE_FILE: /coverage/coverage.geojson
+      VALUATION_DISTRICTS_FILE: /coverage/districts.geojson
     volumes:
       - ./infra/valuation-coverage:/coverage:ro
     depends_on:

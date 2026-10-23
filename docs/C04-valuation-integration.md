@@ -27,6 +27,11 @@ curl -X POST http://localhost:8000/api/v1/valuations \
 - Deduplicate by supplied duplicate group, latest last_seen_at first, UUID
   ascending on timestamp ties. Without a group, each listing counts once.
   Apply exact rooms when supplied; do not silently widen the cohort.
+- With `VALUATION_DISTRICTS_FILE` configured (the Compose default), resolve the
+  subject and candidate districts using municipal polygons. Supply canonical
+  labels to ML and restrict both statistics and prediction to the subject's
+  district when uniquely resolved. Shared borders/gaps remain unknown with an
+  explicitly disclosed radius-only fallback. No source property is overwritten.
 - Window dates use Asia/Yerevan, including the start date and observations no
   later than execution time. B03's 60-day age cap also applies to requests for
   longer windows; effective dates and this cap are disclosed in the response.
@@ -75,12 +80,13 @@ docker compose exec api python -m sync_listings
 docker compose exec api python -m valuation_repository
 ```
 
-Supply the authoritative A05 GeoJSON Feature as
+The union of the 12 municipal district polygons is shipped as
 `infra/valuation-coverage/coverage.geojson`; Compose mounts it read-only. See
 [coverage configuration](../infra/valuation-coverage/README.md). Outside coverage
 returns 400/outside_coverage. Missing/invalid configuration returns 503 rather
 than inventing a municipal boundary. Non-Compose use sets
-`VALUATION_COVERAGE_FILE` to the absolute GeoJSON path.
+`VALUATION_COVERAGE_FILE` and `VALUATION_DISTRICTS_FILE` to the absolute city
+and district GeoJSON paths respectively.
 
 Health/readiness and listing routes remain independent of coverage configuration.
 A DB without PostGIS/migrations returns a dependency error for valuations.
@@ -95,8 +101,11 @@ attribution mapping; it is not a real B07 model or measured accuracy claim.
 
 B07 will need an adapter to its delivered package API, artifact/version provenance
 and a fitted area-reference policy. B06 will supply authoritative rule results.
-A05 supplies the real coverage boundary and district registry. Those artifacts
-are not fabricated in this PR; C04 final delivery remains open until available.
+A05's district IDs are used by C04's municipal polygon snapshot for coordinate
+lookup. C04 derives city coverage from the same polygons so the two checks agree.
+Both artifacts have version/provenance checksums. The older HDX city polygon is
+retained only for comparison. See coverage documentation for source metadata and
+the municipal layer's unspecified reuse license. B06/B07 integration remains open.
 Affected owners should review the disclosed MVP configured reference-area policy.
 
 ## Validation
@@ -116,3 +125,12 @@ Verified locally on 2026-10-21: **238 tests passed** across backend, pipeline an
 ML. C01 validation passed (32 schemas, 35 fixtures, 16 rejected inputs); pip check
 passed. Final Docker build, packaged API/schema imports, repeatable C04 migration,
 synthetic coverage, assessment and PostgreSQL persistence smoke checks passed.
+
+Geography update verified on 2026-10-23: **170 tests passed, 80 skipped** across
+backend, pipeline and ML in the available WSL environment. Skips include the
+PostgreSQL/PostGIS suites because no test database was configured; the new native
+district/coverage checks and valuation persistence regressions still require CI.
+Independent Shapely checks confirmed all 12 district geometries are valid, city
+coverage equals their union, six known locations resolve correctly, a shared
+district junction is ambiguous, and Gyumri lies outside coverage. Importer output
+reproduces the pinned export and preserves every district geometry coordinate.

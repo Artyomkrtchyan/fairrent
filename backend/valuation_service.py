@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from statistics import mean, stdev
+import os
 
 import pandas as pd
 from ml.baseline import haversine_distance_km
@@ -11,13 +12,15 @@ try:
     from .valuation_models import validate_response
     from .valuation_repository import ValuationRepository, period
     from .valuation_coverage import Coverage
+    from .valuation_districts import DistrictRegistry
 except ImportError:
     from valuation_gateway import BaselineGateway, ModelUnavailable
     from valuation_models import validate_response
     from valuation_repository import ValuationRepository, period
     from valuation_coverage import Coverage
+    from valuation_districts import DistrictRegistry
 
-POLICY_VERSION = 'c04-observed-cohort-v1'
+POLICY_VERSION = 'c04-observed-cohort-v2-district'
 
 
 def timestamp(value):
@@ -38,6 +41,8 @@ class ValuationService:
     def assess(self, query, request_id):
         now = self.clock()
         coverage = self.coverage or Coverage()
+        district_path = os.environ.get('VALUATION_DISTRICTS_FILE')
+        districts = DistrictRegistry(district_path) if district_path else None
         with self.repository.connection() as connection:
             connection.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
             connection.execute("SET LOCAL statement_timeout = '5s'")
@@ -48,6 +53,11 @@ class ValuationService:
             # distance for both public statistics and the prediction cohort.
             records = [r for r in records if haversine_distance_km(
                 query.latitude, query.longitude, r.latitude, r.longitude) * 1000 <= query.radius_m]
+            resolved = (districts.resolve_many(connection,
+                [(query.latitude, query.longitude)] + [(r.latitude, r.longitude) for r in records])
+                if districts else [None] * (len(records) + 1))
+            subject_district = resolved[0]
+            record_districts = {str(r.id): district for r, district in zip(records, resolved[1:])}
             ordered = sorted(records, key=lambda r: (-r.last_seen_at.timestamp(), str(r.id)))
             groups, selected = set(), []
             for record in ordered:
@@ -57,15 +67,22 @@ class ValuationService:
                     selected.append((record, key))
             # Exact rooms, no silent widening. Unknown area still contributes to monthly statistics.
             selected = [(r, key) for r, key in selected if query.rooms is None or r.rooms == query.rooms]
+            if subject_district:
+                selected = [(r, key) for r, key in selected
+                            if record_districts[str(r.id)] == subject_district]
             data_as_of = max((r.last_seen_at for r, _ in selected), default=None)
             stale = data_as_of is None or (now - data_as_of).total_seconds() > 60 * 86400
             columns = ['listing_id','price_usd','area_sqm','latitude','longitude',
                        'district','rooms','listing_date','dedup_group_id']
             frame = pd.DataFrame([dict(listing_id=str(r.id), price_usd=r.price_monthly_normalized,
                 area_sqm=r.area_sqm, latitude=r.latitude, longitude=r.longitude,
-                district=r.district_id, rooms=r.rooms, listing_date=r.last_seen_at,
+                district=(record_districts[str(r.id)][1] if record_districts[str(r.id)]
+                          else None) if districts else r.district_id,
+                rooms=r.rooms, listing_date=r.last_seen_at,
                 dedup_group_id=key) for r, key in selected], columns=columns)
             payload = query.model_dump(exclude={'asking_price_usd_month', 'radius_m', 'window_days'})
+            if districts:
+                payload['district'] = subject_district[1] if subject_district else None
             area_reference = query.area_sqm is None or query.rooms is None
             if area_reference:
                 payload['area_sqm'] = None
@@ -122,6 +139,11 @@ class ValuationService:
                     explanation=prediction['selection_explanation'] +
                         ' Observed inventory baseline; last_seen_at is the observation date, not publication/training data. '
                         'B03 caps comparable age at 60 days even if a longer window was requested. '
+                        + ((f'District {subject_district[1]} ({subject_district[0]}) resolved from municipal polygons; '
+                            'comparables are restricted to this district. ' if subject_district else
+                            'District unresolved (polygon gap or shared boundary); radius-only cohort. ')
+                           if districts else 'District polygons are not configured; radius-only cohort. ')
+                        +
                         'Ontology rules are not connected; no fraud classification is made.',
                     price_status=price_status)
                 validate_response(result)
@@ -135,5 +157,6 @@ class ValuationService:
                 raise
             except Exception as exc:
                 raise ModelUnavailable('Invalid model result') from exc
-            self.repository.save(connection, query, result, dataset_version, coverage.version)
+            geography_version = coverage.version + (';districts=' + districts.version if districts else '')
+            self.repository.save(connection, query, result, dataset_version, geography_version)
         return result

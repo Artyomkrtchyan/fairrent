@@ -218,3 +218,33 @@ def test_requested_radius_above_b03_default_is_honored(api, valuation_db, listin
     result = assess(api, {**QUERY,'radius_m':5000})
     assert result['observed_market_statistics']['comparables_count'] == 3
     assert result['valuation_assessment']['estimated_price_usd'] == 600
+
+
+def test_district_resolved_for_query_and_comparables_and_persisted(api, valuation_db, listing_document, monkeypatch):
+    path = Path(__file__).resolve().parents[2] / 'infra/valuation-coverage/districts.geojson'
+    monkeypatch.setenv('VALUATION_DISTRICTS_FILE', str(path))
+    # Deliberately stale source label: polygon resolution must feed the model.
+    seed(valuation_db, listing_document, changes={'district_id': 'arabkir'})
+    seen = {}
+    class DistrictProvider(BaselineGateway):
+        def assess(self, payload, **kwargs):
+            seen['district'] = payload.get('district')
+            seen['candidate_districts'] = set(self.snapshot.district)
+            return super().assess(payload, **kwargs)
+    app.dependency_overrides[service] = lambda: ValuationService(provider=DistrictProvider, clock=lambda: NOW)
+    result = assess(api)
+    assert seen == {'district': 'Kentron', 'candidate_districts': {'Kentron'}}
+    assert result['observed_market_statistics']['comparables_count'] == 3
+    assert 'District Kentron (kentron)' in result['explanation']
+    with valuation_db() as connection:
+        version = connection.execute('SELECT coverage_version FROM api_valuation_estimates').fetchone()[0]
+    assert ';districts=yerevan-municipal-districts-' in version
+
+
+def test_other_district_comparables_are_excluded_consistently(api, valuation_db, listing_document, monkeypatch):
+    path = Path(__file__).resolve().parents[2] / 'infra/valuation-coverage/districts.geojson'
+    monkeypatch.setenv('VALUATION_DISTRICTS_FILE', str(path))
+    seed(valuation_db, listing_document, changes={'latitude': 40.215})  # Arabkir, within 5km.
+    result = assess(api, {**QUERY, 'radius_m': 5000})
+    assert result['observed_market_statistics']['comparables_count'] == 0
+    assert result['valuation_assessment']['estimated_price_usd'] is None
