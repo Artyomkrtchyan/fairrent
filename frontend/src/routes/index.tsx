@@ -1,3 +1,5 @@
+import { MapCanvas } from "@/components/MapCanvas";
+
 import { CatalogueFilters } from "@/components/CatalogueFilters";
 
 import { usePrefs } from "@/lib/prefs";
@@ -123,6 +125,7 @@ function Browse() {
 
   return (
     <main>
+ <MapCanvas />
       <SkylineHero>
         <span className="inline-flex rounded-md bg-hero-foreground/15 px-2 py-1 text-xs font-bold">
           {apiMode === "mock" ? "Synthetic C01 examples" : "Long-term apartments"}
