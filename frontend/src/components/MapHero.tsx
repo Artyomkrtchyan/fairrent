@@ -83,7 +83,7 @@ export function MapHero({
   const gradientLegend = (
     <aside className="map-price-legend" aria-label="Area rent colour legend">
       <p className="map-demo-label">
-        {showDemoSurface ? "Synthetic design preview" : "Area price layer unavailable"}
+        {showDemoSurface ? "Demo data" : "Area price layer unavailable"}
       </p>
       {showDemoSurface && (
         <>
@@ -95,10 +95,9 @@ export function MapHero({
             <span>18</span>
             <span>24</span>
           </div>
-          <p>USD / m² / month · Lower → Higher</p>
-          <p>Invented values, not market estimates.</p>
+          <p>USD / m² / month</p>
           <p>
-            <span className="map-no-data-key" /> Outside demo extent: no data
+            <span className="map-no-data-key" /> No data
           </p>
         </>
       )}
@@ -310,7 +309,7 @@ export function MapHero({
           </p>
 
           <div className="map-frame-footer">
-            <p>Use + / − or Ctrl/⌘ + scroll to zoom. Scroll normally to browse the page.</p>
+            <p>Pinch or use + / − to zoom. Scroll to browse the page.</p>
             <a href="#rental-catalogue" onClick={browseRentals}>
               Find a rental <ArrowUpRight size={15} aria-hidden="true" />
             </a>

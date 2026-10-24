@@ -184,8 +184,8 @@ catalogue, USD/AMD choices and URL search state remain available below. The old
 second map placeholder is removed. The basemap currently stays the same in both
 UI themes; framing and controls follow the selected theme.
 
-The embedded map uses cooperative gestures: ordinary wheel/touch scrolling keeps
-the page browsable, while Ctrl/⌘ + wheel and the +/− controls zoom the map. Expand map
+The embedded map keeps ordinary wheel scrolling for the page. Pinch gestures
+and the +/− controls zoom the map; there is no Ctrl/⌘ wheel shortcut. Expand map
 opens a native modal dialog with wheel zoom, focus containment, Close/Escape and
 page-scroll locking. Closing restores trigger focus, page position and the map
 camera. Ordinary clicks or drags never open full screen automatically.
@@ -280,6 +280,7 @@ live OpenFreeMap requests are blocked in the cloud; verify streets/labels locall
 Clear area appears directly in both map toolbars after an area search. It removes
 only bbox, resets page to 1 and hides dots/previews while preserving other filters,
 sorting, camera and the gradient. Toolbar controls wrap on narrow screens.
-Browser checks verify embedded +/− and Ctrl+wheel change the actual searched
-bounds, ordinary wheel scrolling moves the page, and zoom still works after
-closing fullscreen.
+Browser checks verify embedded +/− change the actual searched bounds, ordinary
+wheel scrolling moves the page, and zoom still works after closing fullscreen.
+The compact legend uses one visible Demo data label, the scale/units and a No data
+key; the invented fixture provenance and real-mode guard remain unchanged.

@@ -96,8 +96,8 @@ export function MapCanvas({
         style: import.meta.env["VITE_MAP_STYLE_URL"] || DEFAULT_STYLE,
         ...options.camera,
         attributionControl: false,
-        // Cooperative mode keeps ordinary page scrolling; Ctrl/⌘ + wheel zooms the preview.
-        scrollZoom: true,
+        // Keep page scrolling in the preview; touch zoom and navigation controls stay enabled.
+        scrollZoom: options.expanded,
         cooperativeGestures: !options.expanded,
       });
       instance.current = map;

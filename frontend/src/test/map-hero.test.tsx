@@ -96,9 +96,7 @@ describe("framed map introduction", () => {
     const view = render(<MapHero listings={listings} onSearchArea={vi.fn()} />);
     const map = await screen.findByTestId("embedded-map");
     expect(map).toHaveAttribute("data-marker-count", "0");
-    expect(screen.getByLabelText("Area rent colour legend")).toHaveTextContent(
-      "Synthetic design preview",
-    );
+    expect(screen.getByLabelText("Area rent colour legend")).toHaveTextContent("Demo data");
     expect(screen.getByLabelText("Area rent colour legend")).toHaveTextContent("USD / m² / month");
     view.rerender(
       <MapHero bbox="44.5,40.1,44.6,40.2" listings={listings} onSearchArea={vi.fn()} />,
