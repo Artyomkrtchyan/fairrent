@@ -76,6 +76,21 @@ afterEach(() => {
 });
 
 describe("framed map introduction", () => {
+  it("offers Clear area in both toolbars only when an area is applied", async () => {
+    const onClearArea = vi.fn();
+    const view = render(<MapHero onSearchArea={vi.fn()} onClearArea={onClearArea} />);
+    expect(screen.queryByRole("button", { name: "Clear area" })).not.toBeInTheDocument();
+    view.rerender(
+      <MapHero bbox="44.5,40.1,44.6,40.2" onSearchArea={vi.fn()} onClearArea={onClearArea} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Clear area" }));
+    expect(onClearArea).toHaveBeenCalledOnce();
+    await screen.findByTestId("embedded-map");
+    fireEvent.click(screen.getByRole("button", { name: "Expand map" }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Clear area" }));
+    expect(onClearArea).toHaveBeenCalledTimes(2);
+  });
+
   it("shows the synthetic legend first, adds dots only for an area search and keeps the legend on clear", async () => {
     const listings = fixtures.listings.value.items as MapListing[];
     const view = render(<MapHero listings={listings} onSearchArea={vi.fn()} />);

@@ -117,6 +117,11 @@ function Browse() {
       <MapHero
         bbox={search.bbox}
         onSearchArea={(bbox) => applyFilters({ ...search, bbox, page: 1 })}
+        onClearArea={() => {
+          const next = { ...search, page: 1 };
+          delete next.bbox;
+          applyFilters(next);
+        }}
         listings={isError ? [] : (data?.items ?? [])}
         pending={isPending}
         failed={isError}

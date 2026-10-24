@@ -184,8 +184,8 @@ catalogue, USD/AMD choices and URL search state remain available below. The old
 second map placeholder is removed. The basemap currently stays the same in both
 UI themes; framing and controls follow the selected theme.
 
-The embedded map disables wheel zoom and uses cooperative touch gestures so
-normal page scrolling remains available. Explicit zoom controls work. Expand map
+The embedded map uses cooperative gestures: ordinary wheel/touch scrolling keeps
+the page browsable, while Ctrl/⌘ + wheel and the +/− controls zoom the map. Expand map
 opens a native modal dialog with wheel zoom, focus containment, Close/Escape and
 page-scroll locking. Closing restores trigger focus, page position and the map
 camera. Ordinary clicks or drags never open full screen automatically.
@@ -210,7 +210,7 @@ Marker clustering/card highlighting, infrastructure layers,
 3D building data and a rental-price gradient remain D05 work; the visible basemap
 is not a visualization of rental-price measurements.
 
-Checkpoint validation: TypeScript, all 99 tests and the static build pass. Changed
+Checkpoint validation: TypeScript, all 100 tests and the static build pass. Changed
 map files pass ESLint; full lint still reports the 23 pre-existing SiteHeader
 formatting errors and eight existing Fast Refresh warnings. Vite reports a large
 MapLibre chunk; the renderer is lazy-loaded separately from the catalogue shell.
@@ -276,3 +276,10 @@ Validation includes rendered green/warm raster pixels in a real WebGL browser,
 initial hidden dots, search/clear, persistent legend, fullscreen zoom and toolbar
 controls at 320/390px. The browser uses a controlled local basemap style because
 live OpenFreeMap requests are blocked in the cloud; verify streets/labels locally.
+
+Clear area appears directly in both map toolbars after an area search. It removes
+only bbox, resets page to 1 and hides dots/previews while preserving other filters,
+sorting, camera and the gradient. Toolbar controls wrap on narrow screens.
+Browser checks verify embedded +/− and Ctrl+wheel change the actual searched
+bounds, ordinary wheel scrolling moves the page, and zoom still works after
+closing fullscreen.

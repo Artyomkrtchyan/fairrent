@@ -34,6 +34,7 @@ const NO_LISTINGS: readonly MapListing[] = [];
 export function MapHero({
   bbox,
   onSearchArea,
+  onClearArea,
   listings = NO_LISTINGS,
   pending = false,
   failed = false,
@@ -41,6 +42,7 @@ export function MapHero({
 }: {
   bbox?: string | undefined;
   onSearchArea?: (bbox: string) => void;
+  onClearArea?: () => void;
   listings?: readonly MapListing[];
   pending?: boolean;
   failed?: boolean;
@@ -55,7 +57,7 @@ export function MapHero({
     <div className="map-area-search">
       <button
         type="button"
-        className="map-expand-button"
+        className="map-expand-button map-search-button"
         disabled={pending || !validArea || viewportBbox === bbox}
         onClick={() => {
           if (viewportBbox && validArea) onSearchArea(viewportBbox);
@@ -63,6 +65,11 @@ export function MapHero({
       >
         {pending ? "Searching…" : "Search this area"}
       </button>
+      {bbox && onClearArea && (
+        <button type="button" className="map-expand-button" onClick={onClearArea}>
+          <X size={14} aria-hidden="true" /> Clear area
+        </button>
+      )}
     </div>
   );
   const areaStatus =
@@ -303,7 +310,7 @@ export function MapHero({
           </p>
 
           <div className="map-frame-footer">
-            <p>Scroll to keep browsing. Use + / − to zoom the map.</p>
+            <p>Use + / − or Ctrl/⌘ + scroll to zoom. Scroll normally to browse the page.</p>
             <a href="#rental-catalogue" onClick={browseRentals}>
               Find a rental <ArrowUpRight size={15} aria-hidden="true" />
             </a>

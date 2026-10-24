@@ -576,6 +576,7 @@
 
 .map-toolbar-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
@@ -584,7 +585,11 @@
   opacity: 0.65;
   cursor: default;
 }
-.map-area-search .map-expand-button {
+.map-area-search {
+  display: flex;
+  gap: 0.5rem;
+}
+.map-area-search .map-search-button {
   background: var(--primary);
   color: var(--primary-foreground);
   border-color: transparent;

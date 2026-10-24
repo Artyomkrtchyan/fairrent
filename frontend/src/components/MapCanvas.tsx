@@ -96,8 +96,8 @@ export function MapCanvas({
         style: import.meta.env["VITE_MAP_STYLE_URL"] || DEFAULT_STYLE,
         ...options.camera,
         attributionControl: false,
-        // Scrolling over the embedded map should move the page, not zoom the map.
-        scrollZoom: options.expanded,
+        // Cooperative mode keeps ordinary page scrolling; Ctrl/⌘ + wheel zooms the preview.
+        scrollZoom: true,
         cooperativeGestures: !options.expanded,
       });
       instance.current = map;
