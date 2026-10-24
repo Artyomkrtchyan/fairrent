@@ -161,3 +161,24 @@ for copying or proof of Yerevan tile/building coverage. Provider selection,
 attribution, keys and cost checks remain open. No credentials or paid services
 are provisioned by this documentation change. D04 remains property details;
 interactive mapping and 3D implementation remain D05.
+
+
+## Framed map revision — agreed 2026-10-24
+
+Mane prefers a professionally integrated, framed opening map over a map filling
+the whole page. This supersedes the viewport-filling default in the 2026-10-22
+revision. Keep a short headline above a rounded map frame on navy/blue framing,
+a small Explore Yerevan label, and an explicit Expand map action. No overlapping
+left information card is included at this checkpoint; its value can be reviewed
+later. Browse rentals moves directly to the existing filters below, with a list
+alternative always available. A duplicate lower map placeholder is unnecessary.
+
+Wheel scrolling over the embedded map must scroll the page; map zoom controls
+remain usable. Touch uses cooperative gestures for page browsing. Full-screen
+mode is deliberate, keyboard accessible and closes with Close/Escape, restoring
+focus, page position and camera. Framing and controls support light/dark themes;
+this checkpoint retains the same provider basemap in both themes.
+
+This layout update does not supply missing geographic infrastructure, 3D heights,
+rental aggregates or a new C01 endpoint. D05's marker, bounded-query, data/coverage
+and meaningful color-layer requirements remain outstanding.

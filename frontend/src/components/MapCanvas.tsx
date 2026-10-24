@@ -1,45 +1,44 @@
 import { useEffect, useRef, useState } from "react";
-
-import {
-  Map,
-  NavigationControl,
-  AttributionControl,
-  setWorkerUrl,
-} from "maplibre-gl";
-
+import { Map, NavigationControl, AttributionControl, setWorkerUrl } from "maplibre-gl";
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
-
 import "maplibre-gl/dist/maplibre-gl.css";
 
 setWorkerUrl(mapWorkerUrl);
 
-const DEFAULT_STYLE =
-  "https://tiles.openfreemap.org/styles/liberty";
+const DEFAULT_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
-export function MapCanvas() {
+export interface MapCamera {
+  center: [number, number];
+  zoom: number;
+  pitch: number;
+  bearing: number;
+}
+
+const DEFAULT_CAMERA: MapCamera = {
+  center: [44.51562, 40.17767],
+  zoom: 13,
+  pitch: 0,
+  bearing: 0,
+};
+
+interface Props {
+  expanded?: boolean;
+  camera?: MapCamera;
+  onCameraChange?: (camera: MapCamera) => void;
+}
+
+/** Basemap only: listing markers, building extrusions and rental layers follow later in D05. */
+export function MapCanvas({ expanded = false, camera, onCameraChange }: Props) {
   const container = useRef<HTMLDivElement>(null);
-
-  const [headerHeight, setHeaderHeight] = useState(84);
-
-useEffect(() => {
-  const header = document.querySelector("header");
-
-  if (!header) return;
-
-  const measureHeader = () => {
-    setHeaderHeight(header.getBoundingClientRect().height);
-  };
-
-  measureHeader();
-
-  const observer = new ResizeObserver(measureHeader);
-  observer.observe(header);
-
-  return () => observer.disconnect();
-}, []);
-
+  const instance = useRef<Map | null>(null);
+  const initialOptions = useRef({ expanded, camera: camera ?? DEFAULT_CAMERA });
+  const cameraCallback = useRef(onCameraChange);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    cameraCallback.current = onCameraChange;
+  }, [onCameraChange]);
 
   useEffect(() => {
     if (!container.current) return;
@@ -51,45 +50,40 @@ useEffect(() => {
     const timeout = window.setTimeout(() => {
       if (!disposed) {
         setLoading(false);
-        setError(
-          "The map is taking too long to load. You can still browse the listings.",
-        );
+        setError("The map is taking too long to load. You can still browse the rentals below.");
       }
     }, 20_000);
 
     try {
+      const options = initialOptions.current;
       map = new Map({
         container: container.current,
-        style:
-          import.meta.env["VITE_MAP_STYLE_URL"] ||
-          DEFAULT_STYLE,
-
-        // Republic Square, Yerevan.
-        center: [44.51562, 40.17767],
-        zoom: 13,
-        pitch: 0,
-        bearing: 0,
-
+        style: import.meta.env["VITE_MAP_STYLE_URL"] || DEFAULT_STYLE,
+        ...options.camera,
         attributionControl: false,
+        // Scrolling over the embedded map should move the page, not zoom the map.
+        scrollZoom: options.expanded,
+        cooperativeGestures: !options.expanded,
       });
+      instance.current = map;
 
-      map.addControl(
-        new NavigationControl({
-          visualizePitch: true,
-        }),
-        "top-right",
-      );
+      map.addControl(new NavigationControl({ visualizePitch: true }), "top-right");
+      map.addControl(new AttributionControl({ compact: true }), "bottom-right");
 
-      map.addControl(
-        new AttributionControl({
-          compact: true,
-        }),
-        "bottom-right",
-      );
+      const activeMap = map;
+      map.on("moveend", () => {
+        if (disposed) return;
+        const center = activeMap.getCenter();
+        cameraCallback.current?.({
+          center: [center.lng, center.lat],
+          zoom: activeMap.getZoom(),
+          pitch: activeMap.getPitch(),
+          bearing: activeMap.getBearing(),
+        });
+      });
 
       map.once("load", () => {
         if (disposed) return;
-
         window.clearTimeout(timeout);
         setLoading(false);
         setError(null);
@@ -97,71 +91,51 @@ useEffect(() => {
 
       map.on("error", () => {
         if (disposed) return;
-
         setError(
-          "Some map content could not load. Check your connection; listings remain available.",
+          "Some map content could not load. Check your connection; rental browsing is still available.",
         );
       });
 
-      const activeMap = map;
-
-      observer = new ResizeObserver(() => {
-        activeMap.resize();
-      });
-
+      observer = new ResizeObserver(() => activeMap.resize());
       observer.observe(container.current);
     } catch {
       window.clearTimeout(timeout);
-
-      if (!disposed) {
-        setLoading(false);
-        setError(
-          "The map could not start in this browser. Listings remain available.",
-        );
-      }
+      setLoading(false);
+      setError("The map could not start in this browser. You can still browse the rentals below.");
     }
 
     return () => {
       disposed = true;
       window.clearTimeout(timeout);
       observer?.disconnect();
+      instance.current = null;
       map?.remove();
     };
   }, []);
 
+  useEffect(() => {
+    if (camera) instance.current?.jumpTo(camera);
+  }, [camera]);
+
   return (
-   <section
-  className="relative isolate overflow-hidden border-b bg-muted"
-  style={{
-    height: `calc(100dvh - ${headerHeight}px)`,
-    minHeight: "280px",
-  }}
-  aria-label="Interactive map of Yerevan"
->
-    <div
-  ref={container}
-  style={{
-    position: "absolute",
-    inset: 0,
-    width: "100%",
-    height: "100%",
-  }}
-/>
+    <section
+      className={`map-canvas ${expanded ? "map-canvas-expanded" : ""}`}
+      aria-label="Interactive map of Yerevan"
+    >
+      {/* Inline positioning prevents unlayered vendor CSS overriding Tailwind positioning. */}
+      <div
+        ref={container}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
+      />
 
       {loading && !error && (
-        <p
-          role="status"
-          className="absolute left-4 top-4 z-10 rounded-lg border bg-card px-4 py-3 text-sm shadow"
-        >
-          Loading Yerevan map…
+        <p role="status" className="map-notice map-notice-loading">
+          <span className="map-loading-dot" aria-hidden="true" />
+          Loading Yerevan…
         </p>
       )}
-
       {error && (
-        <p
-          role="status"
-          className="absolute bottom-12 left-4 right-4 z-10 rounded-lg border bg-card px-4 py-3 text-sm shadow"
-        >
+        <p role="status" className="map-notice map-notice-error">
           {error}
         </p>
       )}

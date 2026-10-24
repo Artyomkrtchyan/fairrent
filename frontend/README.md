@@ -174,3 +174,36 @@ installed by the documentation update. Provider, Yerevan height-data coverage,
 attribution and costs must be validated in D05. Rental color layers need a legend,
 counts/freshness and suitable aggregate data; no-data areas remain neutral.
 See [the revised map design](../docs/design/D01-screen-contracts.md#map-first-revision--agreed-2026-10-22).
+
+
+## D05 map layout checkpoint
+
+The homepage introduces Yerevan with a framed OpenFreeMap basemap beneath a
+short navy headline. Browse rentals moves to the existing filter panel; the
+catalogue, USD/AMD choices and URL search state remain available below. The old
+second map placeholder is removed. The basemap currently stays the same in both
+UI themes; framing and controls follow the selected theme.
+
+The embedded map disables wheel zoom and uses cooperative touch gestures so
+normal page scrolling remains available. Explicit zoom controls work. Expand map
+opens a native modal dialog with wheel zoom, focus containment, Close/Escape and
+page-scroll locking. Closing restores trigger focus, page position and the map
+camera. Ordinary clicks or drags never open full screen automatically.
+
+MapLibre 6 uses the bundled `maplibre-gl-worker.mjs?url` worker, explicitly served
+by Vite. `VITE_MAP_STYLE_URL` can override the default OpenFreeMap Liberty style.
+OpenFreeMap/OpenStreetMap attribution remains visible in the map controls. A map
+loading/rendering failure does not remove the catalogue or Browse rentals action.
+
+This checkpoint does not implement apartment markers, bbox synchronization,
+infrastructure layers, 3D building data or a rental-price gradient. Those remain
+D05 work; the visible basemap is not a visualization of rental-price measurements.
+
+Checkpoint validation: TypeScript, all 72 tests and the static build pass. Changed
+map files pass ESLint; full lint still reports the 23 pre-existing SiteHeader
+formatting errors and eight existing Fast Refresh warnings. Vite reports a large
+MapLibre chunk; the renderer is lazy-loaded separately from the catalogue shell.
+Browser checks exercised real WebGL and the bundled worker with a local test
+style, native dialog focus/scroll behavior, filters/detail return, dark framing
+and 320/390px layouts. Live OpenFreeMap/font requests were denied by the cloud
+network policy; verify actual Yerevan tile rendering locally after pulling.
