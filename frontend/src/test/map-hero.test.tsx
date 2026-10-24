@@ -5,8 +5,18 @@ import { MapHero } from "@/components/MapHero";
 vi.mock("@/lib/prefs", () => ({ usePrefs: () => ({ format: (value: number) => `$${value}` }) }));
 
 vi.mock("@/components/MapCanvas", () => ({
-  MapCanvas: ({ expanded = false }: { expanded?: boolean }) => (
-    <div data-testid={expanded ? "expanded-map" : "embedded-map"}>Map preview</div>
+  MapCanvas: ({
+    expanded = false,
+    onBoundsChange,
+  }: {
+    expanded?: boolean;
+    onBoundsChange?: ((bounds: [number, number, number, number]) => void) | undefined;
+  }) => (
+    <div data-testid={expanded ? "expanded-map" : "embedded-map"}>
+      Map preview
+      <button onClick={() => onBoundsChange?.([44.5, 40.1, 44.6, 40.2])}>Move map in test</button>
+      <button onClick={() => onBoundsChange?.([44, 40, 45, 41])}>Zoom out in test</button>
+    </div>
   ),
 }));
 
@@ -42,6 +52,21 @@ afterEach(() => {
 });
 
 describe("framed map introduction", () => {
+  it("waits for an explicit area search and rejects oversized viewports", async () => {
+    const onSearchArea = vi.fn();
+    const view = render(<MapHero onSearchArea={onSearchArea} />);
+    expect(screen.getByRole("button", { name: "Search this area" })).toBeDisabled();
+    fireEvent.click(await screen.findByRole("button", { name: "Move map in test" }));
+    expect(onSearchArea).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Search this area" }));
+    expect(onSearchArea).toHaveBeenCalledWith("44.5,40.1,44.6,40.2");
+    view.rerender(<MapHero bbox="44.5,40.1,44.6,40.2" onSearchArea={onSearchArea} />);
+    expect(screen.getByRole("button", { name: "Search this area" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Zoom out in test" }));
+    expect(screen.getByRole("button", { name: "Search this area" })).toBeDisabled();
+    expect(screen.getByText("Zoom in to search a smaller area.")).toBeInTheDocument();
+  });
+
   it("opens only with the Expand action and returns focus after Close", async () => {
     const scrollTo = vi.spyOn(window, "scrollTo");
     render(<MapHero />);

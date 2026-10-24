@@ -46,9 +46,11 @@ function Browse() {
   const { format } = usePrefs();
 
   const activeFilters: {
-    key: "district_id" | "rooms" | "price_min" | "price_max" | "area_min" | "area_max";
+    key: "bbox" | "district_id" | "rooms" | "price_min" | "price_max" | "area_min" | "area_max";
     label: string;
   }[] = [];
+
+  if (search.bbox) activeFilters.push({ key: "bbox", label: "Map area" });
 
   if (search.district_id !== undefined) {
     activeFilters.push({
@@ -113,6 +115,8 @@ function Browse() {
   return (
     <main>
       <MapHero
+        bbox={search.bbox}
+        onSearchArea={(bbox) => applyFilters({ ...search, bbox, page: 1 })}
         listings={isError ? [] : (data?.items ?? [])}
         pending={isPending}
         failed={isError}

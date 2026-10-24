@@ -206,11 +206,11 @@ rooms/area, coordinate precision, synthetic/stale labels and a details link.
 Embedded and fullscreen views share selection and preserve catalogue return.
 Untrusted titles/labels are rendered as text, never as HTML.
 
-Bbox synchronization, marker clustering/card highlighting, infrastructure layers,
+Marker clustering/card highlighting, infrastructure layers,
 3D building data and a rental-price gradient remain D05 work; the visible basemap
 is not a visualization of rental-price measurements.
 
-Checkpoint validation: TypeScript, all 81 tests and the static build pass. Changed
+Checkpoint validation: TypeScript, all 93 tests and the static build pass. Changed
 map files pass ESLint; full lint still reports the 23 pre-existing SiteHeader
 formatting errors and eight existing Fast Refresh warnings. Vite reports a large
 MapLibre chunk; the renderer is lazy-loaded separately from the catalogue shell.
@@ -228,3 +228,18 @@ The agreed future area gradient measures monthly asking rent per m², from green
 It does not represent deviation from an estimated range; that comparison remains
 separately labelled in listing details. No area gradient or value-based dot colour
 is synthesized from the single current fixture or a partial catalogue page.
+
+### Explicit map-area search
+
+Moving the map updates only its viewport. Search this area applies
+`bbox=west,south,east,north` to the existing catalogue URL/query and resets page
+to 1, preserving filters, sorting and page size. Applying ordinary filters keeps
+the area restriction; removing the Map area chip removes only bbox. Clear all
+removes bbox along with other filters. Links/reloads restore the bounded search.
+The embedded map fits a restored bbox; full screen keeps the current camera.
+Both map modes offer explicit search, and zoomed-out/crossing/invalid bounds are
+blocked with a zoom-in prompt under C01's maximum 0.5° per-axis limit. Results
+remain paginated and the coverage message never implies all matches are mapped.
+The mock transport applies inclusive coordinate bounds before pagination, just
+as the real collection API does. Missing coordinates cannot match an area query.
+No API schema or backend changes are needed.

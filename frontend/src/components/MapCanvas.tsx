@@ -3,6 +3,8 @@ import { Map, NavigationControl, AttributionControl, Marker, setWorkerUrl } from
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import "maplibre-gl/dist/maplibre-gl.css";
 
+import { parseMapBounds, type MapBounds } from "@/lib/map-bounds";
+
 setWorkerUrl(mapWorkerUrl);
 
 export interface RentalMapPoint {
@@ -32,6 +34,8 @@ const DEFAULT_CAMERA: MapCamera = {
 };
 
 interface Props {
+  bbox?: string | undefined;
+  onBoundsChange?: ((bounds: MapBounds) => void) | undefined;
   points?: readonly RentalMapPoint[];
   selectedId?: string | undefined;
   onSelect?: (id: string) => void;
@@ -41,6 +45,8 @@ interface Props {
 }
 
 export function MapCanvas({
+  bbox,
+  onBoundsChange,
   expanded = false,
   camera,
   onCameraChange,
@@ -53,6 +59,10 @@ export function MapCanvas({
   const markerButtons = useRef<HTMLButtonElement[]>([]);
   const initialOptions = useRef({ expanded, camera: camera ?? DEFAULT_CAMERA });
   const cameraCallback = useRef(onCameraChange);
+  const boundsCallback = useRef(onBoundsChange);
+  useEffect(() => {
+    boundsCallback.current = onBoundsChange;
+  }, [onBoundsChange]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,6 +103,13 @@ export function MapCanvas({
       const activeMap = map;
       map.on("moveend", () => {
         if (disposed) return;
+        const bounds = activeMap.getBounds();
+        boundsCallback.current?.([
+          bounds.getWest(),
+          bounds.getSouth(),
+          bounds.getEast(),
+          bounds.getNorth(),
+        ]);
         const center = activeMap.getCenter();
         cameraCallback.current?.({
           center: [center.lng, center.lat],
@@ -107,6 +124,13 @@ export function MapCanvas({
         window.clearTimeout(timeout);
         setLoading(false);
         setError(null);
+        const bounds = activeMap.getBounds();
+        boundsCallback.current?.([
+          bounds.getWest(),
+          bounds.getSouth(),
+          bounds.getEast(),
+          bounds.getNorth(),
+        ]);
       });
 
       map.on("error", () => {
@@ -136,6 +160,18 @@ export function MapCanvas({
   useEffect(() => {
     if (camera) instance.current?.jumpTo(camera);
   }, [camera]);
+
+  useEffect(() => {
+    const bounds = parseMapBounds(bbox);
+    if (bounds)
+      instance.current?.fitBounds(
+        [
+          [bounds[0], bounds[1]],
+          [bounds[2], bounds[3]],
+        ],
+        { padding: 0, duration: 0 },
+      );
+  }, [bbox]);
 
   useEffect(() => {
     const map = instance.current;

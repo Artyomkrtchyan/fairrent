@@ -11,6 +11,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { ArrowDown, ArrowUpRight, Expand, MapPin, X } from "lucide-react";
+import { parseMapBounds, serializeMapBounds, type MapBounds } from "@/lib/map-bounds";
 import { Link } from "@tanstack/react-router";
 import { usePrefs } from "@/lib/prefs";
 import { apiMode } from "@/api/client";
@@ -31,17 +32,40 @@ const INITIAL_CAMERA: MapCamera = {
 const NO_LISTINGS: readonly MapListing[] = [];
 
 export function MapHero({
+  bbox,
+  onSearchArea,
   listings = NO_LISTINGS,
   pending = false,
   failed = false,
   hasMore = false,
 }: {
+  bbox?: string | undefined;
+  onSearchArea?: (bbox: string) => void;
   listings?: readonly MapListing[];
   pending?: boolean;
   failed?: boolean;
   hasMore?: boolean;
 }) {
   const { format } = usePrefs();
+  const [viewport, setViewport] = useState<MapBounds>();
+  const viewportBbox = viewport ? serializeMapBounds(viewport) : undefined;
+  const validArea = parseMapBounds(viewportBbox);
+  const areaSearch = onSearchArea && (
+    <div className="map-area-search">
+      <button
+        type="button"
+        className="map-expand-button"
+        disabled={pending || !validArea || viewportBbox === bbox}
+        onClick={() => {
+          if (viewportBbox && validArea) onSearchArea(viewportBbox);
+        }}
+      >
+        {pending ? "Searching…" : "Search this area"}
+      </button>
+      {viewport && !validArea && <p role="status">Zoom in to search a smaller area.</p>}
+      {bbox && viewportBbox === bbox && <p role="status">Results for this map area</p>}
+    </div>
+  );
   const [selectedId, setSelectedId] = useState<string>();
   const points = useMemo(
     () =>
@@ -60,7 +84,12 @@ export function MapHero({
   const selected = listings.find(
     (listing) => listing.id === selectedId && hasMapCoordinates(listing),
   );
-  const markerProps = { points, selectedId, onSelect: setSelectedId };
+  const markerProps = {
+    points,
+    selectedId,
+    onSelect: setSelectedId,
+    bbox,
+  };
   const coverage = pending
     ? "Loading rental locations…"
     : failed
@@ -218,8 +247,14 @@ export function MapHero({
                 </div>
               }
             >
-              <MapCanvas camera={returnedCamera} onCameraChange={rememberCamera} {...markerProps} />
+              <MapCanvas
+                onBoundsChange={expanded ? undefined : setViewport}
+                camera={returnedCamera}
+                onCameraChange={rememberCamera}
+                {...markerProps}
+              />
             </Suspense>
+            {!expanded && areaSearch}
             {!expanded && preview}
           </div>
           <p className="rental-map-coverage" role="status">
@@ -274,11 +309,14 @@ export function MapHero({
               >
                 <MapCanvas
                   expanded
+                  onBoundsChange={setViewport}
                   camera={latestCamera.current}
                   onCameraChange={rememberCamera}
                   {...markerProps}
+                  bbox={undefined}
                 />
               </Suspense>
+              {areaSearch}
               {preview}
               <p className="rental-map-coverage rental-map-coverage-expanded" role="status">
                 {coverage}

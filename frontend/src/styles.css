@@ -573,3 +573,31 @@
   right: 3.5rem;
   pointer-events: none;
 }
+
+.map-area-search {
+  position: absolute;
+  z-index: 2;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  max-width: calc(100% - 7rem);
+}
+.map-area-search button {
+  box-shadow: 0 2px 8px #0003;
+}
+.map-area-search button:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+.map-area-search p {
+  margin-top: 0.4rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--card);
+  color: var(--foreground);
+  border-radius: 6px;
+  font-size: 0.75rem;
+}
+.map-fullscreen-body .map-area-search {
+  top: 3.5rem;
+}
