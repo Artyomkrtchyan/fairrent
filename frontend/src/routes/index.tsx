@@ -1,3 +1,5 @@
+import { MapHero } from "@/components/MapHero";
+
 import { CatalogueFilters } from "@/components/CatalogueFilters";
 
 import { usePrefs } from "@/lib/prefs";
@@ -11,7 +13,6 @@ import { useState } from "react";
 
 import { Money, RateNote } from "@/components/ui-bits";
 
-import { SkylineHero } from "@/components/SkylineHero";
 import { ListingPhoto } from "@/components/ListingPhoto";
 import { getListings } from "@/api/listings";
 import { apiMode } from "@/api/client";
@@ -40,25 +41,16 @@ const priceColors = {
   insufficient_data: "bg-muted text-muted-foreground",
 };
 
-function formatRent(amount: number | null): string {
-  if (amount === null) {
-    return "Rent unavailable";
-  }
-
-  return `${new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount)} USD / month`;
-}
-
 function Browse() {
   const search = Route.useSearch();
   const { format } = usePrefs();
 
   const activeFilters: {
-    key: "district_id" | "rooms" | "price_min" | "price_max" | "area_min" | "area_max";
+    key: "bbox" | "district_id" | "rooms" | "price_min" | "price_max" | "area_min" | "area_max";
     label: string;
   }[] = [];
+
+  if (search.bbox) activeFilters.push({ key: "bbox", label: "Map area" });
 
   if (search.district_id !== undefined) {
     activeFilters.push({
@@ -113,7 +105,6 @@ function Browse() {
       resetScroll: false,
     });
   }
-  const [view, setView] = useState<"list" | "map">("list");
 
   const { data, isPending, isError, isFetching, refetch } = useQuery({
     queryKey: ["listings", apiMode, search],
@@ -123,24 +114,25 @@ function Browse() {
 
   return (
     <main>
-      <SkylineHero>
-        <span className="inline-flex rounded-md bg-hero-foreground/15 px-2 py-1 text-xs font-bold">
-          {apiMode === "mock" ? "Synthetic C01 examples" : "Long-term apartments"}
-        </span>
-        <h1 className="mt-3 max-w-2xl text-4xl font-semibold text-hero-foreground sm:text-5xl">
-          A clearer view of your next home.
-        </h1>
+      <MapHero
+        bbox={search.bbox}
+        onSearchArea={(bbox) => applyFilters({ ...search, bbox, page: 1 })}
+        onClearArea={() => {
+          const next = { ...search, page: 1 };
+          delete next.bbox;
+          applyFilters(next);
+        }}
+        listings={isError ? [] : (data?.items ?? [])}
+        pending={isPending}
+        failed={isError}
+        hasMore={data?.has_more ?? false}
+      />
 
-        <p className="mt-2 text-sm text-muted-foreground">
-          Catalogue filters and sorting follow in D03. Prices use the selected display currency;
-          underlying amounts remain in USD.
-        </p>
-        <div className="mt-2">
-          <RateNote />
-        </div>
-      </SkylineHero>
-
-      <div className="mx-auto -mt-12 max-w-7xl px-4 sm:px-6">
+      <div
+        id="rental-catalogue"
+        tabIndex={-1}
+        className="mx-auto max-w-7xl scroll-mt-32 px-4 pb-6 pt-8 sm:px-6"
+      >
         <CatalogueFilters
           key={`${JSON.stringify(search)}-${filterRevision}`}
           search={search}
@@ -246,25 +238,23 @@ function Browse() {
             </select>
           </label>
 
-          <div
-            role="group"
-            aria-label="Results view"
-            className="flex rounded-md border p-1 text-xs font-semibold lg:hidden"
+          <a
+            href="#map-explore"
+            className="text-sm font-semibold text-primary"
+            onClick={(event) => {
+              event.preventDefault();
+              const map = document.getElementById("map-explore");
+              map?.focus({ preventScroll: true });
+              map?.scrollIntoView({
+                behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                  ? "instant"
+                  : "smooth",
+                block: "start",
+              });
+            }}
           >
-            {(["list", "map"] as const).map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                aria-pressed={view === mode}
-                onClick={() => setView(mode)}
-                className={`rounded px-3 py-2 capitalize ${
-                  view === mode ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
+            Back to map ↑
+          </a>
         </div>
 
         {isPending && (
@@ -297,12 +287,12 @@ function Browse() {
           <>
             {data.has_more && (
               <p className="mt-4 rounded-md border p-3 text-sm">
-                This response contains only part of the results. Pagination follows in D03.
+                Showing one page of matching rentals. Use the page controls below to see more.
               </p>
             )}
 
-            <div className="mt-4 grid gap-6 lg:grid-cols-2">
-              <ul className={`${view === "list" ? "grid" : "hidden"} content-start gap-3 lg:grid`}>
+            <div className="mt-4">
+              <ul className="grid content-start gap-5 md:grid-cols-2 xl:grid-cols-3">
                 {data.items.length === 0 && (
                   <li className="card-surface p-6">
                     <h3 className="font-sans text-base font-bold">
@@ -344,24 +334,6 @@ function Browse() {
                   <ListingCard key={listing.id} listing={listing} />
                 ))}
               </ul>
-
-              <aside
-                aria-label="Future map view"
-                className={`${
-                  view === "map" ? "flex" : "hidden"
-                } card-surface min-h-80 flex-col justify-center p-8 text-center lg:flex`}
-              >
-                <p className="text-xs font-bold uppercase tracking-widest text-primary">
-                  Map preview
-                </p>
-
-                <h2 className="mt-3 text-2xl font-semibold">Explore the neighborhood.</h2>
-
-                <p className="mx-auto mt-3 max-w-sm text-sm text-muted-foreground">
-                  The interactive map and infrastructure layers follow in D05. This panel does not
-                  represent listing locations or map coverage.
-                </p>
-              </aside>
             </div>
 
             <nav
