@@ -184,8 +184,8 @@ catalogue, USD/AMD choices and URL search state remain available below. The old
 second map placeholder is removed. The basemap currently stays the same in both
 UI themes; framing and controls follow the selected theme.
 
-The embedded map keeps ordinary wheel scrolling for the page. Pinch gestures
-and the +/− controls zoom the map; there is no Ctrl/⌘ wheel shortcut. Expand map
+The embedded map keeps cooperative wheel/touch zoom and the +/− controls enabled,
+while ordinary scrolling can browse the page. The UI does not display a modifier-key hint. Expand map
 opens a native modal dialog with wheel zoom, focus containment, Close/Escape and
 page-scroll locking. Closing restores trigger focus, page position and the map
 camera. Ordinary clicks or drags never open full screen automatically.

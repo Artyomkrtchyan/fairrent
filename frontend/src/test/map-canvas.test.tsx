@@ -180,7 +180,7 @@ describe("map canvas", () => {
 
   it("preserves page scrolling in the embedded map and enables zoom in the expanded view", () => {
     const embedded = render(<MapCanvas />);
-    expect(state.maps[0]?.options["scrollZoom"]).toBe(false);
+    expect(state.maps[0]?.options["scrollZoom"]).toBe(true);
     expect(state.maps[0]?.options["cooperativeGestures"]).toBe(true);
     embedded.unmount();
     render(<MapCanvas expanded />);

@@ -663,3 +663,8 @@
     z-index: 3;
   }
 }
+
+/* Keep gesture support without displaying the vendor's modifier-key overlay. */
+.map-canvas .maplibregl-cooperative-gesture-screen {
+  display: none;
+}
