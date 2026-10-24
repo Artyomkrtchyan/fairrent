@@ -304,7 +304,7 @@
 .map-canvas {
   position: relative;
   isolation: isolate;
-  height: clamp(420px, 65svh, 760px);
+  height: clamp(460px, 70svh, 820px);
   min-height: 0;
   width: 100%;
   background: var(--muted);
@@ -349,29 +349,6 @@
   bottom: 3rem;
   left: 1rem;
   right: 1rem;
-}
-.map-frame-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  border-top: 1px solid var(--border);
-  padding: 0.75rem 1.15rem;
-  font-size: 0.7rem;
-  background: var(--card);
-}
-.map-frame-footer p {
-  color: var(--muted-foreground);
-}
-.map-frame-footer a {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  color: var(--primary);
-  font-weight: 800;
-  text-decoration: none;
-  min-height: 30px;
 }
 .map-hero-caption {
   margin-top: 0.85rem;
@@ -472,11 +449,7 @@
     padding: 0.5rem 0.65rem;
   }
   .map-canvas:not(.map-canvas-expanded) {
-    height: clamp(290px, 43svh, 430px);
-  }
-  .map-frame-footer {
-    padding: 0.6rem 0.7rem;
-    font-size: 0.65rem;
+    height: clamp(330px, 50svh, 500px);
   }
   .map-fullscreen-toolbar {
     padding: 0.75rem;
@@ -674,8 +647,10 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.6rem 1rem;
-  flex: 1;
+  flex: 0 0 auto;
   min-width: 0;
+  padding: 0.4rem 1rem;
+  border-top: 1px solid var(--border);
   color: var(--foreground);
   font-size: 0.75rem;
 }
@@ -753,9 +728,5 @@
   .map-frame-toolbar,
   .map-fullscreen-toolbar {
     flex-wrap: wrap;
-  }
-  .map-layer-toolbar {
-    flex-basis: 100%;
-    order: 1;
   }
 }

@@ -10,7 +10,7 @@ import {
   type MouseEvent,
   type KeyboardEvent,
 } from "react";
-import { ArrowDown, ArrowUpRight, Expand, MapPin, X } from "lucide-react";
+import { ArrowDown, Expand, MapPin, X } from "lucide-react";
 import { parseMapBounds, serializeMapBounds, type MapBounds } from "@/lib/map-bounds";
 import { useInfrastructure, hasInfrastructureCoordinates } from "@/api/infrastructure";
 import { Link } from "@tanstack/react-router";
@@ -380,7 +380,6 @@ export function MapHero({
                 <p>Find your bearings before your next home.</p>
               </div>
             </div>
-            {placeControls}
             <div className="map-toolbar-actions">
               {areaSearch}
               <button
@@ -423,13 +422,8 @@ export function MapHero({
             {areaStatus} {coverage}
           </p>
 
+          {placeControls}
           {nearbyList}
-          <div className="map-frame-footer">
-            <p>Pinch or use + / − to zoom. Scroll to browse the page.</p>
-            <a href="#rental-catalogue" onClick={browseRentals}>
-              Find a rental <ArrowUpRight size={15} aria-hidden="true" />
-            </a>
-          </div>
         </div>
         <p className="map-hero-caption">A city to explore. A place to call home.</p>
       </div>
@@ -453,12 +447,11 @@ export function MapHero({
             <div className="map-fullscreen-toolbar">
               <div>
                 <h2 id={titleId}>Explore Yerevan</h2>
-                <p id={descriptionId}>
+                <p id={descriptionId} className="sr-only">
                   Drag to explore and use the wheel to zoom. Close or press Escape to return to your
                   search.
                 </p>
               </div>
-              {placeControls}
               <div className="map-toolbar-actions">
                 {areaSearch}
                 <button type="button" className="map-expand-button" onClick={closeMap}>
@@ -489,6 +482,7 @@ export function MapHero({
                 {areaStatus} {coverage}
               </p>
             </div>
+            {placeControls}
             {nearbyList}
           </>
         )}

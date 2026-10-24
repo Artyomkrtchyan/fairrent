@@ -221,7 +221,7 @@ currency changes, fullscreen details navigation and filter removal. Live OpenFre
 network policy; verify actual Yerevan tile rendering locally after pulling.
 
 The map introduction preserves the shorter heading, compact spacing, 1250px frame
-and taller desktop canvas (`clamp(420px, 65svh, 760px)`). Mobile/fullscreen sizing
+and taller desktop canvas (`clamp(460px, 70svh, 820px)`). Mobile/fullscreen sizing
 remains independent. Dots have 44px click targets around an 18px visual marker.
 The agreed future area gradient measures monthly asking rent per m², from green
 (lower) through yellow/orange to red (higher), with insufficient data neutral.
@@ -287,7 +287,7 @@ key; the invented fixture provenance and real-mode guard remain unchanged.
 
 ### Nearby metro/university layers
 
-Metro and Universities are independent switches inside each map toolbar and are
+Metro and Universities are independent switches in a slim row below each map and are
 off initially. Enabling a layer queries the current viewport (not the rental bbox)
 through the typed C01 GET `/api/v1/infrastructure` client. C01's 0.5° bound limit
 applies. Moving the viewport refreshes enabled place layers without applying a
@@ -314,6 +314,10 @@ layer removal, shared fullscreen state, 320/390px layouts, and a real-mode clien
 with controlled HTTP responses for 503/no-fallback, retry and multi-page loading.
 Live Yerevan map/provider and real backend integration remain local/deployment checks.
 
-The nearby-place switches share the existing toolbar rather than a separate row
-above the map. Desktop keeps the original 65svh canvas; fullscreen regains that
-row's space. Narrow layouts wrap controls to retain usable click targets.
+The map instruction/footer strip and its duplicate catalogue link are removed;
+Browse rentals above the frame still reaches the filters. Nearby layer switches
+sit in a slim bottom row, leaving the top toolbar for area search/clear and
+expand/close actions. Desktop canvas height is `clamp(460px, 70svh, 820px)`;
+mobile is `clamp(330px, 50svh, 500px)`. Fullscreen fits remaining viewport space;
+keyboard/gesture instructions are screen-reader-only. Controls wrap on narrow
+screens; layer loading/error/count messages and the named place list remain.
