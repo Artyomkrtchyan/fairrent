@@ -674,10 +674,9 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.6rem 1rem;
-  padding: 0.6rem 1.15rem;
-  background: var(--card);
+  flex: 1;
+  min-width: 0;
   color: var(--foreground);
-  border-bottom: 1px solid var(--border);
   font-size: 0.75rem;
 }
 .map-layer-toolbar > span:first-child {
@@ -744,4 +743,19 @@
 .map-fullscreen > .map-layer-toolbar,
 .map-fullscreen > .map-nearby-list {
   flex-shrink: 0;
+}
+
+.map-fullscreen-toolbar > div:first-child {
+  min-width: 0;
+  max-width: 26rem;
+}
+@media (max-width: 1023px) {
+  .map-frame-toolbar,
+  .map-fullscreen-toolbar {
+    flex-wrap: wrap;
+  }
+  .map-layer-toolbar {
+    flex-basis: 100%;
+    order: 1;
+  }
 }

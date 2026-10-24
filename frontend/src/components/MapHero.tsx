@@ -380,6 +380,7 @@ export function MapHero({
                 <p>Find your bearings before your next home.</p>
               </div>
             </div>
+            {placeControls}
             <div className="map-toolbar-actions">
               {areaSearch}
               <button
@@ -398,7 +399,6 @@ export function MapHero({
             </div>
           </div>
 
-          {placeControls}
           <div className="rental-map-stage">
             <Suspense
               fallback={
@@ -458,6 +458,7 @@ export function MapHero({
                   search.
                 </p>
               </div>
+              {placeControls}
               <div className="map-toolbar-actions">
                 {areaSearch}
                 <button type="button" className="map-expand-button" onClick={closeMap}>
@@ -465,7 +466,6 @@ export function MapHero({
                 </button>
               </div>
             </div>
-            {placeControls}
             <div className="map-fullscreen-body">
               <Suspense
                 fallback={
