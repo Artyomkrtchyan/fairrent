@@ -206,11 +206,11 @@ rooms/area, coordinate precision, synthetic/stale labels and a details link.
 Embedded and fullscreen views share selection and preserve catalogue return.
 Untrusted titles/labels are rendered as text, never as HTML.
 
-Marker clustering/card highlighting, infrastructure layers,
+Marker clustering/card highlighting,
 3D building data and a rental-price gradient remain D05 work; the visible basemap
 is not a visualization of rental-price measurements.
 
-Checkpoint validation: TypeScript, all 100 tests and the static build pass. Changed
+Checkpoint validation: TypeScript, all 108 tests and the static build pass. Changed
 map files pass ESLint; full lint still reports the 23 pre-existing SiteHeader
 formatting errors and eight existing Fast Refresh warnings. Vite reports a large
 MapLibre chunk; the renderer is lazy-loaded separately from the catalogue shell.
@@ -284,3 +284,32 @@ Browser checks verify embedded +/− change the actual searched bounds, ordinary
 wheel scrolling moves the page, and zoom still works after closing fullscreen.
 The compact legend uses one visible Demo data label, the scale/units and a No data
 key; the invented fixture provenance and real-mode guard remain unchanged.
+
+### Nearby metro/university layers
+
+Metro and Universities are independent switches below each map toolbar and are
+off initially. Enabling a layer queries the current viewport (not the rental bbox)
+through the typed C01 GET `/api/v1/infrastructure` client. C01's 0.5° bound limit
+applies. Moving the viewport refreshes enabled place layers without applying a
+rental area search. Queries are disabled when both switches are off or bounds are
+too broad; zoom-in/loading/error/empty states remain visible. Failed real requests
+never fall back to fixtures. Retry places and explicit Load more places support
+errors and paginated responses without claiming complete coverage.
+
+Place markers use M (metro) and U (university), distinguishable from rental dots
+and independent of rent colours. Keyboard buttons open named/type-labelled previews.
+An expandable Nearby places list offers an alternative way to select each place.
+Turning a selected layer off removes its marker and preview. Selection and switches
+are shared between the frame and fullscreen; Clear area removes rental dots only.
+The current mock transport extends the existing synthetic metro fixture with one
+explicitly synthetic university and supports type/bbox filtering and pagination.
+These are invented demo facilities, not an A05 facility inventory. C01 currently
+has no point provenance/freshness fields, so the frontend does not invent those.
+The real infrastructure route still requires backend implementation on this branch.
+
+Validation: 108 tests, TypeScript, mock/real builds and changed-file lint pass.
+Full lint retains the existing 23 SiteHeader formatting errors/eight Fast Refresh
+warnings. Browser checks cover independent switches, named marker/list selection,
+layer removal, shared fullscreen state, 320/390px layouts, and a real-mode client
+with controlled HTTP responses for 503/no-fallback, retry and multi-page loading.
+Live Yerevan map/provider and real backend integration remain local/deployment checks.

@@ -3,6 +3,7 @@ import { Map, NavigationControl, AttributionControl, Marker, setWorkerUrl } from
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import "maplibre-gl/dist/maplibre-gl.css";
 
+import type { InfrastructurePoint } from "@/api/infrastructure";
 import { apiMode } from "@/api/client";
 import { DEMO_SURFACE, demoSurfaceImage } from "@/lib/map-demo-surface";
 import { parseMapBounds, type MapBounds } from "@/lib/map-bounds";
@@ -16,6 +17,8 @@ export interface RentalMapPoint {
   label: string;
   approximate: boolean;
 }
+
+const EMPTY_PLACES: readonly InfrastructurePoint[] = [];
 
 const EMPTY_POINTS: readonly RentalMapPoint[] = [];
 
@@ -36,6 +39,9 @@ const DEFAULT_CAMERA: MapCamera = {
 };
 
 interface Props {
+  places?: readonly InfrastructurePoint[];
+  selectedPlaceId?: string | undefined;
+  onSelectPlace?: (id: string) => void;
   showDemoSurface?: boolean;
   bbox?: string | undefined;
   onBoundsChange?: ((bounds: MapBounds) => void) | undefined;
@@ -48,6 +54,9 @@ interface Props {
 }
 
 export function MapCanvas({
+  places = EMPTY_PLACES,
+  selectedPlaceId,
+  onSelectPlace,
   showDemoSurface = false,
   bbox,
   onBoundsChange,
@@ -60,6 +69,7 @@ export function MapCanvas({
 }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const instance = useRef<Map | null>(null);
+  const placeButtons = useRef<HTMLButtonElement[]>([]);
   const markerButtons = useRef<HTMLButtonElement[]>([]);
   const initialOptions = useRef({ expanded, camera: camera ?? DEFAULT_CAMERA });
   const cameraCallback = useRef(onCameraChange);
@@ -237,6 +247,40 @@ export function MapCanvas({
       markerButtons.current = [];
     };
   }, [points, onSelect]);
+
+  useEffect(() => {
+    const map = instance.current;
+    if (!map) return;
+    const markers = places.map((place) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `map-place-marker map-place-${place.type}`;
+      button.dataset["placeId"] = place.id;
+      button.textContent = place.type === "metro" ? "M" : "U";
+      button.title = place.name;
+      button.setAttribute(
+        "aria-label",
+        `${place.type === "metro" ? "Metro station" : "University"}: ${place.name}. Show place`,
+      );
+      button.addEventListener("click", () => onSelectPlace?.(place.id));
+      placeButtons.current.push(button);
+      return new Marker({ element: button, anchor: "center" })
+        .setLngLat([place.longitude, place.latitude])
+        .addTo(map);
+    });
+    return () => {
+      markers.forEach((marker) => marker.remove());
+      placeButtons.current = [];
+    };
+  }, [places, onSelectPlace]);
+
+  useEffect(() => {
+    for (const button of placeButtons.current) {
+      const selected = button.dataset["placeId"] === selectedPlaceId;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    }
+  }, [places, selectedPlaceId]);
 
   useEffect(() => {
     for (const button of markerButtons.current) {

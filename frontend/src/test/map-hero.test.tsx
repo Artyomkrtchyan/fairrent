@@ -1,8 +1,19 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render as renderReact, screen, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import fixtures from "../../../contracts/fixtures.json";
 import type { MapListing } from "@/lib/map-listings";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement } from "react";
 import { MapHero } from "@/components/MapHero";
+
+function render(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+  return renderReact(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    ),
+  });
+}
 
 vi.mock("@/lib/prefs", () => ({ usePrefs: () => ({ format: (value: number) => `$${value}` }) }));
 

@@ -12,6 +12,7 @@ import {
 } from "react";
 import { ArrowDown, ArrowUpRight, Expand, MapPin, X } from "lucide-react";
 import { parseMapBounds, serializeMapBounds, type MapBounds } from "@/lib/map-bounds";
+import { useInfrastructure, hasInfrastructureCoordinates } from "@/api/infrastructure";
 import { Link } from "@tanstack/react-router";
 import { usePrefs } from "@/lib/prefs";
 import { apiMode } from "@/api/client";
@@ -53,6 +54,108 @@ export function MapHero({
   const [viewport, setViewport] = useState<MapBounds>();
   const viewportBbox = viewport ? serializeMapBounds(viewport) : undefined;
   const validArea = parseMapBounds(viewportBbox);
+  const [showMetro, setShowMetro] = useState(false);
+  const [showUniversities, setShowUniversities] = useState(false);
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string>();
+  const nearby = useInfrastructure(viewportBbox, showMetro, showUniversities);
+  const places = useMemo(
+    () =>
+      !parseMapBounds(viewportBbox) || nearby.isError
+        ? []
+        : (nearby.data?.pages.flatMap((page) => page.items) ?? []).filter(
+            (place) =>
+              hasInfrastructureCoordinates(place) &&
+              (place.type === "metro" ? showMetro : showUniversities),
+          ),
+    [viewportBbox, nearby.data, nearby.isError, showMetro, showUniversities],
+  );
+  const selectedPlace = places.find((place) => place.id === selectedPlaceId);
+  const showNearby = showMetro || showUniversities;
+  const placeControls = (
+    <div className="map-layer-toolbar" aria-label="Nearby place layers">
+      <span>Nearby</span>
+      <label>
+        <input
+          type="checkbox"
+          checked={showMetro}
+          onChange={(event) => setShowMetro(event.target.checked)}
+        />{" "}
+        <span className="map-layer-symbol">M</span> Metro
+      </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={showUniversities}
+          onChange={(event) => setShowUniversities(event.target.checked)}
+        />{" "}
+        <span className="map-layer-symbol">U</span> Universities
+      </label>
+      {showNearby && (
+        <span role="status" className="map-nearby-status">
+          {!validArea
+            ? "Zoom in to show nearby places."
+            : nearby.isError
+              ? "Nearby places unavailable."
+              : nearby.isPending
+                ? "Loading nearby places…"
+                : `${places.length} places shown${nearby.hasNextPage ? " · More available" : ""}${apiMode === "mock" ? " · Demo data" : ""}`}
+        </span>
+      )}
+      {showNearby && nearby.isError && (
+        <button type="button" onClick={() => void nearby.refetch()}>
+          Retry places
+        </button>
+      )}
+      {showNearby && nearby.hasNextPage && (
+        <button
+          type="button"
+          disabled={nearby.isFetchingNextPage}
+          onClick={() => void nearby.fetchNextPage()}
+        >
+          {nearby.isFetchingNextPage ? "Loading…" : "Load more places"}
+        </button>
+      )}
+    </div>
+  );
+  const placePreview = selectedPlace && (
+    <section
+      className="rental-map-preview map-place-preview"
+      aria-label="Selected nearby place"
+      aria-live="polite"
+    >
+      <button
+        type="button"
+        className="rental-preview-close"
+        aria-label="Close place preview"
+        onClick={() => setSelectedPlaceId(undefined)}
+      >
+        <X size={18} />
+      </button>
+      <h3>{selectedPlace.name}</h3>
+      <p>{selectedPlace.type === "metro" ? "Metro station" : "University"}</p>
+      {apiMode === "mock" && <p>Demo location</p>}
+    </section>
+  );
+  const nearbyList = showNearby && places.length > 0 && (
+    <details className="map-nearby-list">
+      <summary>Nearby places ({places.length})</summary>
+      <ul>
+        {places.map((place) => (
+          <li key={place.id}>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedPlaceId(place.id);
+                setSelectedId(undefined);
+              }}
+            >
+              {place.name} · {place.type === "metro" ? "Metro station" : "University"}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
   const areaSearch = onSearchArea && (
     <div className="map-area-search">
       <button
@@ -104,6 +207,14 @@ export function MapHero({
     </aside>
   );
   const [selectedId, setSelectedId] = useState<string>();
+  const selectRental = useCallback((id: string) => {
+    setSelectedId(id);
+    setSelectedPlaceId(undefined);
+  }, []);
+  const selectPlace = useCallback((id: string) => {
+    setSelectedPlaceId(id);
+    setSelectedId(undefined);
+  }, []);
   const points = useMemo(
     () =>
       listings.filter(hasMapCoordinates).map((listing) => ({
@@ -124,8 +235,11 @@ export function MapHero({
   const markerProps = {
     points: bbox ? points : [],
     showDemoSurface,
+    places,
+    selectedPlaceId,
+    onSelectPlace: selectPlace,
     selectedId,
-    onSelect: setSelectedId,
+    onSelect: selectRental,
     bbox,
   };
   const coverage = pending
@@ -284,6 +398,7 @@ export function MapHero({
             </div>
           </div>
 
+          {placeControls}
           <div className="rental-map-stage">
             <Suspense
               fallback={
@@ -302,12 +417,13 @@ export function MapHero({
               />
             </Suspense>
             {!expanded && gradientLegend}
-            {!expanded && preview}
+            {!expanded && (placePreview || preview)}
           </div>
           <p className="rental-map-coverage" role="status">
             {areaStatus} {coverage}
           </p>
 
+          {nearbyList}
           <div className="map-frame-footer">
             <p>Pinch or use + / − to zoom. Scroll to browse the page.</p>
             <a href="#rental-catalogue" onClick={browseRentals}>
@@ -349,6 +465,7 @@ export function MapHero({
                 </button>
               </div>
             </div>
+            {placeControls}
             <div className="map-fullscreen-body">
               <Suspense
                 fallback={
@@ -367,11 +484,12 @@ export function MapHero({
                 />
               </Suspense>
               {gradientLegend}
-              {preview}
+              {placePreview || preview}
               <p className="rental-map-coverage rental-map-coverage-expanded" role="status">
                 {areaStatus} {coverage}
               </p>
             </div>
+            {nearbyList}
           </>
         )}
       </dialog>

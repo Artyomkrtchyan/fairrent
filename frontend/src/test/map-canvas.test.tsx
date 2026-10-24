@@ -131,6 +131,31 @@ afterEach(() => {
 });
 
 describe("map canvas", () => {
+  it("uses separately labelled keyboard buttons for nearby places and removes them when disabled", () => {
+    const onSelectPlace = vi.fn();
+    const places = [
+      {
+        id: "metro",
+        name: "<b>Test metro</b>",
+        type: "metro" as const,
+        latitude: 40.18,
+        longitude: 44.51,
+      },
+    ];
+    const view = render(
+      <MapCanvas places={places} selectedPlaceId="metro" onSelectPlace={onSelectPlace} />,
+    );
+    const marker = state.markers[0]!;
+    expect(marker.element.textContent).toBe("M");
+    expect(marker.element.querySelector("b")).toBeNull();
+    expect(marker.element.getAttribute("aria-label")).toContain("Metro station: <b>Test metro</b>");
+    expect(marker.element.getAttribute("aria-pressed")).toBe("true");
+    marker.element.click();
+    expect(onSelectPlace).toHaveBeenCalledWith("metro");
+    view.rerender(<MapCanvas places={[]} onSelectPlace={onSelectPlace} />);
+    expect(marker.remove).toHaveBeenCalledOnce();
+  });
+
   it("adds the synthetic raster below roads after style load and cleans up on disable", () => {
     const view = render(<MapCanvas showDemoSurface />);
     const map = state.maps[0]!;
