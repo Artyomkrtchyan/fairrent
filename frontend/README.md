@@ -210,7 +210,7 @@ Marker clustering/card highlighting, infrastructure layers,
 3D building data and a rental-price gradient remain D05 work; the visible basemap
 is not a visualization of rental-price measurements.
 
-Checkpoint validation: TypeScript, all 93 tests and the static build pass. Changed
+Checkpoint validation: TypeScript, all 94 tests and the static build pass. Changed
 map files pass ESLint; full lint still reports the 23 pre-existing SiteHeader
 formatting errors and eight existing Fast Refresh warnings. Vite reports a large
 MapLibre chunk; the renderer is lazy-loaded separately from the catalogue shell.
@@ -243,3 +243,9 @@ remain paginated and the coverage message never implies all matches are mapped.
 The mock transport applies inclusive coordinate bounds before pagination, just
 as the real collection API does. Missing coordinates cannot match an area query.
 No API schema or backend changes are needed.
+
+Fullscreen captures its starting camera once when opened. Subsequent viewport
+updates do not feed the moving camera back through `jumpTo`; this prevents an
+area-search feedback loop interrupting drag/zoom. Closing preserves the last
+camera, and reopening starts there. Regression checks cover this lifecycle and
+actual fullscreen zoom/drag changes to the searched bounds.

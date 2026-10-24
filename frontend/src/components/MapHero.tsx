@@ -128,6 +128,7 @@ export function MapHero({
     </section>
   );
   const [expanded, setExpanded] = useState(false);
+  const [expandedCamera, setExpandedCamera] = useState(INITIAL_CAMERA);
   const [returnedCamera, setReturnedCamera] = useState(INITIAL_CAMERA);
   const latestCamera = useRef(INITIAL_CAMERA);
   const expandButton = useRef<HTMLButtonElement>(null);
@@ -228,7 +229,10 @@ export function MapHero({
             <button
               ref={expandButton}
               type="button"
-              onClick={() => setExpanded(true)}
+              onClick={() => {
+                setExpandedCamera(latestCamera.current);
+                setExpanded(true);
+              }}
               className="map-expand-button"
               aria-haspopup="dialog"
             >
@@ -310,7 +314,7 @@ export function MapHero({
                 <MapCanvas
                   expanded
                   onBoundsChange={setViewport}
-                  camera={latestCamera.current}
+                  camera={expandedCamera}
                   onCameraChange={rememberCamera}
                   {...markerProps}
                   bbox={undefined}

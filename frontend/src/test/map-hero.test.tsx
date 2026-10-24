@@ -8,13 +8,29 @@ vi.mock("@/components/MapCanvas", () => ({
   MapCanvas: ({
     expanded = false,
     onBoundsChange,
+    onCameraChange,
+    camera,
   }: {
+    camera?: { zoom: number };
+    onCameraChange?: (camera: {
+      center: [number, number];
+      zoom: number;
+      pitch: number;
+      bearing: number;
+    }) => void;
     expanded?: boolean;
     onBoundsChange?: ((bounds: [number, number, number, number]) => void) | undefined;
   }) => (
-    <div data-testid={expanded ? "expanded-map" : "embedded-map"}>
+    <div data-testid={expanded ? "expanded-map" : "embedded-map"} data-initial-zoom={camera?.zoom}>
       Map preview
-      <button onClick={() => onBoundsChange?.([44.5, 40.1, 44.6, 40.2])}>Move map in test</button>
+      <button
+        onClick={() => {
+          onCameraChange?.({ center: [44.55, 40.15], zoom: 15, pitch: 0, bearing: 0 });
+          onBoundsChange?.([44.5, 40.1, 44.6, 40.2]);
+        }}
+      >
+        Move map in test
+      </button>
       <button onClick={() => onBoundsChange?.([44, 40, 45, 41])}>Zoom out in test</button>
     </div>
   ),
@@ -52,6 +68,24 @@ afterEach(() => {
 });
 
 describe("framed map introduction", () => {
+  it("does not feed fullscreen movement back into the controlled camera", async () => {
+    render(<MapHero onSearchArea={vi.fn()} />);
+    await screen.findByTestId("embedded-map");
+    fireEvent.click(screen.getByRole("button", { name: "Expand map" }));
+    const dialog = screen.getByRole("dialog");
+    const map = within(dialog).getByTestId("expanded-map");
+    expect(map).toHaveAttribute("data-initial-zoom", "13");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Move map in test" }));
+    expect(map).toHaveAttribute("data-initial-zoom", "13");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close map" }));
+    expect(screen.getByTestId("embedded-map")).toHaveAttribute("data-initial-zoom", "15");
+    fireEvent.click(screen.getByRole("button", { name: "Expand map" }));
+    expect(within(screen.getByRole("dialog")).getByTestId("expanded-map")).toHaveAttribute(
+      "data-initial-zoom",
+      "15",
+    );
+  });
+
   it("waits for an explicit area search and rejects oversized viewports", async () => {
     const onSearchArea = vi.fn();
     const view = render(<MapHero onSearchArea={onSearchArea} />);
