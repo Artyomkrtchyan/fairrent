@@ -2,6 +2,8 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { MapHero } from "@/components/MapHero";
 
+vi.mock("@/lib/prefs", () => ({ usePrefs: () => ({ format: (value: number) => `$${value}` }) }));
+
 vi.mock("@/components/MapCanvas", () => ({
   MapCanvas: ({ expanded = false }: { expanded?: boolean }) => (
     <div data-testid={expanded ? "expanded-map" : "embedded-map"}>Map preview</div>

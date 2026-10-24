@@ -112,7 +112,12 @@ function Browse() {
 
   return (
     <main>
-      <MapHero />
+      <MapHero
+        listings={isError ? [] : (data?.items ?? [])}
+        pending={isPending}
+        failed={isError}
+        hasMore={data?.has_more ?? false}
+      />
 
       <div
         id="rental-catalogue"

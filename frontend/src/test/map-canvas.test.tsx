@@ -9,6 +9,11 @@ const state = vi.hoisted(() => ({
     remove: ReturnType<typeof vi.fn>;
     jumpTo: ReturnType<typeof vi.fn>;
   }[],
+  markers: [] as {
+    element: HTMLButtonElement;
+    remove: ReturnType<typeof vi.fn>;
+    coordinates?: number[];
+  }[],
   fail: false,
 }));
 
@@ -16,6 +21,22 @@ vi.mock("maplibre-gl", () => ({
   setWorkerUrl: vi.fn(),
   NavigationControl: class {},
   AttributionControl: class {},
+  Marker: class {
+    element: HTMLButtonElement;
+    coordinates?: number[];
+    remove = vi.fn();
+    constructor({ element }: { element: HTMLButtonElement }) {
+      this.element = element;
+      state.markers.push(this);
+    }
+    setLngLat(coordinates: number[]) {
+      this.coordinates = coordinates;
+      return this;
+    }
+    addTo() {
+      return this;
+    }
+  },
   Map: class {
     options: Record<string, unknown>;
     handlers: Record<string, () => void> = {};
@@ -55,6 +76,7 @@ vi.mock("maplibre-gl", () => ({
 
 beforeEach(() => {
   state.maps = [];
+  state.markers = [];
   state.fail = false;
   vi.stubGlobal(
     "ResizeObserver",
@@ -71,6 +93,30 @@ afterEach(() => {
 });
 
 describe("map canvas", () => {
+  it("uses safe keyboard-accessible price markers and removes old markers when results change", () => {
+    const onSelect = vi.fn();
+    const point = {
+      id: "rental-one",
+      longitude: 44.51,
+      latitude: 40.18,
+      label: "<img onerror=alert(1)>",
+      approximate: true,
+    };
+    const view = render(<MapCanvas points={[point]} onSelect={onSelect} selectedId={point.id} />);
+    const marker = state.markers[0]!;
+    expect(marker.coordinates).toEqual([44.51, 40.18]);
+    expect(marker.element.tagName).toBe("BUTTON");
+    expect(marker.element.querySelector("img")).toBeNull();
+    expect(marker.element.textContent).toBe(point.label);
+    expect(marker.element.getAttribute("aria-label")).toContain("approximate location");
+    expect(marker.element.getAttribute("aria-pressed")).toBe("true");
+    marker.element.click();
+    expect(onSelect).toHaveBeenCalledWith(point.id);
+    view.rerender(<MapCanvas points={[]} onSelect={onSelect} />);
+    expect(marker.remove).toHaveBeenCalledOnce();
+    expect(state.maps).toHaveLength(1);
+  });
+
   it("preserves page scrolling in the embedded map and enables zoom in the expanded view", () => {
     const embedded = render(<MapCanvas />);
     expect(state.maps[0]?.options["scrollZoom"]).toBe(false);

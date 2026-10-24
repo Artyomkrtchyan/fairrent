@@ -1,9 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { Map, NavigationControl, AttributionControl, setWorkerUrl } from "maplibre-gl";
+import { Map, NavigationControl, AttributionControl, Marker, setWorkerUrl } from "maplibre-gl";
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 setWorkerUrl(mapWorkerUrl);
+
+export interface RentalMapPoint {
+  id: string;
+  longitude: number;
+  latitude: number;
+  label: string;
+  approximate: boolean;
+}
+
+const EMPTY_POINTS: readonly RentalMapPoint[] = [];
 
 const DEFAULT_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
@@ -22,15 +32,25 @@ const DEFAULT_CAMERA: MapCamera = {
 };
 
 interface Props {
+  points?: readonly RentalMapPoint[];
+  selectedId?: string | undefined;
+  onSelect?: (id: string) => void;
   expanded?: boolean;
   camera?: MapCamera;
   onCameraChange?: (camera: MapCamera) => void;
 }
 
-/** Basemap only: listing markers, building extrusions and rental layers follow later in D05. */
-export function MapCanvas({ expanded = false, camera, onCameraChange }: Props) {
+export function MapCanvas({
+  expanded = false,
+  camera,
+  onCameraChange,
+  points = EMPTY_POINTS,
+  selectedId,
+  onSelect,
+}: Props) {
   const container = useRef<HTMLDivElement>(null);
   const instance = useRef<Map | null>(null);
+  const markerButtons = useRef<HTMLButtonElement[]>([]);
   const initialOptions = useRef({ expanded, camera: camera ?? DEFAULT_CAMERA });
   const cameraCallback = useRef(onCameraChange);
   const [loading, setLoading] = useState(true);
@@ -116,6 +136,39 @@ export function MapCanvas({ expanded = false, camera, onCameraChange }: Props) {
   useEffect(() => {
     if (camera) instance.current?.jumpTo(camera);
   }, [camera]);
+
+  useEffect(() => {
+    const map = instance.current;
+    if (!map) return;
+    const markers = points.map((point) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "rental-map-marker";
+      button.dataset["rentalId"] = point.id;
+      button.textContent = point.label;
+      button.setAttribute(
+        "aria-label",
+        `${point.label}${point.approximate ? ", approximate location" : ""}. Show rental preview`,
+      );
+      markerButtons.current.push(button);
+      button.addEventListener("click", () => onSelect?.(point.id));
+      return new Marker({ element: button, anchor: "bottom" })
+        .setLngLat([point.longitude, point.latitude])
+        .addTo(map);
+    });
+    return () => {
+      markers.forEach((marker) => marker.remove());
+      markerButtons.current = [];
+    };
+  }, [points, onSelect]);
+
+  useEffect(() => {
+    for (const button of markerButtons.current) {
+      const selected = button.dataset["rentalId"] === selectedId;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    }
+  }, [points, selectedId]);
 
   return (
     <section

@@ -195,15 +195,26 @@ by Vite. `VITE_MAP_STYLE_URL` can override the default OpenFreeMap Liberty style
 OpenFreeMap/OpenStreetMap attribution remains visible in the map controls. A map
 loading/rendering failure does not remove the catalogue or Browse rentals action.
 
-This checkpoint does not implement apartment markers, bbox synchronization,
-infrastructure layers, 3D building data or a rental-price gradient. Those remain
-D05 work; the visible basemap is not a visualization of rental-price measurements.
+Rental price markers use only usable source coordinates from the current catalogue
+page, with the same filters and USD/AMD formatting. Listings with missing, invalid
+or unknown-confidence coordinates remain in the catalogue without invented map
+positions. The map explicitly reports page coverage and whether further results
+exist. Marker colors indicate selection, not a price comparison or fraud score.
+Keyboard-accessible marker buttons open a React-rendered preview with rent,
+rooms/area, coordinate precision, synthetic/stale labels and a details link.
+Embedded and fullscreen views share selection and preserve catalogue return.
+Untrusted titles/labels are rendered as text, never as HTML.
 
-Checkpoint validation: TypeScript, all 72 tests and the static build pass. Changed
+Bbox synchronization, marker clustering/card highlighting, infrastructure layers,
+3D building data and a rental-price gradient remain D05 work; the visible basemap
+is not a visualization of rental-price measurements.
+
+Checkpoint validation: TypeScript, all 81 tests and the static build pass. Changed
 map files pass ESLint; full lint still reports the 23 pre-existing SiteHeader
 formatting errors and eight existing Fast Refresh warnings. Vite reports a large
 MapLibre chunk; the renderer is lazy-loaded separately from the catalogue shell.
 Browser checks exercised real WebGL and the bundled worker with a local test
 style, native dialog focus/scroll behavior, filters/detail return, dark framing
-and 320/390px layouts. Live OpenFreeMap/font requests were denied by the cloud
+and 320/390px layouts. Marker browser checks also cover keyboard selection,
+currency changes, fullscreen details navigation and filter removal. Live OpenFreeMap/font requests were denied by the cloud
 network policy; verify actual Yerevan tile rendering locally after pulling.

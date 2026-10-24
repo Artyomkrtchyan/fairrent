@@ -487,3 +487,78 @@
     font-size: 0.65rem;
   }
 }
+
+.rental-map-stage,
+.map-fullscreen-body {
+  position: relative;
+}
+.rental-map-marker {
+  border: 2px solid white;
+  border-radius: 999px;
+  background: #193a90;
+  color: white;
+  padding: 7px 11px;
+  font: 700 12px var(--font-sans);
+  box-shadow: 0 2px 8px #0004;
+  cursor: pointer;
+}
+.rental-map-marker:hover,
+.rental-map-marker.is-selected {
+  background: #4169e1;
+}
+.rental-map-marker:focus-visible {
+  outline: 3px solid #fbbf24;
+  outline-offset: 3px;
+}
+.rental-map-preview {
+  position: absolute;
+  z-index: 3;
+  bottom: 2.5rem;
+  left: 1rem;
+  width: min(310px, calc(100% - 2rem));
+  background: var(--card);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 8px 24px #0003;
+  font-size: 0.8rem;
+  max-height: 70%;
+  overflow: auto;
+}
+.rental-map-preview h3 {
+  padding-right: 1.5rem;
+  font: 700 1rem var(--font-sans);
+}
+.rental-map-preview p {
+  margin-top: 0.5rem;
+}
+.rental-preview-price {
+  font-weight: 800;
+}
+.rental-map-preview a {
+  display: inline-block;
+  margin-top: 0.75rem;
+  color: var(--primary);
+  font-weight: 700;
+}
+.rental-preview-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.4rem;
+  border-radius: 6px;
+}
+.rental-map-coverage {
+  padding: 0.55rem 1rem;
+  background: var(--card);
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+.rental-map-coverage-expanded {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 3.5rem;
+  pointer-events: none;
+}

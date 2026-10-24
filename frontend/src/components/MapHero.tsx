@@ -4,12 +4,17 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   type MouseEvent,
   type KeyboardEvent,
 } from "react";
 import { ArrowDown, ArrowUpRight, Expand, MapPin, X } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { usePrefs } from "@/lib/prefs";
+import { apiMode } from "@/api/client";
+import { hasMapCoordinates, type MapListing } from "@/lib/map-listings";
 import type { MapCamera } from "@/components/MapCanvas";
 
 const MapCanvas = lazy(() =>
@@ -23,7 +28,76 @@ const INITIAL_CAMERA: MapCamera = {
   bearing: 0,
 };
 
-export function MapHero() {
+const NO_LISTINGS: readonly MapListing[] = [];
+
+export function MapHero({
+  listings = NO_LISTINGS,
+  pending = false,
+  failed = false,
+  hasMore = false,
+}: {
+  listings?: readonly MapListing[];
+  pending?: boolean;
+  failed?: boolean;
+  hasMore?: boolean;
+}) {
+  const { format } = usePrefs();
+  const [selectedId, setSelectedId] = useState<string>();
+  const points = useMemo(
+    () =>
+      listings.filter(hasMapCoordinates).map((listing) => ({
+        id: listing.id,
+        longitude: listing.longitude!,
+        latitude: listing.latitude!,
+        label:
+          listing.price_monthly_normalized === null
+            ? "Rent unavailable"
+            : format(listing.price_monthly_normalized),
+        approximate: listing.coordinate_confidence === "approximate",
+      })),
+    [listings, format],
+  );
+  const selected = listings.find(
+    (listing) => listing.id === selectedId && hasMapCoordinates(listing),
+  );
+  const markerProps = { points, selectedId, onSelect: setSelectedId };
+  const coverage = pending
+    ? "Loading rental locations…"
+    : failed
+      ? "Rental locations unavailable. Try again in the catalogue below."
+      : `${points.length} of ${listings.length} rentals on this results page have usable locations.${hasMore ? " More results are available in the catalogue." : ""}`;
+  const preview = selected && (
+    <section className="rental-map-preview" aria-label="Selected rental" aria-live="polite">
+      <button
+        type="button"
+        className="rental-preview-close"
+        aria-label="Close rental preview"
+        onClick={() => setSelectedId(undefined)}
+      >
+        <X size={18} />
+      </button>
+      <h3>{selected.title || "Apartment in Yerevan"}</h3>
+      <p className="rental-preview-price">
+        {selected.price_monthly_normalized === null
+          ? "Rent unavailable"
+          : `${format(selected.price_monthly_normalized)} / month`}
+      </p>
+      <p>
+        {selected.rooms === null ? "Rooms unavailable" : `${selected.rooms} rooms`} ·{" "}
+        {selected.area_sqm === null ? "Area unavailable" : `${selected.area_sqm} m²`}
+      </p>
+      <p>
+        {selected.coordinate_confidence === "approximate"
+          ? "Approximate location — not an exact building."
+          : "Source-reported location."}
+      </p>
+      {apiMode === "mock" && <p>Synthetic example</p>}
+      {selected.freshness.is_stale && <p>Source data is marked stale.</p>}
+      <Link to="/listings/$id" params={{ id: selected.id }} state={{ fromCatalogue: true }}>
+        View details →
+      </Link>
+    </section>
+  );
   const [expanded, setExpanded] = useState(false);
   const [returnedCamera, setReturnedCamera] = useState(INITIAL_CAMERA);
   const latestCamera = useRef(INITIAL_CAMERA);
@@ -140,17 +214,23 @@ export function MapHero() {
             </button>
           </div>
 
-          <Suspense
-            fallback={
-              <div className="map-canvas">
-                <p role="status" className="map-notice map-notice-loading">
-                  Preparing the map…
-                </p>
-              </div>
-            }
-          >
-            <MapCanvas camera={returnedCamera} onCameraChange={rememberCamera} />
-          </Suspense>
+          <div className="rental-map-stage">
+            <Suspense
+              fallback={
+                <div className="map-canvas">
+                  <p role="status" className="map-notice map-notice-loading">
+                    Preparing the map…
+                  </p>
+                </div>
+              }
+            >
+              <MapCanvas camera={returnedCamera} onCameraChange={rememberCamera} {...markerProps} />
+            </Suspense>
+            {!expanded && preview}
+          </div>
+          <p className="rental-map-coverage" role="status">
+            {coverage}
+          </p>
 
           <div className="map-frame-footer">
             <p>Scroll to keep browsing. Use + / − to zoom the map.</p>
@@ -198,8 +278,17 @@ export function MapHero() {
                   </p>
                 }
               >
-                <MapCanvas expanded camera={latestCamera.current} onCameraChange={rememberCamera} />
+                <MapCanvas
+                  expanded
+                  camera={latestCamera.current}
+                  onCameraChange={rememberCamera}
+                  {...markerProps}
+                />
               </Suspense>
+              {preview}
+              <p className="rental-map-coverage rental-map-coverage-expanded" role="status">
+                {coverage}
+              </p>
             </div>
           </>
         )}
