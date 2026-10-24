@@ -195,8 +195,9 @@ by Vite. `VITE_MAP_STYLE_URL` can override the default OpenFreeMap Liberty style
 OpenFreeMap/OpenStreetMap attribution remains visible in the map controls. A map
 loading/rendering failure does not remove the catalogue or Browse rentals action.
 
-Rental price markers use only usable source coordinates from the current catalogue
-page, with the same filters and USD/AMD formatting. Listings with missing, invalid
+Small neutral rental dots use only usable source coordinates from the current catalogue
+page, with the same filters. Prices remain in the clickable preview and accessible marker names,
+using shared USD/AMD formatting. Listings with missing, invalid
 or unknown-confidence coordinates remain in the catalogue without invented map
 positions. The map explicitly reports page coverage and whether further results
 exist. Marker colors indicate selection, not a price comparison or fraud score.
@@ -218,3 +219,12 @@ style, native dialog focus/scroll behavior, filters/detail return, dark framing
 and 320/390px layouts. Marker browser checks also cover keyboard selection,
 currency changes, fullscreen details navigation and filter removal. Live OpenFreeMap/font requests were denied by the cloud
 network policy; verify actual Yerevan tile rendering locally after pulling.
+
+The map introduction preserves the shorter heading, compact spacing, 1250px frame
+and taller desktop canvas (`clamp(420px, 65svh, 760px)`). Mobile/fullscreen sizing
+remains independent. Dots have 44px click targets around an 18px visual marker.
+The agreed future area gradient measures monthly asking rent per m², from green
+(lower) through yellow/orange to red (higher), with insufficient data neutral.
+It does not represent deviation from an estimated range; that comparison remains
+separately labelled in listing details. No area gradient or value-based dot colour
+is synthesized from the single current fixture or a partial catalogue page.

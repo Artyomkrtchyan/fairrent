@@ -93,7 +93,7 @@ afterEach(() => {
 });
 
 describe("map canvas", () => {
-  it("uses safe keyboard-accessible price markers and removes old markers when results change", () => {
+  it("uses safe keyboard-accessible dot markers and removes old markers when results change", () => {
     const onSelect = vi.fn();
     const point = {
       id: "rental-one",
@@ -107,7 +107,9 @@ describe("map canvas", () => {
     expect(marker.coordinates).toEqual([44.51, 40.18]);
     expect(marker.element.tagName).toBe("BUTTON");
     expect(marker.element.querySelector("img")).toBeNull();
-    expect(marker.element.textContent).toBe(point.label);
+    expect(marker.element.textContent).toBe("");
+    expect(marker.element.title).toBe(point.label);
+    expect(marker.element.getAttribute("aria-label")).toContain(point.label);
     expect(marker.element.getAttribute("aria-label")).toContain("approximate location");
     expect(marker.element.getAttribute("aria-pressed")).toBe("true");
     marker.element.click();

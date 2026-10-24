@@ -145,14 +145,14 @@ export function MapCanvas({
       button.type = "button";
       button.className = "rental-map-marker";
       button.dataset["rentalId"] = point.id;
-      button.textContent = point.label;
+      button.title = point.label;
       button.setAttribute(
         "aria-label",
         `${point.label}${point.approximate ? ", approximate location" : ""}. Show rental preview`,
       );
       markerButtons.current.push(button);
       button.addEventListener("click", () => onSelect?.(point.id));
-      return new Marker({ element: button, anchor: "bottom" })
+      return new Marker({ element: button, anchor: "center" })
         .setLngLat([point.longitude, point.latitude])
         .addTo(map);
     });

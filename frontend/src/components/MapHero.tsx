@@ -177,14 +177,8 @@ export function MapHero({
             <p className="map-hero-eyebrow">
               <span aria-hidden="true" /> Yerevan, Armenia · Long-term rentals
             </p>
-            <h1 id="map-hero-title">
-              A clearer view of
-              <br className="hidden sm:block" /> your next home.
-            </h1>
-            <p className="map-hero-intro">
-              Start with the city. Find your neighborhood.
-              <br className="hidden sm:block" /> Explore rentals with a little more perspective.
-            </p>
+            <h1 id="map-hero-title">A clearer view of your next home.</h1>
+            <p className="map-hero-intro">Explore Yerevan. Find your next home.</p>
           </div>
           <a className="map-browse-button" href="#rental-catalogue" onClick={browseRentals}>
             Browse rentals <ArrowDown size={17} aria-hidden="true" />
