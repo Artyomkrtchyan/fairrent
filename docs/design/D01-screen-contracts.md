@@ -182,3 +182,27 @@ this checkpoint retains the same provider basemap in both themes.
 This layout update does not supply missing geographic infrastructure, 3D heights,
 rental aggregates or a new C01 endpoint. D05's marker, bounded-query, data/coverage
 and meaningful color-layer requirements remain outstanding.
+
+
+## D05 gradient-first interaction refinement — 2026-10-24
+
+The opening map shows an area price surface with a legend; apartment dots appear
+only after explicit Search this area. Place that action in the map toolbar beside
+Expand map, or beside Close map in fullscreen. The surface remains when dots appear,
+when the map moves, and when the area restriction is cleared. Moving preserves
+previous rental results until another explicit search and shows a pending-area
+message. Dots remain small, neutral, selectable and keyboard accessible; asking
+prices are in previews. Catalogue filters/sort still apply to rental results.
+
+The area metric is **monthly asking rent per square metre**, with green for lower
+values, yellow/orange intermediate, red higher and no-data neutral. This is not
+asking-price deviation from an estimated range, nor a fraud signal. That listing
+comparison remains separately labelled in D04. Real aggregate source, cohort,
+coverage, minimum sample size and freshness must be agreed before real gradients.
+
+For visual review the frontend may use a clearly labelled mock-only synthetic
+surface with invented spatial pattern and 6–24 USD/m²/month scale. It must never
+be used as a real API fallback or presented as measured/estimated market data.
+Its coverage shape is illustrative, not a Yerevan boundary. Existing single-rental
+fixtures remain independent of that surface; do not claim counts or freshness for
+invented observations. Real mode shows the price layer as unavailable until supplied.

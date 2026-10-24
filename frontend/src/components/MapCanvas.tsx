@@ -3,6 +3,8 @@ import { Map, NavigationControl, AttributionControl, Marker, setWorkerUrl } from
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import "maplibre-gl/dist/maplibre-gl.css";
 
+import { apiMode } from "@/api/client";
+import { DEMO_SURFACE, demoSurfaceImage } from "@/lib/map-demo-surface";
 import { parseMapBounds, type MapBounds } from "@/lib/map-bounds";
 
 setWorkerUrl(mapWorkerUrl);
@@ -34,6 +36,7 @@ const DEFAULT_CAMERA: MapCamera = {
 };
 
 interface Props {
+  showDemoSurface?: boolean;
   bbox?: string | undefined;
   onBoundsChange?: ((bounds: MapBounds) => void) | undefined;
   points?: readonly RentalMapPoint[];
@@ -45,6 +48,7 @@ interface Props {
 }
 
 export function MapCanvas({
+  showDemoSurface = false,
   bbox,
   onBoundsChange,
   expanded = false,
@@ -63,6 +67,7 @@ export function MapCanvas({
   useEffect(() => {
     boundsCallback.current = onBoundsChange;
   }, [onBoundsChange]);
+  const [styleReady, setStyleReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -124,6 +129,7 @@ export function MapCanvas({
         window.clearTimeout(timeout);
         setLoading(false);
         setError(null);
+        setStyleReady(true);
         const bounds = activeMap.getBounds();
         boundsCallback.current?.([
           bounds.getWest(),
@@ -156,6 +162,40 @@ export function MapCanvas({
       map?.remove();
     };
   }, []);
+
+  useEffect(() => {
+    const map = instance.current;
+    if (!map || !styleReady || apiMode !== "mock" || !showDemoSurface) return;
+    const [west, south, east, north] = DEMO_SURFACE.bounds;
+    const id = "fairrent-synthetic-rent-surface";
+    map.addSource(id, {
+      type: "image",
+      url: demoSurfaceImage(),
+      coordinates: [
+        [west, north],
+        [east, north],
+        [east, south],
+        [west, south],
+      ],
+    });
+    const before = map
+      .getStyle()
+      .layers?.find((layer) => layer.type === "line" || layer.type === "symbol")?.id;
+    map.addLayer(
+      {
+        id,
+        type: "raster",
+        source: id,
+        paint: { "raster-opacity": 0.8, "raster-fade-duration": 0 },
+      },
+      before,
+    );
+    return () => {
+      if (instance.current !== map) return;
+      if (map.getLayer(id)) map.removeLayer(id);
+      if (map.getSource(id)) map.removeSource(id);
+    };
+  }, [styleReady, showDemoSurface]);
 
   useEffect(() => {
     if (camera) instance.current?.jumpTo(camera);

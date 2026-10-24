@@ -8,13 +8,28 @@ const state = vi.hoisted(() => ({
     handlers: Record<string, () => void>;
     remove: ReturnType<typeof vi.fn>;
     jumpTo: ReturnType<typeof vi.fn>;
+    addSource: ReturnType<typeof vi.fn>;
+    addLayer: ReturnType<typeof vi.fn>;
+    removeSource: ReturnType<typeof vi.fn>;
+    removeLayer: ReturnType<typeof vi.fn>;
   }[],
   markers: [] as {
     element: HTMLButtonElement;
     remove: ReturnType<typeof vi.fn>;
     coordinates?: number[];
   }[],
+  mode: "mock",
   fail: false,
+}));
+
+vi.mock("@/api/client", () => ({
+  get apiMode() {
+    return state.mode;
+  },
+}));
+vi.mock("@/lib/map-demo-surface", () => ({
+  DEMO_SURFACE: { bounds: [44.44, 40.11, 44.6, 40.24] },
+  demoSurfaceImage: () => "data:image/png;base64,test-only",
 }));
 
 vi.mock("maplibre-gl", () => ({
@@ -43,6 +58,19 @@ vi.mock("maplibre-gl", () => ({
     remove = vi.fn();
     jumpTo = vi.fn();
     resize = vi.fn();
+    addSource = vi.fn();
+    addLayer = vi.fn();
+    removeSource = vi.fn();
+    removeLayer = vi.fn();
+    getStyle() {
+      return { layers: [{ id: "roads", type: "line" }] };
+    }
+    getLayer() {
+      return true;
+    }
+    getSource() {
+      return true;
+    }
     constructor(options: Record<string, unknown>) {
       if (state.fail) throw new Error("WebGL unavailable");
       this.options = options;
@@ -87,6 +115,7 @@ beforeEach(() => {
   state.maps = [];
   state.markers = [];
   state.fail = false;
+  state.mode = "mock";
   vi.stubGlobal(
     "ResizeObserver",
     class {
@@ -102,6 +131,27 @@ afterEach(() => {
 });
 
 describe("map canvas", () => {
+  it("adds the synthetic raster below roads after style load and cleans up on disable", () => {
+    const view = render(<MapCanvas showDemoSurface />);
+    const map = state.maps[0]!;
+    expect(map.addSource).not.toHaveBeenCalled();
+    act(() => map.handlers["load"]?.());
+    expect(map.addSource).toHaveBeenCalledWith(
+      "fairrent-synthetic-rent-surface",
+      expect.objectContaining({ type: "image" }),
+    );
+    expect(map.addLayer).toHaveBeenCalledWith(expect.objectContaining({ type: "raster" }), "roads");
+    view.rerender(<MapCanvas showDemoSurface={false} />);
+    expect(map.removeLayer).toHaveBeenCalledOnce();
+    expect(map.removeSource).toHaveBeenCalledOnce();
+  });
+  it("never adds synthetic market colours in real API mode", () => {
+    state.mode = "real";
+    render(<MapCanvas showDemoSurface />);
+    act(() => state.maps[0]?.handlers["load"]?.());
+    expect(state.maps[0]?.addSource).not.toHaveBeenCalled();
+  });
+
   it("uses safe keyboard-accessible dot markers and removes old markers when results change", () => {
     const onSelect = vi.fn();
     const point = {

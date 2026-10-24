@@ -1,5 +1,7 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import fixtures from "../../../contracts/fixtures.json";
+import type { MapListing } from "@/lib/map-listings";
 import { MapHero } from "@/components/MapHero";
 
 vi.mock("@/lib/prefs", () => ({ usePrefs: () => ({ format: (value: number) => `$${value}` }) }));
@@ -10,7 +12,9 @@ vi.mock("@/components/MapCanvas", () => ({
     onBoundsChange,
     onCameraChange,
     camera,
+    points = [],
   }: {
+    points?: { id: string }[];
     camera?: { zoom: number };
     onCameraChange?: (camera: {
       center: [number, number];
@@ -21,7 +25,11 @@ vi.mock("@/components/MapCanvas", () => ({
     expanded?: boolean;
     onBoundsChange?: ((bounds: [number, number, number, number]) => void) | undefined;
   }) => (
-    <div data-testid={expanded ? "expanded-map" : "embedded-map"} data-initial-zoom={camera?.zoom}>
+    <div
+      data-testid={expanded ? "expanded-map" : "embedded-map"}
+      data-initial-zoom={camera?.zoom}
+      data-marker-count={points.length}
+    >
       Map preview
       <button
         onClick={() => {
@@ -68,6 +76,25 @@ afterEach(() => {
 });
 
 describe("framed map introduction", () => {
+  it("shows the synthetic legend first, adds dots only for an area search and keeps the legend on clear", async () => {
+    const listings = fixtures.listings.value.items as MapListing[];
+    const view = render(<MapHero listings={listings} onSearchArea={vi.fn()} />);
+    const map = await screen.findByTestId("embedded-map");
+    expect(map).toHaveAttribute("data-marker-count", "0");
+    expect(screen.getByLabelText("Area rent colour legend")).toHaveTextContent(
+      "Synthetic design preview",
+    );
+    expect(screen.getByLabelText("Area rent colour legend")).toHaveTextContent("USD / m² / month");
+    view.rerender(
+      <MapHero bbox="44.5,40.1,44.6,40.2" listings={listings} onSearchArea={vi.fn()} />,
+    );
+    expect(map).toHaveAttribute("data-marker-count", "1");
+    expect(screen.getByLabelText("Area rent colour legend")).toBeInTheDocument();
+    view.rerender(<MapHero listings={listings} onSearchArea={vi.fn()} />);
+    expect(map).toHaveAttribute("data-marker-count", "0");
+    expect(screen.getByLabelText("Area rent colour legend")).toBeInTheDocument();
+  });
+
   it("does not feed fullscreen movement back into the controlled camera", async () => {
     render(<MapHero onSearchArea={vi.fn()} />);
     await screen.findByTestId("embedded-map");
@@ -98,7 +125,7 @@ describe("framed map introduction", () => {
     expect(screen.getByRole("button", { name: "Search this area" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Zoom out in test" }));
     expect(screen.getByRole("button", { name: "Search this area" })).toBeDisabled();
-    expect(screen.getByText("Zoom in to search a smaller area.")).toBeInTheDocument();
+    expect(screen.getByText(/Zoom in to search a smaller area/)).toBeInTheDocument();
   });
 
   it("opens only with the Expand action and returns focus after Close", async () => {

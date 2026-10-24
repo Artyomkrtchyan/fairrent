@@ -574,30 +574,87 @@
   pointer-events: none;
 }
 
-.map-area-search {
-  position: absolute;
-  z-index: 2;
-  top: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-  text-align: center;
-  max-width: calc(100% - 7rem);
-}
-.map-area-search button {
-  box-shadow: 0 2px 8px #0003;
+.map-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 .map-area-search button:disabled {
-  opacity: 0.75;
+  opacity: 0.65;
   cursor: default;
 }
-.map-area-search p {
-  margin-top: 0.4rem;
-  padding: 0.4rem 0.6rem;
+.map-area-search .map-expand-button {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: transparent;
+}
+.map-price-legend {
+  position: absolute;
+  right: 1rem;
+  bottom: 2.6rem;
+  z-index: 2;
+  width: 240px;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
   background: var(--card);
   color: var(--foreground);
-  border-radius: 6px;
-  font-size: 0.75rem;
+  box-shadow: 0 4px 18px #0002;
+  font-size: 0.65rem;
+  pointer-events: none;
 }
-.map-fullscreen-body .map-area-search {
-  top: 3.5rem;
+.map-demo-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+}
+.map-price-legend h3 {
+  margin-top: 0.35rem;
+  font: 700 0.8rem var(--font-sans);
+}
+.map-price-ramp {
+  height: 9px;
+  margin-top: 0.65rem;
+  border-radius: 99px;
+  background: linear-gradient(to right, #16a34a, #facc15, #f97316, #dc2626);
+}
+.map-price-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.3rem 0;
+  font-variant-numeric: tabular-nums;
+}
+.map-price-legend p + p {
+  margin-top: 0.35rem;
+}
+.map-no-data-key {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #94a3b8;
+  margin-right: 0.25rem;
+}
+@media (max-width: 639px) {
+  .map-frame-toolbar,
+  .map-fullscreen-toolbar {
+    flex-wrap: wrap;
+  }
+  .map-toolbar-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .map-price-legend {
+    width: 190px;
+    right: 0.65rem;
+    bottom: 2rem;
+    padding: 0.6rem 0.75rem;
+  }
+  .rental-map-preview {
+    bottom: 2rem;
+    z-index: 3;
+  }
 }

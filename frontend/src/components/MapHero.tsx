@@ -47,6 +47,7 @@ export function MapHero({
   hasMore?: boolean;
 }) {
   const { format } = usePrefs();
+  const showDemoSurface = apiMode === "mock";
   const [viewport, setViewport] = useState<MapBounds>();
   const viewportBbox = viewport ? serializeMapBounds(viewport) : undefined;
   const validArea = parseMapBounds(viewportBbox);
@@ -62,9 +63,39 @@ export function MapHero({
       >
         {pending ? "Searching…" : "Search this area"}
       </button>
-      {viewport && !validArea && <p role="status">Zoom in to search a smaller area.</p>}
-      {bbox && viewportBbox === bbox && <p role="status">Results for this map area</p>}
     </div>
+  );
+  const areaStatus =
+    viewport && !validArea
+      ? "Zoom in to search a smaller area."
+      : bbox && viewportBbox !== bbox
+        ? "Map moved — search to update rental dots."
+        : bbox
+          ? "Rental dots show your searched area."
+          : "Search this area to show available rentals.";
+  const gradientLegend = (
+    <aside className="map-price-legend" aria-label="Area rent colour legend">
+      <p className="map-demo-label">
+        {showDemoSurface ? "Synthetic design preview" : "Area price layer unavailable"}
+      </p>
+      {showDemoSurface && (
+        <>
+          <h3>Monthly asking rent / m²</h3>
+          <div className="map-price-ramp" aria-hidden="true" />
+          <div className="map-price-ticks">
+            <span>6</span>
+            <span>12</span>
+            <span>18</span>
+            <span>24</span>
+          </div>
+          <p>USD / m² / month · Lower → Higher</p>
+          <p>Invented values, not market estimates.</p>
+          <p>
+            <span className="map-no-data-key" /> Outside demo extent: no data
+          </p>
+        </>
+      )}
+    </aside>
   );
   const [selectedId, setSelectedId] = useState<string>();
   const points = useMemo(
@@ -85,7 +116,8 @@ export function MapHero({
     (listing) => listing.id === selectedId && hasMapCoordinates(listing),
   );
   const markerProps = {
-    points,
+    points: bbox ? points : [],
+    showDemoSurface,
     selectedId,
     onSelect: setSelectedId,
     bbox,
@@ -94,8 +126,10 @@ export function MapHero({
     ? "Loading rental locations…"
     : failed
       ? "Rental locations unavailable. Try again in the catalogue below."
-      : `${points.length} of ${listings.length} rentals on this results page have usable locations.${hasMore ? " More results are available in the catalogue." : ""}`;
-  const preview = selected && (
+      : !bbox
+        ? "Rental results are also available in the catalogue below."
+        : `${points.length} of ${listings.length} rentals on this results page have usable locations.${hasMore ? " More results are available in the catalogue." : ""}`;
+  const preview = bbox && selected && (
     <section className="rental-map-preview" aria-label="Selected rental" aria-live="polite">
       <button
         type="button"
@@ -226,19 +260,22 @@ export function MapHero({
                 <p>Find your bearings before your next home.</p>
               </div>
             </div>
-            <button
-              ref={expandButton}
-              type="button"
-              onClick={() => {
-                setExpandedCamera(latestCamera.current);
-                setExpanded(true);
-              }}
-              className="map-expand-button"
-              aria-haspopup="dialog"
-            >
-              <Expand size={16} aria-hidden="true" />
-              <span>Expand map</span>
-            </button>
+            <div className="map-toolbar-actions">
+              {areaSearch}
+              <button
+                ref={expandButton}
+                type="button"
+                onClick={() => {
+                  setExpandedCamera(latestCamera.current);
+                  setExpanded(true);
+                }}
+                className="map-expand-button"
+                aria-haspopup="dialog"
+              >
+                <Expand size={16} aria-hidden="true" />
+                <span>Expand map</span>
+              </button>
+            </div>
           </div>
 
           <div className="rental-map-stage">
@@ -258,11 +295,11 @@ export function MapHero({
                 {...markerProps}
               />
             </Suspense>
-            {!expanded && areaSearch}
+            {!expanded && gradientLegend}
             {!expanded && preview}
           </div>
           <p className="rental-map-coverage" role="status">
-            {coverage}
+            {areaStatus} {coverage}
           </p>
 
           <div className="map-frame-footer">
@@ -299,9 +336,12 @@ export function MapHero({
                   search.
                 </p>
               </div>
-              <button type="button" className="map-expand-button" onClick={closeMap}>
-                <X size={18} aria-hidden="true" /> Close map
-              </button>
+              <div className="map-toolbar-actions">
+                {areaSearch}
+                <button type="button" className="map-expand-button" onClick={closeMap}>
+                  <X size={18} aria-hidden="true" /> Close map
+                </button>
+              </div>
             </div>
             <div className="map-fullscreen-body">
               <Suspense
@@ -320,10 +360,10 @@ export function MapHero({
                   bbox={undefined}
                 />
               </Suspense>
-              {areaSearch}
+              {gradientLegend}
               {preview}
               <p className="rental-map-coverage rental-map-coverage-expanded" role="status">
-                {coverage}
+                {areaStatus} {coverage}
               </p>
             </div>
           </>

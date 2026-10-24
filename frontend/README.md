@@ -210,7 +210,7 @@ Marker clustering/card highlighting, infrastructure layers,
 3D building data and a rental-price gradient remain D05 work; the visible basemap
 is not a visualization of rental-price measurements.
 
-Checkpoint validation: TypeScript, all 94 tests and the static build pass. Changed
+Checkpoint validation: TypeScript, all 99 tests and the static build pass. Changed
 map files pass ESLint; full lint still reports the 23 pre-existing SiteHeader
 formatting errors and eight existing Fast Refresh warnings. Vite reports a large
 MapLibre chunk; the renderer is lazy-loaded separately from the catalogue shell.
@@ -226,8 +226,8 @@ remains independent. Dots have 44px click targets around an 18px visual marker.
 The agreed future area gradient measures monthly asking rent per m², from green
 (lower) through yellow/orange to red (higher), with insufficient data neutral.
 It does not represent deviation from an estimated range; that comparison remains
-separately labelled in listing details. No area gradient or value-based dot colour
-is synthesized from the single current fixture or a partial catalogue page.
+separately labelled in listing details. The mock-only design preview described below uses an independent invented surface,
+not inferred values from the single rental fixture or a partial catalogue page.
 
 ### Explicit map-area search
 
@@ -249,3 +249,30 @@ updates do not feed the moving camera back through `jumpTo`; this prevents an
 area-search feedback loop interrupting drag/zoom. Closing preserves the last
 camera, and reopening starts there. Regression checks cover this lifecycle and
 actual fullscreen zoom/drag changes to the searched bounds.
+
+### Synthetic gradient design preview (mock mode only)
+
+Mock mode opens with a smooth green → yellow → orange → red rental-price surface,
+plus a persistent legend: **monthly asking rent per m², USD/m²/month, 6–24**.
+This deterministic fixture is entirely invented for visual review. Its two smooth
+peaks, elliptical extent and value scale are not observations, a prediction model,
+administrative boundaries, or evidence of actual Yerevan price/coverage patterns.
+Outside the demo extent there are no values. The translucent geographically
+anchored raster is inserted below basemap road/label layers, so streets remain
+readable. Values/geometry are isolated in `src/lib/map-demo-surface.ts` for later
+replacement by an agreed real-data source. There is no real-gradient API fallback:
+real mode never renders this fixture, even if requested by a component.
+
+Before an area search, the map shows no apartment dots; the catalogue remains
+available below. Search this area, now beside Expand map in the toolbar (beside
+Close map in full screen), adds actual current-page fixture/API rental dots while
+keeping the surface and legend. Pan/zoom keeps the previous results until another
+explicit search, with an update message. Removing the Map area chip or Clear all
+hides the dots again and keeps the surface. The surface is independent of listing
+filters, pagination, selection and USD/AMD preference; the legend always explicitly
+uses USD. Individual rental prices in previews still follow display currency.
+
+Validation includes rendered green/warm raster pixels in a real WebGL browser,
+initial hidden dots, search/clear, persistent legend, fullscreen zoom and toolbar
+controls at 320/390px. The browser uses a controlled local basemap style because
+live OpenFreeMap requests are blocked in the cloud; verify streets/labels locally.
