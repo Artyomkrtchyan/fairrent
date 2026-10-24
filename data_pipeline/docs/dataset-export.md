@@ -24,9 +24,12 @@ The exporter requires a valid positive USD target, a valid coordinate pair, and 
 following the B02 training record requirements. Daily and weekly rentals are excluded even though ingestion keeps
 their normalized values for provenance. Optional missing fields remain blank/null. It hashes A04 property groups into opaque
 `dedup_group_id` values. Groups are sorted by earliest observation date and assigned to chronological 70/15/15
-train/validation/test windows. All records for a group stay in one split. Rows observed after their group's split
-boundary are excluded. If dates are tied or too few groups exist, split sizes may differ from 70/15/15; exact date
-boundaries and realized counts appear in the report and manifest.
+train/validation/test windows. All records for a group stay in one split, and split boundaries fall only between
+distinct anchor dates so groups tied on a date cannot be spread across windows. Ratios may deviate from 70/15/15
+when date ties require it. With fewer than three distinct anchor dates, all three chronological windows are
+impossible; the available later date is kept for test when there are two dates, and validation is empty. Rows
+observed after their group's split boundary are excluded. Exact date boundaries and realized counts appear in the
+report and manifest.
 
 ## Output files
 

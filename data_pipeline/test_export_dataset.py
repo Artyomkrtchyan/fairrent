@@ -94,6 +94,36 @@ def test_duplicate_group_is_kept_in_one_chronological_split_and_future_rows_are_
     assert sum(map(len, splits.values())) == 3
 
 
+def test_groups_with_tied_anchor_dates_stay_in_one_chronological_split():
+    rows = [
+        _row(1, "2026-01-01T08:00:00"),
+        _row(2, "2026-01-01T10:00:00"),
+        _row(3, "2026-01-01T14:00:00"),
+        _row(4, "2026-01-01T18:00:00"),
+        _row(5, "2026-01-01T20:00:00"),
+        _row(6, "2026-01-01T22:00:00"),
+        _row(7, "2026-02-01T10:00:00"),
+        _row(8, "2026-03-01T10:00:00"),
+    ]
+
+    splits, report = prepare_snapshot(rows, date(2026, 4, 10))
+
+    date_splits = {}
+    for split_name, split_rows in splits.items():
+        for row in split_rows:
+            date_splits.setdefault(row["observation_date"], set()).add(split_name)
+    assert date_splits["2026-01-01"] == {"train"}
+    assert all(len(assigned_splits) == 1 for assigned_splits in date_splits.values())
+    train_dates = {row["observation_date"] for row in splits["train"]}
+    validation_dates = {row["observation_date"] for row in splits["validation"]}
+    test_dates = {row["observation_date"] for row in splits["test"]}
+    assert max(train_dates) < min(validation_dates)
+    assert max(validation_dates) < min(test_dates)
+    assert report["splits"]["train_end_date"] < report["splits"]["validation_start_date"]
+    assert report["splits"]["validation_end_date"] < report["splits"]["test_start_date"]
+    assert report["splits"]["row_counts"] == {"train": 6, "validation": 1, "test": 1}
+
+
 def test_snapshot_artifacts_are_deterministic_and_do_not_export_raw_listing_fields():
     splits, quality = prepare_snapshot([_row(1, "2026-01-01T10:00:00")], date(2026, 12, 31))
     first = create_artifacts(splits, quality, "v1.0.0", date(2026, 12, 31))

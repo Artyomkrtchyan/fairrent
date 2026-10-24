@@ -237,23 +237,39 @@ def prepare_snapshot(raw_rows: Iterable[dict], as_of: date) -> tuple[dict[str, l
     anchors = sorted((min(r["_anchor_date"] for r in members), group_id)
                      for group_id, members in group_members.items())
     group_count = len(anchors)
-    if group_count >= 3:
-        train_count = max(1, math.floor(group_count * SPLIT_RATIOS["train"]))
-        validation_count = max(1, math.floor(group_count * SPLIT_RATIOS["validation"]))
-        if train_count + validation_count >= group_count:
-            train_count, validation_count = group_count - 2, 1
-    elif group_count == 2:
-        train_count, validation_count = 1, 0
-    elif group_count == 1:
-        train_count, validation_count = 1, 0
-    else:
-        train_count, validation_count = 0, 0
+    groups_by_date = Counter(anchor_date for anchor_date, _ in anchors)
+    anchor_dates = sorted(groups_by_date)
+
+    # Choose split boundaries only between dates, so all groups anchored on
+    # the same date remain together. Ratios may shift when dates are clustered.
+    train_end_index = validation_end_index = None
+    if len(anchor_dates) >= 3:
+        group_prefix = [0]
+        for anchor_date in anchor_dates:
+            group_prefix.append(group_prefix[-1] + groups_by_date[anchor_date])
+        candidates = []
+        for train_index in range(len(anchor_dates) - 2):
+            train_groups = group_prefix[train_index + 1]
+            for validation_index in range(train_index + 1, len(anchor_dates) - 1):
+                validation_groups = group_prefix[validation_index + 1] - train_groups
+                test_groups = group_count - group_prefix[validation_index + 1]
+                proportions = (train_groups / group_count, validation_groups / group_count,
+                               test_groups / group_count)
+                error = sum((actual - target) ** 2 for actual, target in zip(
+                    proportions, (SPLIT_RATIOS["train"], SPLIT_RATIOS["validation"],
+                                  SPLIT_RATIOS["test"])))
+                candidates.append((error, train_index, validation_index))
+        _, train_end_index, validation_end_index = min(candidates)
+    elif len(anchor_dates) == 2:
+        # Three strict time windows cannot be formed from only two dates.
+        # Keep the later date for a future test window and report validation empty.
+        train_end_index = 0
 
     group_split = {}
-    for index, (_, group_id) in enumerate(anchors):
-        if index < train_count:
+    for anchor_date, group_id in anchors:
+        if train_end_index is None or anchor_date <= anchor_dates[train_end_index]:
             group_split[group_id] = "train"
-        elif index < train_count + validation_count:
+        elif validation_end_index is not None and anchor_date <= anchor_dates[validation_end_index]:
             group_split[group_id] = "validation"
         else:
             group_split[group_id] = "test"
@@ -261,9 +277,9 @@ def prepare_snapshot(raw_rows: Iterable[dict], as_of: date) -> tuple[dict[str, l
     split_groups: dict[str, list[dict]] = {"train": [], "validation": [], "test": []}
     split_excluded = Counter()
     split_ends = {}
-    train_end = anchors[train_count - 1][0] if train_count else None
-    val_end_index = train_count + validation_count - 1
-    validation_end = anchors[val_end_index][0] if val_end_index >= 0 else None
+    train_end = anchor_dates[train_end_index] if train_end_index is not None else None
+    validation_end = (anchor_dates[validation_end_index]
+                      if validation_end_index is not None else None)
     split_ends["train"] = train_end
     split_ends["validation"] = validation_end
     split_ends["test"] = as_of
@@ -324,6 +340,11 @@ def prepare_snapshot(raw_rows: Iterable[dict], as_of: date) -> tuple[dict[str, l
             "rows_excluded_after_group_split_boundary": dict(sorted(split_excluded.items())),
             "train_end_date": train_end.isoformat() if train_end else None,
             "validation_end_date": validation_end.isoformat() if validation_end else None,
+            "validation_start_date": (anchor_dates[train_end_index + 1].isoformat()
+                                      if validation_end_index is not None else None),
+            "test_start_date": (anchor_dates[validation_end_index + 1].isoformat()
+                                if validation_end_index is not None else
+                                anchor_dates[1].isoformat() if len(anchor_dates) == 2 else None),
             "test_end_date": as_of.isoformat(),
         },
     }
@@ -378,8 +399,9 @@ def create_artifacts(split_rows: dict[str, list[dict]], quality: dict, version: 
         "observation_policy": "one latest listing state per source listing, observed at last_seen_at <= as_of; price is monthly asking USD",
         "historical_limit": "Price history stores changes, not a full feature snapshot per observation. This export does not treat old price changes as independent rows with current features.",
         "split_policy": {
-            "method": "chronological by earliest observation_date per dedup group; all group members stay in one split",
+            "method": "chronological by earliest observation_date per dedup group; all group members and tied anchor dates stay in one split",
             "ratios": SPLIT_RATIOS,
+            "date_tie_policy": "split boundaries fall only between distinct anchor dates; ratios may deviate to keep tied dates together",
             "future_row_policy": "exclude rows observed after their assigned split end date",
         },
         "dedup_group_policy": "SHA-256 of normalized location and group-level structure, with persistent property id as disambiguator; used only for split isolation",
