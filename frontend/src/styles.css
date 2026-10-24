@@ -730,3 +730,14 @@
     flex-wrap: wrap;
   }
 }
+
+.map-view-toggle {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.map-view-toggle button[aria-pressed="true"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+}

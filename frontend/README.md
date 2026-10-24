@@ -321,3 +321,18 @@ expand/close actions. Desktop canvas height is `clamp(460px, 70svh, 820px)`;
 mobile is `clamp(330px, 50svh, 500px)`. Fullscreen fits remaining viewport space;
 keyboard/gesture instructions are screen-reader-only. Controls wrap on narrow
 screens; layer loading/error/count messages and the named place list remain.
+
+### 2D / 3D building view
+
+The map toolbar offers shared 2D/3D controls in framed and fullscreen views.
+3D uses the basemap provider's building layer and render-height properties,
+tilts the camera, and zooms to at least level 15. Heights are provider-supplied;
+their accuracy and citywide completeness have not been independently verified.
+
+2D restores a top-down view and keeps flat building shapes visible at higher
+zoom levels. Styles without a building extrusion layer remain flat; the
+frontend does not invent building heights. Reduced-motion preferences are
+respected. The hidden framed map cannot overwrite the fullscreen camera.
+
+Regression tests cover flat buildings, switching modes, camera settings and
+styles without building data.

@@ -50,6 +50,28 @@ export function MapHero({
   hasMore?: boolean;
 }) {
   const { format } = usePrefs();
+  const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
+
+  const viewModeControls = (
+    <div role="group" aria-label="Map view" className="map-view-toggle">
+      <button
+        type="button"
+        className="map-expand-button"
+        aria-pressed={viewMode === "2d"}
+        onClick={() => setViewMode("2d")}
+      >
+        2D
+      </button>
+      <button
+        type="button"
+        className="map-expand-button"
+        aria-pressed={viewMode === "3d"}
+        onClick={() => setViewMode("3d")}
+      >
+        3D
+      </button>
+    </div>
+  );
   const showDemoSurface = apiMode === "mock";
   const [viewport, setViewport] = useState<MapBounds>();
   const viewportBbox = viewport ? serializeMapBounds(viewport) : undefined;
@@ -233,6 +255,7 @@ export function MapHero({
     (listing) => listing.id === selectedId && hasMapCoordinates(listing),
   );
   const markerProps = {
+    viewMode,
     points: bbox ? points : [],
     showDemoSurface,
     places,
@@ -381,6 +404,7 @@ export function MapHero({
               </div>
             </div>
             <div className="map-toolbar-actions">
+              {viewModeControls}
               {areaSearch}
               <button
                 ref={expandButton}
@@ -411,7 +435,9 @@ export function MapHero({
               <MapCanvas
                 onBoundsChange={expanded ? undefined : setViewport}
                 camera={returnedCamera}
-                onCameraChange={rememberCamera}
+                onCameraChange={(camera) => {
+                  if (!expanded) rememberCamera(camera);
+                }}
                 {...markerProps}
               />
             </Suspense>
@@ -453,6 +479,7 @@ export function MapHero({
                 </p>
               </div>
               <div className="map-toolbar-actions">
+                {viewModeControls}
                 {areaSearch}
                 <button type="button" className="map-expand-button" onClick={closeMap}>
                   <X size={18} aria-hidden="true" /> Close map

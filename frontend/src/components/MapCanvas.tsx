@@ -39,6 +39,7 @@ const DEFAULT_CAMERA: MapCamera = {
 };
 
 interface Props {
+  viewMode?: "2d" | "3d";
   places?: readonly InfrastructurePoint[];
   selectedPlaceId?: string | undefined;
   onSelectPlace?: (id: string) => void;
@@ -54,6 +55,7 @@ interface Props {
 }
 
 export function MapCanvas({
+  viewMode = "2d",
   places = EMPTY_PLACES,
   selectedPlaceId,
   onSelectPlace,
@@ -210,6 +212,56 @@ export function MapCanvas({
   useEffect(() => {
     if (camera) instance.current?.jumpTo(camera);
   }, [camera]);
+
+  useEffect(() => {
+    const map = instance.current;
+    if (!map || !styleReady) return;
+
+    const buildings = map
+      .getStyle()
+      .layers?.filter(
+        (layer) => layer.type === "fill-extrusion" && layer["source-layer"] === "building",
+      );
+
+    if (!buildings?.length) return;
+
+    const buildingLayer = buildings[0];
+    if (!buildingLayer || buildingLayer.type !== "fill-extrusion") return;
+
+    const flatBuildingsId = "fairrent-flat-buildings";
+
+    if (!map.getLayer(flatBuildingsId)) {
+      map.addLayer(
+        {
+          id: flatBuildingsId,
+          type: "fill",
+          source: buildingLayer.source,
+          "source-layer": "building",
+          minzoom: buildingLayer.minzoom ?? 14,
+          paint: {
+            "fill-color": "#e2e8f0",
+            "fill-outline-color": "#94a3b8",
+            "fill-opacity": 0.7,
+          },
+        },
+        buildingLayer.id,
+      );
+    }
+
+    map.setLayoutProperty(flatBuildingsId, "visibility", viewMode === "2d" ? "visible" : "none");
+
+    for (const layer of buildings) {
+      map.setLayoutProperty(layer.id, "visibility", viewMode === "3d" ? "visible" : "none");
+    }
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    map.easeTo({
+      pitch: viewMode === "3d" ? 55 : 0,
+      ...(viewMode === "3d" ? { zoom: Math.max(map.getZoom(), 15) } : {}),
+      duration: reducedMotion ? 0 : 600,
+    });
+  }, [viewMode, styleReady]);
 
   useEffect(() => {
     const bounds = parseMapBounds(bbox);
