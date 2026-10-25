@@ -6,3 +6,6 @@ Stack: Python, HTTPX, and BeautifulSoup; Playwright when JavaScript rendering is
 
 For A07 weekly neighborhood asking-price aggregates, see the
 [index contract, sparse-data policy, generator, and backend database view](docs/neighborhood-price-index.md).
+For versioned, leakage-aware, privacy-safe ML snapshots and the accompanying quality report, see
+[A06 dataset export](docs/dataset-export.md). Generate snapshots with `python -m data_pipeline.export_dataset`;
+outputs default to the Git-ignored `data/processed/` directory.

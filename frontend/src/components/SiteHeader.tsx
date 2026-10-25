@@ -18,15 +18,15 @@ export function SiteHeader() {
     <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur">
       <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:px-6 lg:flex lg:justify-between">
         <Link to="/" className="flex min-w-0 items-center gap-2">
-<span className="grid h-11 w-11 shrink-0 place-items-center">
-<svg
-  viewBox="20 18 190 218"
-  className="h-11 w-11 text-primary"
-  fill="none"
-  aria-hidden="true"
->
-  <path
-    d="
+          <span className="grid h-11 w-11 shrink-0 place-items-center">
+            <svg
+              viewBox="20 18 190 218"
+              className="h-11 w-11 text-primary"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="
       M35 221
       V32
       H137
@@ -35,14 +35,14 @@ export function SiteHeader() {
       L195 221
       H107
     "
-    stroke="currentColor"
-    strokeWidth="14"
-    strokeLinecap="square"
-    strokeLinejoin="miter"
-  />
+                stroke="currentColor"
+                strokeWidth="14"
+                strokeLinecap="square"
+                strokeLinejoin="miter"
+              />
 
-  <path
-    d="
+              <path
+                d="
       M35 221
       H73
       V149
@@ -52,13 +52,13 @@ export function SiteHeader() {
       V71
       H148
     "
-    stroke="currentColor"
-    strokeWidth="14"
-    strokeLinecap="square"
-    strokeLinejoin="miter"
-  />
-</svg>
-</span>
+                stroke="currentColor"
+                strokeWidth="14"
+                strokeLinecap="square"
+                strokeLinejoin="miter"
+              />
+            </svg>
+          </span>
 
           <span className="truncate font-display text-xl font-semibold text-heading">FairRent</span>
 
