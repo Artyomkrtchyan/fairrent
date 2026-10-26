@@ -12,13 +12,18 @@ execution times, and checkout without persisted credentials.
 
 | Stable check name | What it verifies |
 | --- | --- |
-| Backend tests | Python 3.10 dependency compatibility plus backend, data pipeline and B03 ML tests against disposable PostgreSQL 16/PostGIS |
+| Backend tests | Python 3.10 dependency compatibility plus backend, data pipeline and B03/B04 ML tests against disposable PostgreSQL 16/PostGIS; B04 synthetic experiment smoke test |
 | Frontend checks | Node 22, npm ci from the committed lockfile, TypeScript, frontend tests and production build |
 | Backend Docker build | Builds the API Dockerfile from its current backend context, without publishing or deploying |
 | Contract validation | C01 schema/fixture validation and a clean diff after regenerating committed contracts |
 
-Python dependencies are pinned in backend requirements and ml/requirements.txt;
-the frontend uses the lockfile with npm ci (not npm install). Node major 22 is
+Backend and B03 dependencies are pinned in backend requirements and ml/requirements.txt.
+B04 training extras are installed from ml/requirements-train.txt and included in
+the pip cache key. An explicit CatBoost/training-module import must succeed before
+pytest, so missing CatBoost cannot silently skip the B04 test module. The synthetic
+smoke test exercises training, comparison and artifact generation in runner temp
+storage; its metrics are not real-data findings or evidence that B04 is complete.
+The frontend uses the lockfile with npm ci (not npm install). Node major 22 is
 selected; npm ci enforces the lock independently of local node_modules. Test DB
 credentials are disposable CI-only values, not production secrets.
 

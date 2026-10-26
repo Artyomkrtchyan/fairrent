@@ -48,15 +48,22 @@ jobs:
             backend/requirements.txt
             backend/requirements-dev.txt
             ml/requirements.txt
+            ml/requirements-train.txt
 
       - name: Install dependencies
-        run: python -m pip install -r backend/requirements-dev.txt
+        run: python -m pip install -r backend/requirements-dev.txt -r ml/requirements-train.txt
 
       - name: Check dependency compatibility
         run: python -m pip check
 
+      - name: Verify B04 training dependencies
+        run: python -c "import catboost; from ml import train_compare"
+
       - name: Run backend, data pipeline and ML tests
         run: python -m pytest backend/tests data_pipeline ml/tests -v
+
+      - name: Smoke-test B04 on synthetic data
+        run: python -m ml.train_compare --synthetic --version ci-smoke --output-dir "${{ runner.temp }}/b04"
 
   docker-build:
     name: Backend Docker build
