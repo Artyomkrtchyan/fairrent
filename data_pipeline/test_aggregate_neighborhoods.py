@@ -126,3 +126,16 @@ def test_latest_eligible_duplicate_observation_is_used_instead_of_ad_median():
     assert result[0]["median_price_usd_month"] == 800
     assert result[0]["median_price_usd_per_sqm"] == 16
     assert result[0]["data_as_of"] == OBSERVED + timedelta(days=1)
+
+
+def test_equal_timestamp_duplicate_observations_choose_ascending_listing_id():
+    rows = [
+        _listing(1, 1_500, last_seen_at=OBSERVED, listing_id=20),
+        _listing(1, 500, last_seen_at=OBSERVED, listing_id=10),
+        *[_listing(index, price) for index, price in enumerate((600, 700, 800, 900), start=2)],
+    ]
+
+    result = build_weekly_aggregates(rows, WEEK)
+
+    assert result[0]["sample_count"] == 5
+    assert result[0]["median_price_usd_month"] == 700

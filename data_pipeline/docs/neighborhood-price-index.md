@@ -18,8 +18,8 @@ unknown periods, invalid prices, unknown districts, and ungrouped listings are e
 
 To prevent duplicate ads from overweighting the index, eligible active listings are
 grouped by A04 property ID and only the latest observation in the reporting week is kept
-for each property. If two observations have the same timestamp, the listing with the larger
-database ID is selected deterministically. The selected listing's monthly asking price and,
+for each property. If two observations have the same timestamp, the listing with the smaller
+database ID is selected deterministically, matching C01's ascending-ID tie-break. The selected listing's monthly asking price and,
 when its area is valid, USD/month/m² are used. District medians are then calculated across
 unique properties.
 `sample_count` counts unique properties with a valid monthly asking price;

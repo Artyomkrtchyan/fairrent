@@ -1,5 +1,3 @@
-"""Build weekly, deduplicated neighborhood asking-price aggregates."""
-
 from __future__ import annotations
 
 from collections import defaultdict
@@ -25,7 +23,6 @@ REPORTING_TIMEZONE = ZoneInfo("Asia/Yerevan")
 
 
 def week_window(week_start: date) -> tuple[datetime, datetime, date]:
-    """Return UTC bounds for a Monday-Sunday reporting week in Yerevan time."""
     if week_start.weekday() != 0:
         raise ValueError("week_start must be a Monday")
     local_start = datetime.combine(week_start, time.min, tzinfo=REPORTING_TIMEZONE)
@@ -77,12 +74,8 @@ def build_weekly_aggregates(
     minimum_sample_count: int = MINIMUM_SAMPLE_COUNT,
     source: str = DEFAULT_SOURCE_NAME,
 ) -> list[dict]:
-    """Calculate district medians, counting each deduplicated property once.
-
-    A listing must be active, observed during the Yerevan reporting week, have a known Yerevan
-    district, a supported long-term period and a positive normalized USD/month price.
-    Of eligible ads linked to one property, only the most recently observed one is used.
-    """
+ 
+ 
     if minimum_sample_count < 1:
         raise ValueError("minimum_sample_count must be positive")
     start, next_start, period_end = week_window(week_start)
@@ -117,7 +110,8 @@ def build_weekly_aggregates(
         key = (district_id, int(property_id))
         candidate = (observed_at, listing_id, price, unit_price)
         previous = latest_by_property.get(key)
-        if previous is None or candidate[:2] > previous[:2]:
+        if (previous is None or observed_at > previous[0]
+                or (observed_at == previous[0] and listing_id < previous[1])):
             latest_by_property[key] = candidate
 
     by_district: dict[str, dict[str, list]] = defaultdict(
