@@ -65,6 +65,7 @@ def test_queue_contract_and_authentication(client):
     assert result.status_code == 200
     validate(result.json(), "ReviewPage")
     assert result.json()["total"] == 1
+    assert result.headers["cache-control"] == "no-store"
     assert "token" not in result.text
     sessions.principal = None
     result = http.get("/api/v1/reviews")
@@ -120,3 +121,20 @@ def test_reviewer_cors_preflight(client):
     })
     assert result.status_code == 200
     assert "PATCH" in result.headers["access-control-allow-methods"]
+
+
+def test_authentication_database_failure_fails_closed(client, monkeypatch):
+    http, sessions, _ = client
+    def unavailable(token):
+        raise psycopg.OperationalError("private session DB details")
+    monkeypatch.setattr(sessions, "authenticate", unavailable)
+    result = http.get("/api/v1/reviews")
+    assert result.status_code == 503
+    assert "private" not in result.text
+    assert result.headers["cache-control"] == "no-store"
+
+
+def test_interactive_docs_declare_bearer_security(client):
+    spec = client[0].get("/openapi.json").json()
+    for path, method in [("/api/v1/reviews", "get"), ("/api/v1/reviews/{id}", "patch")]:
+        assert {"reviewerBearer": []} in spec["paths"][path][method]["security"]

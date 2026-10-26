@@ -9,6 +9,9 @@ from uuid import UUID, uuid4
 
 import psycopg
 from fastapi import Depends, HTTPException, Request
+from fastapi.security import HTTPBearer
+
+bearer = HTTPBearer(auto_error=False, scheme_name="reviewerBearer")
 
 
 def token_digest(token):
@@ -29,7 +32,7 @@ def sessions():
     return SessionRepository()
 
 
-def require_reviewer(request: Request, repo=Depends(sessions)):
+def require_reviewer(request: Request, credentials=Depends(bearer), repo=Depends(sessions)):
     headers = request.headers.getlist("authorization")
     if len(headers) != 1:
         raise HTTPException(401, "Bearer session required", headers={"WWW-Authenticate": "Bearer"})
