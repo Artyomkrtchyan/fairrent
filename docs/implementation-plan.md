@@ -496,7 +496,7 @@ Acceptance criteria:
 
 Owner: @manemazmand | Area: Frontend | Phase: Intelligence | Priority: P1
 
-Make the viewport-filling map the opening Browse experience and connect map exploration to the listing catalogue.
+Make a framed map introduction the opening Browse experience, with explicit full-screen mode, and connect map exploration to the listing catalogue.
 
 Dependencies: [D03](#d03), [A05](#a05), [C03](#c03)
 
@@ -505,7 +505,7 @@ Acceptance criteria:
 - [ ] Render geolocated listings, selected property details, and relevant infrastructure with MapLibre GL JS.
 - [ ] Keep filters and map selection consistent and handle missing coordinates.
 - [ ] Document map/tile attribution and verify marker behavior and bounded-query performance on representative data.
-- [ ] Open Browse with a viewport-filling map below the header and compact floating or collapsible filters; preserve an accessible list alternative and usable mobile layout.
+- [ ] Open Browse with a framed map below a short headline, explicit full-screen mode and easy access to filters; preserve page scrolling, an accessible list alternative and usable mobile layout.
 - [ ] Provide 2D/3D switching with building extrusions where verified Yerevan footprint/height data is available; document coverage and provide a 2D fallback without invented heights.
 - [ ] Define the colored rental layer with units, legend, sample counts and freshness; keep insufficient-data areas neutral. Real aggregate integration requires A07/C06, and any synthetic preview must be labeled.
 

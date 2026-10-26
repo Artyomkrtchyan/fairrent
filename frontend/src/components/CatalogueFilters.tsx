@@ -67,6 +67,8 @@ export function CatalogueFilters({ search, onApply }: Props) {
       status: search.status,
     };
 
+    if (search.bbox) next.bbox = search.bbox;
+
     if (district.trim()) {
       next.district_id = district.trim();
     }

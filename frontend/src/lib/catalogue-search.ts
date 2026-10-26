@@ -1,12 +1,14 @@
 import type { ListingQuery } from "@/api/listings";
 
+import { parseMapBounds, serializeMapBounds } from "./map-bounds";
+
 const SORT_OPTIONS = ["newest", "price_asc", "price_desc", "area_asc", "area_desc"] as const;
 
 export type CatalogueSort = (typeof SORT_OPTIONS)[number];
 
 export type CatalogueSearch = Pick<
   ListingQuery,
-  "district_id" | "price_min" | "price_max" | "rooms" | "area_min" | "area_max"
+  "bbox" | "district_id" | "price_min" | "price_max" | "rooms" | "area_min" | "area_max"
 > & {
   page: number;
   page_size: number;
@@ -51,6 +53,9 @@ export function parseCatalogueSearch(raw: Record<string, unknown>): CatalogueSea
     sort: isSort(raw["sort"]) ? raw["sort"] : "newest",
     status: raw["status"] === "inactive" ? "inactive" : "active",
   };
+
+  const bounds = parseMapBounds(raw["bbox"]);
+  if (bounds) result.bbox = serializeMapBounds(bounds);
 
   const district = raw["district_id"];
 
