@@ -1,3 +1,4 @@
+import { mockInfrastructurePage } from "./mock-infrastructure";
 import fixtures from "../../../contracts/fixtures.json";
 import { mockListingPage } from "./mock-listings";
 
@@ -14,7 +15,7 @@ function fixtureResponse(name: FixtureName, status = 200): Response {
 
 /**
  * Development-only C01 fixture transport.
- * Does not simulate authentication, filtering or database writes.
+ * Supports bounded catalogue/place fixture filters, but not authentication or database writes.
  */
 export const mockFetch: typeof fetch = async (input, init) => {
   const request = new Request(input, init);
@@ -44,8 +45,14 @@ export const mockFetch: typeof fetch = async (input, init) => {
     case "/api/v1/market-index":
       return fixtureResponse("market-index");
 
-    case "/api/v1/infrastructure":
-      return fixtureResponse("infrastructure");
+    case "/api/v1/infrastructure": {
+      const page = mockInfrastructurePage(new URL(request.url));
+      if (!page) return fixtureResponse("error-validation_error", 422);
+      return new Response(JSON.stringify(page), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     case "/api/v1/reviews":
       return fixtureResponse("error-unauthenticated", 401);

@@ -1,0 +1,4 @@
+# B04 training/evaluation extras (kept separate from ml/requirements.txt, which serves B03/CI).
+-r requirements.txt
+catboost>=1.2.5
+scikit-learn>=1.5

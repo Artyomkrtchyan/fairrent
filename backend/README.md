@@ -13,6 +13,10 @@ to publish its inventory atomically to the API read model. The command initializ
 the projection and reports records excluded for missing evidence. Source tables
 remain owned by the pipeline.
 
+C06 implements `GET /api/v1/market-index` using A07's published weekly asking-price
+view. See [C06 market analytics](../docs/C06-market-analytics.md) for setup, field
+mapping, date coverage and integration tests.
+
 ## Local development with Docker Compose
 
 Run these commands from the repository root. Docker Engine and Docker Compose are required.

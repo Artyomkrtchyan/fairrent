@@ -1,7 +1,7 @@
 from geoalchemy2 import Geometry
 from sqlalchemy import (
     JSON, Boolean, CheckConstraint, Column, Date, DateTime, Float, ForeignKey, Index,
-    Integer, String, Text, UniqueConstraint, func,
+    Integer, Numeric, String, Text, UniqueConstraint, func,
 )
 from sqlalchemy.orm import declarative_base, relationship
 
@@ -174,4 +174,56 @@ class PriceObservation(Base):
         Index("ix_price_observations_listing_recorded", "listing_id", "recorded_at"),
         CheckConstraint("original_price IS NULL OR original_price > 0",
                         name="ck_price_observations_original_price_positive"),
+    )
+
+
+class WeeklyNeighborhoodPriceIndex(Base):
+    """Published weekly medians of active rental asking prices by district."""
+    __tablename__ = "weekly_neighborhood_price_indexes"
+
+    source = Column(String, primary_key=True)
+    district_id = Column(String, primary_key=True)
+    period_start = Column(Date, primary_key=True)
+    period_end = Column(Date, nullable=False)
+    median_price_usd_month = Column(Numeric(12, 2))
+    median_price_usd_per_sqm = Column(Numeric(12, 2))
+    sample_count = Column(Integer, nullable=False)
+    per_sqm_sample_count = Column(Integer, nullable=False)
+    minimum_sample_count = Column(Integer, nullable=False, default=5, server_default="5")
+    price_status = Column(String, nullable=False)
+    per_sqm_status = Column(String, nullable=False)
+    data_as_of = Column(DateTime(timezone=True), nullable=False)
+    generated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    price_basis = Column(String, nullable=False, default="asking", server_default="asking")
+
+    __table_args__ = (
+        CheckConstraint("length(source) > 0", name="ck_weekly_neighborhood_source_nonempty"),
+        CheckConstraint("EXTRACT(ISODOW FROM period_start) = 1",
+                        name="ck_weekly_neighborhood_monday_start"),
+        CheckConstraint("period_end = period_start + 6", name="ck_weekly_neighborhood_period"),
+        CheckConstraint("sample_count >= 0 AND per_sqm_sample_count >= 0 AND "
+                        "per_sqm_sample_count <= sample_count AND minimum_sample_count > 0",
+                        name="ck_weekly_neighborhood_sample_counts"),
+        CheckConstraint("median_price_usd_month IS NULL OR median_price_usd_month > 0",
+                        name="ck_weekly_neighborhood_median_price_positive"),
+        CheckConstraint("median_price_usd_per_sqm IS NULL OR median_price_usd_per_sqm > 0",
+                        name="ck_weekly_neighborhood_median_unit_price_positive"),
+        CheckConstraint("price_status IN ('available', 'insufficient_data')",
+                        name="ck_weekly_neighborhood_price_status"),
+        CheckConstraint("per_sqm_status IN ('available', 'insufficient_data')",
+                        name="ck_weekly_neighborhood_per_sqm_status"),
+        CheckConstraint(
+            "(price_status = 'available' AND sample_count >= minimum_sample_count "
+            "AND median_price_usd_month IS NOT NULL) OR "
+            "(price_status = 'insufficient_data' AND sample_count < minimum_sample_count "
+            "AND median_price_usd_month IS NULL)",
+            name="ck_weekly_neighborhood_price_sparse_policy"),
+        CheckConstraint(
+            "(per_sqm_status = 'available' AND per_sqm_sample_count >= minimum_sample_count "
+            "AND median_price_usd_per_sqm IS NOT NULL) OR "
+            "(per_sqm_status = 'insufficient_data' AND per_sqm_sample_count < minimum_sample_count "
+            "AND median_price_usd_per_sqm IS NULL)",
+            name="ck_weekly_neighborhood_per_sqm_sparse_policy"),
+        CheckConstraint("price_basis = 'asking'", name="ck_weekly_neighborhood_price_basis"),
+        Index("ix_weekly_neighborhood_period", "source", "district_id", "period_start"),
     )

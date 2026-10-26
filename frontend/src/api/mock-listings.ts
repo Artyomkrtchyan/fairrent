@@ -2,6 +2,8 @@ import fixtures from "../../../contracts/fixtures.json";
 import type { components } from "./schema";
 import { parseCatalogueSearch, type CatalogueSearch } from "@/lib/catalogue-search";
 
+import { parseMapBounds } from "@/lib/map-bounds";
+
 type Listing = components["schemas"]["Listing"];
 
 function compareNullableNumbers(
@@ -18,7 +20,23 @@ function compareNullableNumbers(
 }
 
 export function selectListings(listings: readonly Listing[], search: CatalogueSearch) {
+  const bounds = parseMapBounds(search.bbox);
   const filtered = listings.filter((listing) => {
+    if (bounds) {
+      const [west, south, east, north] = bounds;
+      const { latitude, longitude } = listing;
+      if (
+        latitude === null ||
+        longitude === null ||
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        longitude < west ||
+        longitude > east ||
+        latitude < south ||
+        latitude > north
+      )
+        return false;
+    }
     if (listing.status !== search.status) return false;
 
     if (search.district_id !== undefined && listing.district_id !== search.district_id) {

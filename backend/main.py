@@ -11,12 +11,14 @@ from pydantic import ValidationError
 
 try:
     from .listing_routes import router
+    from .market_routes import router as market_router
     from .valuation_routes import router as valuation_router
     from .valuation_gateway import ModelUnavailable
     from .valuation_coverage import CoverageUnavailable, OutsideCoverage
     from .valuation_repository import CandidateLimit
 except ImportError:
     from listing_routes import router
+    from market_routes import router as market_router
     from valuation_routes import router as valuation_router
     from valuation_gateway import ModelUnavailable
     from valuation_coverage import CoverageUnavailable, OutsideCoverage
@@ -33,6 +35,7 @@ app.add_middleware(
 )
 app.include_router(router)
 app.include_router(valuation_router)
+app.include_router(market_router)
 
 
 @app.middleware("http")
@@ -66,7 +69,7 @@ async def http_error(request, exc):
 
 @app.exception_handler(psycopg.Error)
 async def database_error(request, exc):
-    return api_error(request, 503, "service_unavailable", "Listing database unavailable")
+    return api_error(request, 503, "service_unavailable", "Database unavailable")
 
 
 @app.exception_handler(ResponseValidationError)

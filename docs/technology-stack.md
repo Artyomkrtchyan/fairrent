@@ -42,8 +42,8 @@ Docker Compose provides the local development environment. AWS resources are pro
 ## Mapping direction — agreed 2026-10-22
 
 MapLibre GL JS replaces the previously planned 2D map library. D05 will implement
-an opening map that fills the viewport below the header, with compact floating
-filters or a collapsible panel, price markers, and linked property previews.
+a framed map introduction below the header, with an explicit full-screen action,
+easy scrolling to filters, price markers, and linked property previews.
 Users can switch between a flat 2D view and a tilted 3D building view. Recharts
 remains the charting library; React, TypeScript, Vite and AWS hosting are unchanged.
 
@@ -63,3 +63,13 @@ aggregates depend on A07/C06; this layer is not provided by changing renderers.
 This records the target design and technology choice, not an installed map,
 selected provider, deployed feature or new C01 endpoint. See the D05 criteria and
 [D01 design revision](design/D01-screen-contracts.md#map-first-revision--agreed-2026-10-22).
+
+
+### Map presentation refinement — agreed 2026-10-24
+
+The embedded opening map is framed within a navy introduction, rather than
+occupying the whole viewport. A short headline, Explore Yerevan toolbar and
+Browse rentals actions connect it to the filters below. Expand map opens a
+separate full-screen modal; ordinary map clicks do not. Embedded wheel scrolling
+continues down the page. This supersedes the earlier viewport-filling default,
+while retaining the MapLibre renderer and D05's remaining data/3D requirements.
