@@ -274,13 +274,15 @@ def leakage_checks(splits: Dict[str, pd.DataFrame], features_used: List[str]) ->
     overlap = {f"{a}&{b}": len(g[a] & g[b]) for a, b in (("train", "validation"), ("train", "test"), ("validation", "test"))}
     ordered = (dates["train"][1] <= dates["validation"][0] <= dates["validation"][1] <= dates["test"][0]
                if len(splits["validation"]) else dates["train"][1] <= dates["test"][0])
-    train = splits["train"]
-    test = splits["test"]
-    # Exact-duplicate fingerprints that straddle splits even under different group ids.
+    # Duplicate fingerprints that straddle splits even under different group ids.
     def fp(df):
-        return set(zip(df["latitude"].round(5), df["longitude"].round(5),
-                       df["area_sqm"].round(1), df["price_usd"].round(0)))
-    near_dup = len(fp(train) & fp(test))
+        keep = df[["latitude", "longitude", "area_sqm", "price_usd"]].dropna()
+        return set(zip(keep["latitude"].round(5), keep["longitude"].round(5),
+                       keep["area_sqm"].round(1), keep["price_usd"].round(0)))
+    prints = {k: fp(v) for k, v in splits.items()}
+    near_dup = {f"{a}&{b}": len(prints[a] & prints[b])
+                for a, b in (("train", "validation"), ("train", "test"), ("validation", "test"))}
+    train = splits["train"]
     forbidden = sorted(set(features_used) & {"price_usd", "original_price", "exchange_rate",
                                              "dedup_group_id", "observation_date", "observation_at"})
     # Target leakage proxy: any single numeric feature explaining the target almost perfectly.
@@ -294,13 +296,28 @@ def leakage_checks(splits: Dict[str, pd.DataFrame], features_used: List[str]) ->
         "group_overlap_between_splits": overlap,
         "chronological_order_ok": bool(ordered),
         "split_date_ranges": {k: list(v) for k, v in dates.items()},
-        "near_duplicate_rows_train_vs_test(coords+area+price)": near_dup,
+        "near_duplicate_rows_between_splits(coords+area+price)": near_dup,
         "target_derived_columns_in_features": forbidden,
         "max_abs_feature_target_correlation_train": corr,
-        "suspicious_if": "any overlap > 0, ordering false, forbidden columns present, or |corr| > 0.95",
+        "suspicious_if": "any group overlap or near-duplicate > 0, ordering false, forbidden columns present, or |corr| > 0.95",
         "passed": (all(v == 0 for v in overlap.values()) and bool(ordered) and not forbidden
+                   and all(v == 0 for v in near_dup.values())
                    and all(v <= 0.95 for v in corr.values())),
     }
+
+
+class SplitValidationError(RuntimeError):
+    """Raised before training when the splits fail the leakage checks."""
+
+
+def validate_splits(splits: Dict[str, pd.DataFrame], features_used: List[str]) -> dict:
+    """Run the leakage checks and refuse to continue if any of them fails."""
+    report = leakage_checks(splits, features_used)
+    if not report["passed"]:
+        raise SplitValidationError(
+            "Split validation failed; no model was trained and no artifacts were written.\n"
+            + json.dumps(report, indent=2, sort_keys=True, default=str))
+    return report
 
 
 def large_error_review(test: pd.DataFrame, pred: np.ndarray, top: int = 10) -> dict:
@@ -327,15 +344,26 @@ def large_error_review(test: pd.DataFrame, pred: np.ndarray, top: int = 10) -> d
 
 
 def per_district(test: pd.DataFrame, base: np.ndarray, ml: np.ndarray, answered: np.ndarray) -> List[dict]:
+    """Both models are compared on the SAME rows (those the baseline answered).
+
+    CatBoost on the full district cohort and the baseline's coverage are reported separately.
+    """
     rows = []
+    y_all = test["price_usd"].to_numpy()
     for d, idx in test.groupby(test["district"].fillna("unresolved")).indices.items():
-        y = test["price_usd"].to_numpy()[idx]
-        row = {"district": d, "n_test": int(len(idx)), "ml": metrics(y, ml[idx])}
-        a = answered[idx]
-        row["baseline"] = metrics(y[a], base[idx][a]) if a.sum() else None
-        row["baseline_abstained"] = int((~a).sum())
-        row["small_sample_warning"] = len(idx) < 30
-        rows.append(row)
+        y, a = y_all[idx], answered[idx]
+        rows.append({
+            "district": d,
+            "n_test": int(len(idx)),
+            "baseline_coverage": {"answered": int(a.sum()), "abstained": int((~a).sum())},
+            "common_rows": {
+                "n": int(a.sum()),
+                "baseline": metrics(y[a], base[idx][a]) if a.any() else None,
+                "catboost": metrics(y[a], ml[idx][a]) if a.any() else None,
+            },
+            "catboost_full_cohort": metrics(y, ml[idx]),
+            "small_sample_warning": int(a.sum()) < 30,
+        })
     return sorted(rows, key=lambda r: -r["n_test"])
 
 
@@ -350,6 +378,9 @@ def run(args: argparse.Namespace) -> dict:
     train, val, test = splits["train"], splits["validation"], splits["test"]
     if len(val) == 0:
         raise SystemExit("Validation split is empty (A06 had <3 anchor dates); cannot early-stop honestly.")
+
+    # Validate the splits BEFORE any fitting; a failure stops the experiment.
+    leak = validate_splits(splits, Preprocessor().feature_names)
 
     pre = Preprocessor().fit(train)
     xtr, xva, xte = (pre.transform(d) for d in (train, val, test))
@@ -380,7 +411,6 @@ def run(args: argparse.Namespace) -> dict:
     ml_wins = bool(b and m and m["mae"] < b["mae"] and m["median_ae"] <= b["median_ae"])
     decision = "ml" if ml_wins else "baseline"
 
-    leak = leakage_checks(splits, feats)
     importances = sorted(zip(feats, model.get_feature_importance()), key=lambda t: -t[1])
 
     meta = {
