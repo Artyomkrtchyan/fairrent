@@ -17,8 +17,8 @@ Real results require an A06 snapshot exported from the database.
   early stopping; test is scored once.
 - Baseline = B03 `ComparableMedianBaseline` with the train split as its pool, queried at each test
   row's own observation date. Its 60-day freshness gate is disabled so the pool's age does not cause
-  abstentions; abstentions on <3 comparables are reported. Headline comparison is on rows **both**
-  models answer; CatBoost on all rows is reported alongside.
+  abstentions; abstentions on <3 comparables are reported. Headline and per-district comparisons use rows **both**
+  models answer; CatBoost on the full cohort and baseline coverage are reported separately.
 - `renovation` is excluded (always null in A06). `price_usd`, conversion fields and group/date keys
   are never inputs.
 
@@ -32,9 +32,12 @@ MAPE ≤ 12%, R² ≥ 0.82) are reported against, not used as the gate.
 dataset version + snapshot SHA-256, decision), `report.json` (metrics, per-district results, feature
 importance, worst-error review, leakage checks), `SHA256SUMS.json` (for E04 integrity checks).
 
-## Leakage checks (in `report.json`)
-Group overlap across splits, chronological ordering, train/test near-duplicates under different group
-ids, target-derived columns among features, and single-feature/target correlation > 0.95.
+## Leakage checks
+Run **before any training**; a failure raises `SplitValidationError` and no model or artifacts are
+written. The same result is saved in `report.json`. The experiment fails on any of: group overlap
+across splits, non-chronological splits, near-duplicate rows (coords + area + price) in more than one
+split under different group ids, target-derived columns among the features, or a single-feature/target
+correlation above 0.95.
 
 ## Known limits
 - Districts with < 30 test rows are flagged `small_sample_warning`.
