@@ -336,3 +336,33 @@ respected. The hidden framed map cannot overwrite the fullscreen camera.
 
 Regression tests cover flat buildings, switching modes, camera settings and
 styles without building data.
+
+## D06 market analytics
+
+The analytics page reads GET /api/v1/market-index through the typed C01 client.
+It supports neighborhood and inclusive week-start date filters, chart/table
+views, monthly asking rent and asking rent per square metre.
+
+Amounts remain USD in API responses; USD/AMD conversion affects display only.
+Each measure uses its own observation count. Null values remain unavailable,
+and unpublished weeks create chart gaps rather than zero prices.
+
+The page shows periods, source observation dates, freshness and available
+coverage. Additional pages load explicitly, with loaded/total counts shown.
+Real API failures remain visible and never fall back to demo data.
+
+Mock responses support neighborhood/date filtering and pagination.
+Tests cover API fixture values, independent counts, missing weeks, empty
+results, invalid filters, displayed values and error/retry behavior.
+
+Validation: 129 frontend tests passed; production build and lint passed
+with eight existing Fast Refresh warnings. TypeScript was rechecked after
+correcting the test selector.
+
+Local integration: Docker API/database started successfully, migrations
+through A07 applied, and the real endpoint returned HTTP 200 with an empty
+dataset. The real-mode analytics page displayed that empty response correctly.
+Populated real-aggregate verification remains pending publication of data.
+
+Backend setup and aggregate semantics:
+see ../docs/C06-market-analytics.md.
