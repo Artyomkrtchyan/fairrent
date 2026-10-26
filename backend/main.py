@@ -11,8 +11,10 @@ from pydantic import ValidationError
 
 try:
     from .listing_routes import router
+    from .market_routes import router as market_router
 except ImportError:
     from listing_routes import router
+    from market_routes import router as market_router
 
 app = FastAPI(title="FairRent API")
 app.add_middleware(
@@ -24,6 +26,7 @@ app.add_middleware(
     expose_headers=["X-Request-ID"],
 )
 app.include_router(router)
+app.include_router(market_router)
 
 
 @app.middleware("http")
@@ -57,7 +60,7 @@ async def http_error(request, exc):
 
 @app.exception_handler(psycopg.Error)
 async def database_error(request, exc):
-    return api_error(request, 503, "service_unavailable", "Listing database unavailable")
+    return api_error(request, 503, "service_unavailable", "Database unavailable")
 
 
 @app.exception_handler(ResponseValidationError)
