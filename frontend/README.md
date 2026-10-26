@@ -362,7 +362,23 @@ correcting the test selector.
 Local integration: Docker API/database started successfully, migrations
 through A07 applied, and the real endpoint returned HTTP 200 with an empty
 dataset. The real-mode analytics page displayed that empty response correctly.
-Populated real-aggregate verification remains pending publication of data.
+Populated integration verification with controlled synthetic inputs is documented below.
+Verification with collected market data remains pending publication of that data.
 
 Backend setup and aggregate semantics:
 see ../docs/C06-market-analytics.md.
+
+### D06 review follow-up validation
+
+Verified the analytics page against the real C06 API using controlled synthetic
+inputs processed by the A07 aggregate generator in an isolated local database.
+Kentron periods 2026-10-05–2026-10-11 and 2026-10-19–2026-10-25 matched:
+monthly medians USD 600/650, per-square-metre medians USD 12/13,
+monthly counts 6/6, and area counts 5/5. Observation dates and stale/fresh
+indicators also matched the API response. These are test values, not observed
+Yerevan market results.
+
+Added a pagination regression test covering a failed next-page request and retry
+while preserving previously loaded records. All 130 tests, TypeScript checks,
+and the production build passed. Lint: zero errors, eight existing warnings.
+The build reports a bundle-size warning.

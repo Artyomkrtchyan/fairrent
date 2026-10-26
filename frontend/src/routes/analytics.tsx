@@ -218,10 +218,12 @@ export function MarketAnalytics() {
           <button
             type="button"
             disabled={query.isFetching}
-            onClick={() => void query.refetch()}
+            onClick={() =>
+              void (query.isFetchNextPageError ? query.fetchNextPage() : query.refetch())
+            }
             className="mt-3 rounded-md border px-4 py-2"
           >
-            Retry
+            {query.isFetchNextPageError ? "Retry loading more weeks" : "Retry"}
           </button>
         </section>
       )}
