@@ -1,0 +1,12 @@
+**
+!backend/
+!backend/*.py
+!backend/requirements.txt
+!backend/sql/
+!backend/sql/*.sql
+!ml/
+!ml/baseline.py
+!data_pipeline/
+!data_pipeline/geography.py
+!contracts/
+!contracts/openapi.json

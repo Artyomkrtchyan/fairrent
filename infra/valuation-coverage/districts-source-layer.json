@@ -1,0 +1,372 @@
+{
+  "isCoGoEnabled": false,
+  "extent": {
+    "ymin": 4437027.219900001,
+    "xmin": 8445641.185600001,
+    "ymax": 4456559.525900001,
+    "xmax": 8468112.9825,
+    "spatialReference": {
+      "wkt": "PROJCS[\"ARM_PCS\",GEOGCS[\"ARM_GCS\",DATUM[\"D_WGS_1984\",SPHEROID[\"Krasovsky_1940\",6378245.0,298.3]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]],PROJECTION[\"Transverse_Mercator\"],PARAMETER[\"false_easting\",8500000.0],PARAMETER[\"false_northing\",0.0],PARAMETER[\"central_meridian\",45.0],PARAMETER[\"scale_factor\",1.0],PARAMETER[\"latitude_of_origin\",0.0],UNIT[\"Meter\",1.0]]",
+      "falseM": -100000,
+      "xyTolerance": 0.001,
+      "mUnits": 10000,
+      "wkt2": "PROJCRS[\"ARM_PCS\",BASEGEOGCRS[\"ARM_GCS\",DATUM[\"D_WGS_1984\",ELLIPSOID[\"Krasovsky_1940\",6378245.0,298.3,LENGTHUNIT[\"Meter\",1.0]]],PRIMEM[\"Greenwich\",0.0,ANGLEUNIT[\"Degree\",0.0174532925199433]],CS[ellipsoidal,2],ANGLEUNIT[\"Degree\",0.0174532925199433]],CONVERSION[\"Transverse_Mercator\",METHOD[\"Transverse_Mercator\"],PARAMETER[\"false_easting\",8500000.0,LENGTHUNIT[\"Meter\",1.0]],PARAMETER[\"false_northing\",0.0,LENGTHUNIT[\"Meter\",1.0]],PARAMETER[\"central_meridian\",45.0,ANGLEUNIT[\"Degree\",0.0174532925199433]],PARAMETER[\"scale_factor\",1.0,SCALEUNIT[\"Unity\",1.0]],PARAMETER[\"latitude_of_origin\",0.0,ANGLEUNIT[\"Degree\",0.0174532925199433]]],CS[Cartesian,2],AXIS[\"Easting (X)\",east,ORDER[1]],AXIS[\"Northing (Y)\",north,ORDER[2]],LENGTHUNIT[\"Meter\",1.0]]",
+      "zUnits": 10000,
+      "zTolerance": 0.001,
+      "xyUnits": 10000,
+      "mTolerance": 0.001,
+      "falseX": 2876700,
+      "falseY": -10002300,
+      "falseZ": -100000
+    }
+  },
+  "isDataBranchVersioned": false,
+  "supportsApplyEditsWithGlobalIds": false,
+  "maxRecordCount": 2000,
+  "infoInEstimates": [
+    "extent",
+    "count"
+  ],
+  "datesInUnknownTimezone": false,
+  "type": "Feature Layer",
+  "onlyAllowTrueCurveUpdatesByTrueCurveClients": true,
+  "supportsAttachmentsByUploadId": true,
+  "editingInfo": {
+    "lastEditDate": 1785825302983
+  },
+  "relationships": [],
+  "supportsAttachmentsResizing": true,
+  "cimVersion": "3.5.0",
+  "isDataArchived": false,
+  "id": 0,
+  "spatialReference": {
+    "wkt": "PROJCS[\"ARM_PCS\",GEOGCS[\"ARM_GCS\",DATUM[\"D_WGS_1984\",SPHEROID[\"Krasovsky_1940\",6378245.0,298.3]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]],PROJECTION[\"Transverse_Mercator\"],PARAMETER[\"false_easting\",8500000.0],PARAMETER[\"false_northing\",0.0],PARAMETER[\"central_meridian\",45.0],PARAMETER[\"scale_factor\",1.0],PARAMETER[\"latitude_of_origin\",0.0],UNIT[\"Meter\",1.0]]",
+    "falseM": -100000,
+    "xyTolerance": 0.001,
+    "mUnits": 10000,
+    "wkt2": "PROJCRS[\"ARM_PCS\",BASEGEOGCRS[\"ARM_GCS\",DATUM[\"D_WGS_1984\",ELLIPSOID[\"Krasovsky_1940\",6378245.0,298.3,LENGTHUNIT[\"Meter\",1.0]]],PRIMEM[\"Greenwich\",0.0,ANGLEUNIT[\"Degree\",0.0174532925199433]],CS[ellipsoidal,2],ANGLEUNIT[\"Degree\",0.0174532925199433]],CONVERSION[\"Transverse_Mercator\",METHOD[\"Transverse_Mercator\"],PARAMETER[\"false_easting\",8500000.0,LENGTHUNIT[\"Meter\",1.0]],PARAMETER[\"false_northing\",0.0,LENGTHUNIT[\"Meter\",1.0]],PARAMETER[\"central_meridian\",45.0,ANGLEUNIT[\"Degree\",0.0174532925199433]],PARAMETER[\"scale_factor\",1.0,SCALEUNIT[\"Unity\",1.0]],PARAMETER[\"latitude_of_origin\",0.0,ANGLEUNIT[\"Degree\",0.0174532925199433]]],CS[Cartesian,2],AXIS[\"Easting (X)\",east,ORDER[1]],AXIS[\"Northing (Y)\",north,ORDER[2]],LENGTHUNIT[\"Meter\",1.0]]",
+    "zUnits": 10000,
+    "zTolerance": 0.001,
+    "xyUnits": 10000,
+    "mTolerance": 0.001,
+    "falseX": 2876700,
+    "falseY": -10002300,
+    "falseZ": -100000
+  },
+  "supportsSubtypeEditing": true,
+  "supportsStatistics": true,
+  "supportedExportFormats": "sqlite,filegdb,shapefile,csv,geojson",
+  "standardMaxRecordCount": 2000,
+  "isDataVersioned": false,
+  "templates": [
+    {
+      "name": "Yerevan_Districts",
+      "description": "",
+      "drawingTool": "esriFeatureEditToolPolygon",
+      "prototype": {
+        "attributes": {
+          "community_code": null,
+          "settlement_name": null,
+          "settlement_type": null
+        }
+      }
+    }
+  ],
+  "hasGeometryProperties": true,
+  "supportsAdvancedQueries": true,
+  "parentLayer": null,
+  "currentVersion": 11.5,
+  "canScaleSymbols": false,
+  "hasZ": false,
+  "advancedEditingCapabilities": {
+    "supportsAsyncApplyEdits": true,
+    "supportsApplyEditsbyUploadID": true,
+    "supportsReturnEditResults": true,
+    "supportedSqlFormatsInCalculate": [
+      "standard"
+    ],
+    "supportedApplyEditsUploadIDFormats": "JSON,PBF"
+  },
+  "objectIdField": "objectid",
+  "supportsQuantizationEditMode": true,
+  "hasContingentValuesDefinition": false,
+  "name": "Yerevan_Districts",
+  "allowTrueCurvesUpdates": false,
+  "displayField": "settlement_name",
+  "supportsCalculate": true,
+  "fields": [
+    {
+      "nullable": false,
+      "defaultValue": null,
+      "editable": false,
+      "length": 4,
+      "type": "esriFieldTypeOID",
+      "modelName": "OBJECTID_1",
+      "domain": null,
+      "name": "objectid",
+      "alias": "OBJECTID_1"
+    },
+    {
+      "modelName": "settlement_name",
+      "nullable": true,
+      "editable": true,
+      "defaultValue": null,
+      "domain": null,
+      "name": "settlement_name",
+      "length": 50,
+      "alias": "Բնակավայրի անվանումը",
+      "type": "esriFieldTypeString"
+    },
+    {
+      "modelName": "settlement_type",
+      "nullable": true,
+      "editable": true,
+      "defaultValue": null,
+      "domain": null,
+      "name": "settlement_type",
+      "length": 30,
+      "alias": "Բնակավայրի տեսակ",
+      "type": "esriFieldTypeString"
+    },
+    {
+      "modelName": "community_code",
+      "nullable": true,
+      "editable": true,
+      "defaultValue": null,
+      "domain": null,
+      "name": "community_code",
+      "length": 6,
+      "alias": "Համայնքի ծածկագիրը",
+      "type": "esriFieldTypeString"
+    },
+    {
+      "virtual": true,
+      "nullable": true,
+      "editable": false,
+      "defaultValue": null,
+      "domain": null,
+      "name": "SHAPE__Length",
+      "alias": "SHAPE__Length",
+      "type": "esriFieldTypeDouble"
+    },
+    {
+      "virtual": true,
+      "nullable": true,
+      "editable": false,
+      "defaultValue": null,
+      "domain": null,
+      "name": "SHAPE__Area",
+      "alias": "SHAPE__Area",
+      "type": "esriFieldTypeDouble"
+    }
+  ],
+  "maxRecordCountFactor": 1,
+  "dateFieldsTimeReference": {
+    "timeZoneIANA": "Etc/UTC",
+    "respectsDaylightSaving": false,
+    "timeZone": "UTC"
+  },
+  "supportsFieldDescriptionProperty": true,
+  "hasM": false,
+  "allowGeometryUpdates": true,
+  "preferredTimeReference": {
+    "respectsDaylightSaving": false,
+    "timeZone": "Caucasus Standard Time"
+  },
+  "useStandardizedQueries": true,
+  "globalIdField": null,
+  "sourceSpatialReference": {
+    "wkt": "PROJCS[\"ARM_PCS\",GEOGCS[\"ARM_GCS\",DATUM[\"D_WGS_1984\",SPHEROID[\"Krasovsky_1940\",6378245.0,298.3]],PRIMEM[\"Greenwich\",0.0],UNIT[\"Degree\",0.0174532925199433]],PROJECTION[\"Transverse_Mercator\"],PARAMETER[\"false_easting\",8500000.0],PARAMETER[\"false_northing\",0.0],PARAMETER[\"central_meridian\",45.0],PARAMETER[\"scale_factor\",1.0],PARAMETER[\"latitude_of_origin\",0.0],UNIT[\"Meter\",1.0]]",
+    "falseM": -100000,
+    "mUnits": 10000,
+    "zUnits": 10000,
+    "zTolerance": 0.001,
+    "xyUnits": 10000,
+    "mTolerance": 0.001,
+    "falseX": 2876700,
+    "falseY": -10002300,
+    "falseZ": -100000
+  },
+  "description": "",
+  "syncCanReturnChanges": true,
+  "supportsAsyncDelete": true,
+  "supportedSpatialRelationships": [
+    "esriSpatialRelIntersects",
+    "esriSpatialRelContains",
+    "esriSpatialRelCrosses",
+    "esriSpatialRelEnvelopeIntersects",
+    "esriSpatialRelOverlaps",
+    "esriSpatialRelTouches",
+    "esriSpatialRelWithin"
+  ],
+  "geometryProperties": {
+    "shapeAreaFieldName": "SHAPE__Area",
+    "shapeLengthFieldName": "SHAPE__Length",
+    "units": "esriMeters"
+  },
+  "supportsRollbackOnFailureParameter": true,
+  "isDataReplicaTracked": false,
+  "standardMaxRecordCountNoGeometry": 16000,
+  "supportsTruncate": true,
+  "indexes": [
+    {
+      "name": "r2380_sde_rowid_uk",
+      "isUnique": true,
+      "description": "",
+      "fields": "objectid",
+      "isAscending": true
+    },
+    {
+      "name": "a1853_ix1",
+      "isUnique": false,
+      "description": "",
+      "fields": "shape",
+      "isAscending": true
+    }
+  ],
+  "supportedAppendSourceFilterFormats": "featureService",
+  "editFieldsInfo": null,
+  "htmlPopupType": "esriServerHTMLPopupTypeAsHTMLText",
+  "GUIDFormat": "O",
+  "minScale": 0,
+  "hasAttachments": false,
+  "queryBinsCapabilities": {
+    "supportsFirstDayOfWeek": false,
+    "supportedNormalizationTypes": [
+      "boxCox",
+      "field",
+      "inverse",
+      "log",
+      "naturalLog",
+      "percentOfTotal",
+      "squareRoot"
+    ],
+    "supportedStatisticTypes": [
+      "count",
+      "sum",
+      "min",
+      "max",
+      "avg",
+      "stddev",
+      "var",
+      "percentile_cont",
+      "percentile_disc"
+    ],
+    "supportsNormalization": true,
+    "supportsSnapToData": true,
+    "supportsFixedIntervalBin": true,
+    "supportsStackBy": true,
+    "supportsAutoIntervalBin": true,
+    "supportsFixedBoundariesBin": true,
+    "supportsDateBin": true,
+    "supportsSplitBy": true,
+    "supportsReturnFullIntervalBin": true
+  },
+  "advancedQueryCapabilities": {
+    "supportsSqlExpression": true,
+    "supportsQueryWithResultType": true,
+    "supportsQueryRelatedPagination": true,
+    "supportsQueryWithCacheHint": false,
+    "supportsQueryWithDatumTransformation": true,
+    "supportsCurrentUserQueries": true,
+    "supportsQueryAttachmentsWithReturnUrl": true,
+    "fullTextSearchCapabilities": {
+      "supportsOperator": true,
+      "supportsSearchOperator": true
+    },
+    "supportsDefaultSR": true,
+    "supportsQueryDateBins": false,
+    "supportsQueryWithLodSR": true,
+    "supportsPaginationOnAggregatedQueries": true,
+    "supportsPagination": true,
+    "supportsMaxRecordCountFactor": true,
+    "fullTextSearchableFields": [],
+    "supportsStatistics": true,
+    "supportsOrderBy": true,
+    "supportsReturningGeometryProperties": true,
+    "supportsFullTextSearch": true,
+    "supportsQueryWithDistance": true,
+    "supportsLod": true,
+    "supportsSpatialAggregationStatistics": false,
+    "supportsCountDistinct": true,
+    "supportsAdvancedQueryRelated": true,
+    "supportsQueryAttachments": true,
+    "supportsReturningQueryExtent": true,
+    "supportsQueryAttachmentsCountOnly": true,
+    "supportsOrderByOnlyOnLayerFields": false,
+    "supportsOutFieldSqlExpression": true,
+    "supportsTopFeaturesQuery": true,
+    "supportsReturningGeometryEnvelope": true,
+    "supportsDistinct": true,
+    "supportsReturningGeometryCentroid": true,
+    "supportsQueryAnalytic": true,
+    "supportsPercentileStatistics": true,
+    "supportsHavingClause": true
+  },
+  "subtypeField": "",
+  "supportsValidateSQL": true,
+  "enableZDefaults": true,
+  "serviceItemId": "a6d8fac221e3492593303f6b2074101a",
+  "allowUpdateWithoutMValues": true,
+  "supportsCoordinatesQuantization": true,
+  "types": [],
+  "capabilities": "Query",
+  "maxScale": 0,
+  "supportsAppend": true,
+  "supportsExceedsLimitStatistics": true,
+  "defaultVisibility": true,
+  "advancedQueryAnalyticCapabilities": {
+    "supportsAsync": true,
+    "supportsLinearRegression": true,
+    "supportsPercentileAnalytic": false
+  },
+  "hasMetadata": true,
+  "supportedAppendFormats": "csv,excel,featureCollection,featureService,geojson,imageCollection,jsonl,pbf,shapefile",
+  "tileMaxRecordCount": 2000,
+  "typeIdField": "",
+  "supportsASyncCalculate": true,
+  "supportedQueryFormats": "JSON, geoJSON, PBF",
+  "sqlParserVersion": "PG_11.4.0",
+  "drawingInfo": {
+    "renderer": {
+      "symbol": {
+        "outline": {
+          "color": [
+            110,
+            110,
+            110,
+            255
+          ],
+          "width": 0.7,
+          "style": "esriSLSSolid",
+          "type": "esriSLS"
+        },
+        "color": [
+          252,
+          189,
+          227,
+          255
+        ],
+        "style": "esriSFSSolid",
+        "type": "esriSFS"
+      },
+      "type": "simple"
+    },
+    "scaleSymbols": true,
+    "transparency": 0,
+    "labelingInfo": null
+  },
+  "geometryField": {
+    "sqlType": "sqlTypeOther",
+    "nullable": true,
+    "editable": true,
+    "name": "shape",
+    "typeName": "st_geometry",
+    "length": 2147483647,
+    "type": "esriFieldTypeGeometry"
+  },
+  "copyrightText": "",
+  "zDefault": 0,
+  "geometryType": "esriGeometryPolygon",
+  "supportsLayerOverrides": true
+}

@@ -21,3 +21,5 @@ artifacts/
 Thumbs.db
 .venv-wsl/
 .venv-c03/
+
+.worktrees/

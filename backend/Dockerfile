@@ -2,12 +2,14 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY main.py model_stub.py listing_models.py listing_repository.py listing_routes.py source_adapter.py sync_listings.py ./
-COPY market_models.py market_repository.py market_routes.py ./
-COPY sql/ ./sql/
+COPY backend/*.py ./
+COPY backend/sql/ ./sql/
+COPY ml/baseline.py /app/ml/baseline.py
+COPY data_pipeline/geography.py /app/data_pipeline/geography.py
+COPY contracts/openapi.json /contracts/openapi.json
 
 EXPOSE 8000
 
