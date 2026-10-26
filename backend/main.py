@@ -12,9 +12,11 @@ from pydantic import ValidationError
 try:
     from .listing_routes import router
     from .market_routes import router as market_router
+    from .review_routes import router as review_router
 except ImportError:
     from listing_routes import router
     from market_routes import router as market_router
+    from review_routes import router as review_router
 
 app = FastAPI(title="FairRent API")
 app.add_middleware(
@@ -22,11 +24,13 @@ app.add_middleware(
     allow_origins=[value.strip() for value in os.environ.get(
         "FRONTEND_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
     ).split(",") if value.strip()],
-    allow_methods=["GET"],
+    allow_methods=["GET", "PATCH"],
+    allow_headers=["Authorization", "Content-Type"],
     expose_headers=["X-Request-ID"],
 )
 app.include_router(router)
 app.include_router(market_router)
+app.include_router(review_router)
 
 
 @app.middleware("http")
@@ -54,8 +58,12 @@ async def invalid_request(request, exc):
 
 @app.exception_handler(HTTPException)
 async def http_error(request, exc):
-    code = {404: "not_found", 422: "validation_error"}.get(exc.status_code, "internal_error")
-    return api_error(request, exc.status_code, code, str(exc.detail))
+    code = {401: "unauthenticated", 403: "forbidden", 404: "not_found",
+            409: "conflict", 422: "validation_error"}.get(exc.status_code, "internal_error")
+    response = api_error(request, exc.status_code, code, str(exc.detail))
+    if exc.headers:
+        response.headers.update(exc.headers)
+    return response
 
 
 @app.exception_handler(psycopg.Error)

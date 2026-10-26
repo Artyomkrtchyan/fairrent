@@ -19,6 +19,10 @@ mapping, date coverage and integration tests.
 
 ## Local development with Docker Compose
 
+C05 adds the protected reviewer queue, versioned decisions and revocable bearer
+sessions. See [C05 setup and remaining integration work](../docs/C05-review-workflow.md).
+Production signal generation awaits C04/B06; this foundation does not close C05.
+
 Run these commands from the repository root. Docker Engine and Docker Compose are required.
 
 Create local configuration on the first run:
