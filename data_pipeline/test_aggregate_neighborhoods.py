@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -88,10 +88,41 @@ def test_only_active_observed_long_term_inventory_with_valid_prices_and_district
     assert result[0]["median_price_usd_month"] == 800
 
 
-def test_reporting_window_is_monday_through_sunday_in_utc():
+def test_reporting_window_is_monday_through_sunday_in_yerevan_converted_to_utc():
     start, end_exclusive, period_end = week_window(WEEK)
-    assert start == datetime(2026, 10, 19, tzinfo=timezone.utc)
-    assert end_exclusive == datetime(2026, 10, 26, tzinfo=timezone.utc)
+    assert start == datetime(2026, 10, 18, 20, tzinfo=timezone.utc)
+    assert end_exclusive == datetime(2026, 10, 25, 20, tzinfo=timezone.utc)
     assert period_end == date(2026, 10, 25)
     with pytest.raises(ValueError, match="Monday"):
         week_window(date(2026, 10, 20))
+
+
+def test_reporting_window_includes_yerevan_monday_and_sunday_boundaries():
+    start, end_exclusive, _ = week_window(WEEK)
+    rows = [
+        _listing(1, 500, last_seen_at=start - timedelta(seconds=1)),
+        _listing(2, 600, last_seen_at=start),
+        _listing(3, 700, last_seen_at=end_exclusive - timedelta(seconds=1)),
+        _listing(4, 800, last_seen_at=end_exclusive),
+    ]
+
+    result = build_weekly_aggregates(rows, WEEK)
+
+    assert len(result) == 1
+    assert result[0]["sample_count"] == 2
+    assert result[0]["data_as_of"] == end_exclusive - timedelta(seconds=1)
+
+
+def test_latest_eligible_duplicate_observation_is_used_instead_of_ad_median():
+    rows = [
+        _listing(1, 1_500, last_seen_at=OBSERVED + timedelta(days=1), listing_id=20),
+        _listing(1, 500, last_seen_at=OBSERVED - timedelta(days=1), listing_id=10),
+        *[_listing(index, price) for index, price in enumerate((600, 700, 800, 900), start=2)],
+    ]
+
+    result = build_weekly_aggregates(rows, WEEK)
+
+    assert result[0]["sample_count"] == 5
+    assert result[0]["median_price_usd_month"] == 800
+    assert result[0]["median_price_usd_per_sqm"] == 16
+    assert result[0]["data_as_of"] == OBSERVED + timedelta(days=1)

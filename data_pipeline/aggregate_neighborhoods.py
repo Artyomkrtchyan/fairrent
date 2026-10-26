@@ -8,6 +8,7 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import json
 from statistics import median
 from typing import Any, Iterable
+from zoneinfo import ZoneInfo
 
 import click
 from sqlalchemy.orm import Session
@@ -20,14 +21,18 @@ from .normalizer import monthly_multiplier
 MINIMUM_SAMPLE_COUNT = 5
 FRESHNESS_MAX_AGE_DAYS = 14
 CENT = Decimal("0.01")
+REPORTING_TIMEZONE = ZoneInfo("Asia/Yerevan")
 
 
 def week_window(week_start: date) -> tuple[datetime, datetime, date]:
-    """Return inclusive UTC start, exclusive next-week start, and inclusive end date."""
+    """Return UTC bounds for a Monday-Sunday reporting week in Yerevan time."""
     if week_start.weekday() != 0:
         raise ValueError("week_start must be a Monday")
-    start = datetime.combine(week_start, time.min, tzinfo=timezone.utc)
-    next_start = start + timedelta(days=7)
+    local_start = datetime.combine(week_start, time.min, tzinfo=REPORTING_TIMEZONE)
+    local_next_start = datetime.combine(week_start + timedelta(days=7), time.min,
+                                        tzinfo=REPORTING_TIMEZONE)
+    start = local_start.astimezone(timezone.utc)
+    next_start = local_next_start.astimezone(timezone.utc)
     return start, next_start, week_start + timedelta(days=6)
 
 
@@ -74,18 +79,16 @@ def build_weekly_aggregates(
 ) -> list[dict]:
     """Calculate district medians, counting each deduplicated property once.
 
-    A listing must be active, observed during the UTC week, have a known Yerevan
+    A listing must be active, observed during the Yerevan reporting week, have a known Yerevan
     district, a supported long-term period and a positive normalized USD/month price.
-    Multiple active ads linked to one property are reduced to a property-level median.
+    Of eligible ads linked to one property, only the most recently observed one is used.
     """
     if minimum_sample_count < 1:
         raise ValueError("minimum_sample_count must be positive")
     start, next_start, period_end = week_window(week_start)
     generated_at = _utc(generated_at or datetime.now(timezone.utc))
     assert generated_at is not None
-    property_values: dict[tuple[str, int], dict[str, list]] = defaultdict(
-        lambda: {"monthly_prices": [], "unit_prices": [], "last_seen": []}
-    )
+    latest_by_property: dict[tuple[str, int], tuple[datetime, int, Decimal, Decimal | None]] = {}
 
     for row in rows:
         if row.get("is_active") is not True or row.get("source", source) != source:
@@ -105,22 +108,27 @@ def build_weekly_aggregates(
         if price is None or price <= 0:
             continue
 
-        values = property_values[(district_id, int(property_id))]
-        values["monthly_prices"].append(price)
-        values["last_seen"].append(observed_at)
         area = _decimal(row.get("area_sqm"))
-        if area is not None and area > 0:
-            values["unit_prices"].append(price / area)
+        unit_price = price / area if area is not None and area > 0 else None
+        try:
+            listing_id = int(row.get("listing_id", row.get("id", -1)))
+        except (TypeError, ValueError):
+            listing_id = -1
+        key = (district_id, int(property_id))
+        candidate = (observed_at, listing_id, price, unit_price)
+        previous = latest_by_property.get(key)
+        if previous is None or candidate[:2] > previous[:2]:
+            latest_by_property[key] = candidate
 
     by_district: dict[str, dict[str, list]] = defaultdict(
         lambda: {"monthly_prices": [], "unit_prices": [], "last_seen": []}
     )
-    for (district_id, _property_id), values in property_values.items():
+    for (district_id, _property_id), (observed_at, _listing_id, price, unit_price) in latest_by_property.items():
         district = by_district[district_id]
-        district["monthly_prices"].append(median(values["monthly_prices"]))
-        district["last_seen"].extend(values["last_seen"])
-        if values["unit_prices"]:
-            district["unit_prices"].append(median(values["unit_prices"]))
+        district["monthly_prices"].append(price)
+        district["last_seen"].append(observed_at)
+        if unit_price is not None:
+            district["unit_prices"].append(unit_price)
 
     results = []
     for district_id, values in sorted(by_district.items()):
@@ -156,7 +164,8 @@ def build_weekly_aggregates(
 def _source_rows(session: Session, week_start: date, source: str) -> list[dict]:
     start, next_start, _ = week_window(week_start)
     rows = session.query(
-        Listing.property_id.label("property_id"), Property.district_id.label("district_id"),
+        Listing.id.label("listing_id"), Listing.property_id.label("property_id"),
+        Property.district_id.label("district_id"),
         Listing.price_usd.label("price_usd"), Listing.area_sqm.label("area_sqm"),
         Listing.original_period.label("original_period"), Listing.last_seen_at.label("last_seen_at"),
         Listing.is_active.label("is_active"), Listing.source.label("source"),
@@ -187,7 +196,7 @@ def publish_week(session: Session, week_start: date, source: str = DEFAULT_SOURC
 
 
 @click.command()
-@click.option("--week-start", required=True, help="Monday that starts the UTC reporting week (YYYY-MM-DD).")
+@click.option("--week-start", required=True, help="Monday that starts the Asia/Yerevan reporting week (YYYY-MM-DD).")
 @click.option("--source", default=DEFAULT_SOURCE_NAME, show_default=True)
 def cli(week_start: str, source: str) -> None:
     """Build the weekly neighborhood asking-price index for observed active listings."""
