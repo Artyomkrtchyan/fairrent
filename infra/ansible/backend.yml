@@ -1,0 +1,3 @@
+---
+- name: Deploy backend through systemd
+  ansible.builtin.import_playbook: backend-service.yml

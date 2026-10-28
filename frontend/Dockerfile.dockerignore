@@ -1,0 +1,18 @@
+# This Dockerfile-specific context filter does not affect the backend build.
+**
+!frontend/
+!frontend/**
+!contracts/
+!contracts/fixtures.json
+!contracts/openapi.json
+
+frontend/**/node_modules
+frontend/**/dist
+frontend/**/coverage
+frontend/.tanstack
+frontend/.env
+frontend/.env.*
+frontend/**/.env
+frontend/**/.env.*
+frontend/**/.git
+frontend/**/*.log

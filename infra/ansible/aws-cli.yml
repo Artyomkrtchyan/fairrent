@@ -1,0 +1,33 @@
+---
+- name: Install AWS CLI
+  hosts: "{{ target_hosts | default('backend') }}"
+  become: yes
+
+  tasks:
+    - name: Install prerequisites
+      ansible.builtin.apt:
+        name:
+          - unzip
+          - less
+          - groff
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Download AWS CLI installer
+      ansible.builtin.get_url:
+        url: https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
+        dest: /var/tmp/awscliv2.zip
+        mode: "0644"
+
+    - name: Extract AWS CLI installer
+      ansible.builtin.unarchive:
+        src: /var/tmp/awscliv2.zip
+        dest: /var/tmp
+        remote_src: true
+        creates: /var/tmp/aws/install
+
+    - name: Install AWS CLI
+      ansible.builtin.command:
+        cmd: /var/tmp/aws/install
+        creates: /usr/local/bin/aws

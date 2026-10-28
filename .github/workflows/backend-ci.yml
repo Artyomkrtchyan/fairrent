@@ -140,3 +140,67 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
+  deploy:
+    name: Deploy main to AWS
+    needs: [backend-tests, docker-build, contract-validation, frontend-checks]
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      vars.AWS_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    concurrency:
+      group: fairrent-aws-deploy
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: eu-central-1
+      AWS_PAGER: ""
+      ECR_REGISTRY: 566663271715.dkr.ecr.eu-central-1.amazonaws.com
+      ASG_NAME: fairrent-dev-asg
+      RELEASE_TAG: sha-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Checkout the exact main commit
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Authenticate to AWS with GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::566663271715:role/fairrent-github-deploy
+          role-session-name: fairrent-${{ github.run_id }}
+          aws-region: eu-central-1
+          role-duration-seconds: 7200
+
+      - name: Build both release images before publishing
+        run: |
+          docker build --platform linux/amd64 -t "$ECR_REGISTRY/fairrent-backend:$RELEASE_TAG" ./backend
+          docker build --platform linux/amd64 -f frontend/Dockerfile -t "$ECR_REGISTRY/fairrent-frontend:$RELEASE_TAG" .
+
+      - name: Publish and resolve immutable digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'docker logout "$ECR_REGISTRY" >/dev/null 2>&1 || true' EXIT
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+          for component in backend frontend; do
+            docker push "$ECR_REGISTRY/fairrent-$component:$RELEASE_TAG"
+            digest=$(aws ecr describe-images --repository-name "fairrent-$component" \
+              --image-ids "imageTag=$RELEASE_TAG" --query 'imageDetails[0].imageDigest' --output text)
+            echo "${component^^}_IMAGE=$ECR_REGISTRY/fairrent-$component@$digest" >> "$GITHUB_ENV"
+          done
+
+      - name: Deploy and wait for ASG replacement
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current_main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
+          if [ "$current_main" = "$GITHUB_SHA" ]; then
+            python3 infra/scripts/deploy_asg.py
+          else
+            echo "Skipping superseded commit; a newer main commit will deploy."
+          fi
