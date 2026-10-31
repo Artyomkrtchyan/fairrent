@@ -46,7 +46,9 @@ function Reviews() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold"><Money usd={l.askingUsd} /></span>
+                  <span className="text-sm font-semibold">
+                    <Money usd={l.askingUsd} />
+                  </span>
                   <StatusBadge status={priceStatus(l)} />
                 </div>
               </div>
