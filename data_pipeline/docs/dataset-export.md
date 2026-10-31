@@ -31,6 +31,25 @@ impossible; the available later date is kept for test when there are two dates, 
 observed after their group's split boundary are excluded. Exact date boundaries and realized counts appear in the
 report and manifest.
 
+## Non-temporal fallback for one-date snapshots
+
+`--split-mode grouped-random` (default `chronological`) assigns duplicate groups to train/validation/test by a
+seeded SHA-256 ordering (`--split-seed`, recorded in the manifest) instead of by date. Use it only when the data
+has too few distinct observation dates for a chronological split, for example a single scrape imported in one
+run. The manifest sets `split_policy.temporal` to `false`, the quality report sets `splits.temporal_validity` to
+`false` and clears the date-window fields, and the CLI prints a warning. Evaluations on such a snapshot are not
+forward-looking, and using them as project evidence needs explicit A/B owner agreement
+(see `docs/contract-semantics.md`). Group isolation still holds and no rows are excluded by a window boundary.
+
+## Merging near-duplicate groups
+
+`--merge-near-duplicates` (off by default, works with either split mode) merges dedup groups whose rows share
+latitude/longitude rounded to 5 decimals, `area_sqm` rounded to 0.1 and `price_usd` rounded to whole dollars, so
+reposts and identical units in one building cannot straddle splits. Rows without an area are not fingerprinted.
+Merged group ids are SHA-256 over the sorted member ids (deterministic); no rows are dropped. The manifest's
+`dedup_group_policy` and `quality_report.json` (`duplicates.near_duplicate_merge`) record that it was used and how
+many groups and rows were affected.
+
 ## Output files
 
 - `train.csv`, `validation.csv`, `test.csv`: contract features, target, observation dates, hashed duplicate group,

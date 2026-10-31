@@ -22,6 +22,8 @@ from .normalizer import monthly_multiplier
 DATASET_SCHEMA_VERSION = "a06-v1"
 CONTRACT_VERSION = "C01-v0.2.0"
 SPLIT_RATIOS = {"train": 0.70, "validation": 0.15, "test": 0.15}
+SPLIT_MODES = ("chronological", "grouped-random")
+DEFAULT_SPLIT_SEED = "fairrent-grouped-random-v1"
 
 # Raw listing identifiers, URLs, addresses, titles, descriptions, images, and raw HTML are
 # deliberately excluded. The hashed group key is the only cross-row identity in an export.
@@ -170,8 +172,104 @@ def _json_datetime(value: datetime | None) -> str | None:
     return normalized.isoformat().replace("+00:00", "Z") if normalized else None
 
 
-def prepare_snapshot(raw_rows: Iterable[dict], as_of: date) -> tuple[dict[str, list[dict]], dict]:
-    """Validate rows, enforce group-isolated chronological splits, and build a quality report."""
+def _grouped_random_assignment(group_ids: Iterable[str], seed: str) -> dict[str, str]:
+    """Deterministic, seeded, duplicate-group-isolated 70/15/15 assignment.
+
+    Groups are ordered by SHA-256(seed:group_id) -- independent of database row order, so
+    the same inputs always give the same split -- then cut by SPLIT_RATIOS. This is NOT a
+    temporal split and exists only for snapshots whose rows share (almost) one observation
+    date, where a chronological split is impossible. It gives no forward-looking guarantee.
+    """
+    ordered = sorted(group_ids, key=lambda g: hashlib.sha256(f"{seed}:{g}".encode("utf-8")).hexdigest())
+    total = len(ordered)
+    if total == 0:
+        return {}
+    if total == 1:
+        return {ordered[0]: "train"}
+    if total == 2:
+        return {ordered[0]: "train", ordered[1]: "test"}
+    train_count = max(1, min(round(total * SPLIT_RATIOS["train"]), total - 2))
+    validation_count = max(1, min(round(total * SPLIT_RATIOS["validation"]), total - train_count - 1))
+    assignment = {}
+    for index, group_id in enumerate(ordered):
+        if index < train_count:
+            assignment[group_id] = "train"
+        elif index < train_count + validation_count:
+            assignment[group_id] = "validation"
+        else:
+            assignment[group_id] = "test"
+    return assignment
+
+
+def _merge_near_duplicate_groups(valid: list[dict]) -> dict:
+    """Merge dedup groups whose rows share a near-duplicate fingerprint, in place.
+
+    The fingerprint is (latitude, longitude) rounded to 5 decimals, area to 0.1 m^2 and USD
+    price to whole dollars -- the same definition the B04 leakage check uses. Scraped listings
+    that repeat one apartment (or several identical units in one building) otherwise form many
+    one-listing groups, and a split can then separate twins between train and test. Merged
+    groups get a new SHA-256 id over their sorted member ids, so a merge is deterministic.
+    Rows without an area cannot be fingerprinted and are left alone, as in the B04 check.
+    """
+    parent: dict[str, str] = {}
+
+    def find(item: str) -> str:
+        while parent[item] != item:
+            parent[item] = parent[parent[item]]
+            item = parent[item]
+        return item
+
+    first_group_for: dict[tuple, str] = {}
+    for row in valid:
+        group_id = row["dedup_group_id"]
+        parent.setdefault(group_id, group_id)
+        area = row.get("area_sqm")
+        if area is None:
+            continue
+        key = (round(row["latitude"], 5), round(row["longitude"], 5),
+               round(float(area), 1), round(row["price_usd"], 0))
+        if key in first_group_for:
+            root_a, root_b = find(first_group_for[key]), find(group_id)
+            if root_a != root_b:
+                parent[root_b] = root_a
+        else:
+            first_group_for[key] = group_id
+
+    components: dict[str, set[str]] = defaultdict(set)
+    for group_id in parent:
+        components[find(group_id)].add(group_id)
+    mapping: dict[str, str] = {}
+    for members in components.values():
+        if len(members) > 1:
+            merged_id = hashlib.sha256(
+                ("fairrent-dedup-merge-v1:" + "|".join(sorted(members))).encode("utf-8")).hexdigest()
+            for member in members:
+                mapping[member] = merged_id
+    merged_row_counts: Counter = Counter()
+    for row in valid:
+        if row["dedup_group_id"] in mapping:
+            row["dedup_group_id"] = mapping[row["dedup_group_id"]]
+            merged_row_counts[row["dedup_group_id"]] += 1
+    return {
+        "enabled": True,
+        "fingerprint": "latitude/longitude rounded to 5 decimals, area_sqm to 0.1, price_usd to whole USD",
+        "merged_groups_created": len(merged_row_counts),
+        "groups_absorbed": len(mapping),
+        "rows_in_merged_groups": sum(merged_row_counts.values()),
+        "largest_merged_group_rows": max(merged_row_counts.values(), default=0),
+    }
+
+
+def prepare_snapshot(raw_rows: Iterable[dict], as_of: date, split_mode: str = "chronological",
+                     split_seed: str = DEFAULT_SPLIT_SEED,
+                     merge_near_duplicates: bool = False) -> tuple[dict[str, list[dict]], dict]:
+    """Validate rows, enforce group-isolated splits, and build a quality report.
+
+    ``split_mode="chronological"`` (default) is the A06 policy. ``"grouped-random"`` is an
+    explicit, labeled fallback for one-observation-date snapshots; see _grouped_random_assignment.
+    """
+    if split_mode not in SPLIT_MODES:
+        raise ValueError(f"split_mode must be one of {SPLIT_MODES}, got {split_mode!r}")
     cutoff = datetime.combine(as_of + timedelta(days=1), time.min, tzinfo=timezone.utc)
     rows = []
     for source_row in raw_rows:
@@ -231,6 +329,7 @@ def prepare_snapshot(raw_rows: Iterable[dict], as_of: date) -> tuple[dict[str, l
             "_observation_date": row["observation_at"].date(),
         })
 
+    merge_stats = _merge_near_duplicate_groups(valid) if merge_near_duplicates else None
     group_members = defaultdict(list)
     for row in valid:
         group_members[row["dedup_group_id"]].append(row)
@@ -243,7 +342,9 @@ def prepare_snapshot(raw_rows: Iterable[dict], as_of: date) -> tuple[dict[str, l
     # Choose split boundaries only between dates, so all groups anchored on
     # the same date remain together. Ratios may shift when dates are clustered.
     train_end_index = validation_end_index = None
-    if len(anchor_dates) >= 3:
+    if split_mode == "grouped-random":
+        pass  # assigned below; no date boundaries exist for a non-temporal split
+    elif len(anchor_dates) >= 3:
         group_prefix = [0]
         for anchor_date in anchor_dates:
             group_prefix.append(group_prefix[-1] + groups_by_date[anchor_date])
@@ -266,13 +367,16 @@ def prepare_snapshot(raw_rows: Iterable[dict], as_of: date) -> tuple[dict[str, l
         train_end_index = 0
 
     group_split = {}
-    for anchor_date, group_id in anchors:
-        if train_end_index is None or anchor_date <= anchor_dates[train_end_index]:
-            group_split[group_id] = "train"
-        elif validation_end_index is not None and anchor_date <= anchor_dates[validation_end_index]:
-            group_split[group_id] = "validation"
-        else:
-            group_split[group_id] = "test"
+    if split_mode == "grouped-random":
+        group_split = _grouped_random_assignment(group_members, split_seed)
+    else:
+        for anchor_date, group_id in anchors:
+            if train_end_index is None or anchor_date <= anchor_dates[train_end_index]:
+                group_split[group_id] = "train"
+            elif validation_end_index is not None and anchor_date <= anchor_dates[validation_end_index]:
+                group_split[group_id] = "validation"
+            else:
+                group_split[group_id] = "test"
 
     split_groups: dict[str, list[dict]] = {"train": [], "validation": [], "test": []}
     split_excluded = Counter()
@@ -282,7 +386,8 @@ def prepare_snapshot(raw_rows: Iterable[dict], as_of: date) -> tuple[dict[str, l
                       if validation_end_index is not None else None)
     split_ends["train"] = train_end
     split_ends["validation"] = validation_end
-    split_ends["test"] = as_of
+    # A non-temporal split has no window ends, so no row is excluded as "after the boundary".
+    split_ends["test"] = None if split_mode == "grouped-random" else as_of
 
     for row in valid:
         split = group_split[row["dedup_group_id"]]
@@ -348,6 +453,24 @@ def prepare_snapshot(raw_rows: Iterable[dict], as_of: date) -> tuple[dict[str, l
             "test_end_date": as_of.isoformat(),
         },
     }
+    if merge_stats is not None:
+        quality["duplicates"]["near_duplicate_merge"] = merge_stats
+    if split_mode == "grouped-random":
+        # Overwrite date-window fields: they have no meaning without a temporal split.
+        quality["splits"].update({
+            "method": "grouped-random",
+            "seed": split_seed,
+            "temporal_validity": False,
+            "distinct_observation_dates": len(anchor_dates),
+            "train_end_date": None,
+            "validation_end_date": None,
+            "validation_start_date": None,
+            "test_start_date": None,
+            "test_end_date": None,
+            "warning": ("Non-temporal split: train/validation/test are random duplicate-group-isolated "
+                        "samples of one snapshot. Metrics are in-time estimates and are optimistic "
+                        "relative to forecasting future listings."),
+        })
     return split_groups, quality
 
 
@@ -390,6 +513,26 @@ def create_artifacts(split_rows: dict[str, list[dict]], quality: dict, version: 
         f"{name}.csv": csv_bytes(rows) for name, rows in split_rows.items()
     }
     artifacts["quality_report.json"] = json_bytes(quality)
+    split_policy = {
+        "method": "chronological by earliest observation_date per dedup group; all group members and tied anchor dates stay in one split",
+        "ratios": SPLIT_RATIOS,
+        "date_tie_policy": "split boundaries fall only between distinct anchor dates; ratios may deviate to keep tied dates together",
+        "future_row_policy": "exclude rows observed after their assigned split end date",
+    }
+    if quality.get("splits", {}).get("method") == "grouped-random":
+        split_policy = {
+            "method": ("grouped-random: dedup groups ordered by SHA-256(seed:dedup_group_id) and cut "
+                       "70/15/15; all members of a group stay in one split"),
+            "temporal": False,
+            "seed": quality["splits"]["seed"],
+            "ratios": SPLIT_RATIOS,
+            "distinct_observation_dates": quality["splits"]["distinct_observation_dates"],
+            "future_row_policy": "not applicable (no temporal windows)",
+            "limitation": ("Not a forward-looking evaluation. Intended only for snapshots with too few "
+                           "distinct observation dates for a chronological split."),
+            "approval": ("Using this fallback as project evidence requires explicit agreement of the "
+                         "A and B owners (docs/contract-semantics.md)."),
+        }
     manifest = {
         "dataset_schema_version": DATASET_SCHEMA_VERSION,
         "dataset_version": version,
@@ -398,12 +541,7 @@ def create_artifacts(split_rows: dict[str, list[dict]], quality: dict, version: 
         "source": source,
         "observation_policy": "one latest listing state per source listing, observed at last_seen_at <= as_of; price is monthly asking USD",
         "historical_limit": "Price history stores changes, not a full feature snapshot per observation. This export does not treat old price changes as independent rows with current features.",
-        "split_policy": {
-            "method": "chronological by earliest observation_date per dedup group; all group members and tied anchor dates stay in one split",
-            "ratios": SPLIT_RATIOS,
-            "date_tie_policy": "split boundaries fall only between distinct anchor dates; ratios may deviate to keep tied dates together",
-            "future_row_policy": "exclude rows observed after their assigned split end date",
-        },
+        "split_policy": split_policy,
         "dedup_group_policy": "SHA-256 of normalized location and group-level structure, with persistent property id as disambiguator; used only for split isolation",
         "features": FEATURE_DEFINITIONS,
         "provenance_fields": ["source", "ingestion_run_id", "original_price", "original_currency",
@@ -416,6 +554,11 @@ def create_artifacts(split_rows: dict[str, list[dict]], quality: dict, version: 
         },
         "quality_report": "quality_report.json",
     }
+    if quality.get("duplicates", {}).get("near_duplicate_merge"):
+        manifest["dedup_group_policy"] += (
+            "; groups whose rows share rounded coordinates (5 dp), area (0.1 m2) and price (whole USD) are "
+            "merged into one group so near-duplicate listings cannot straddle splits "
+            "(see quality_report.json duplicates.near_duplicate_merge)")
     manifest["snapshot_sha256"] = snapshot_digest(artifacts, manifest)
     artifacts["manifest.json"] = json_bytes(manifest)
     return artifacts
@@ -493,7 +636,16 @@ def _quarantine_event_count(session: Session, as_of: date, source: str) -> int:
 @click.option("--output-dir", type=click.Path(path_type=Path), default=Path("data/processed"),
               show_default=True, help="Ignored output root; versioned artifacts are written beneath it.")
 @click.option("--source", default=DEFAULT_SOURCE_NAME, show_default=True)
-def cli(as_of_text: str, version: str, output_dir: Path, source: str) -> None:
+@click.option("--split-mode", type=click.Choice(SPLIT_MODES), default="chronological", show_default=True,
+              help="'grouped-random' is a labeled NON-temporal fallback for one-date snapshots; "
+                   "it needs explicit A/B owner agreement before being used as evidence.")
+@click.option("--split-seed", default=DEFAULT_SPLIT_SEED, show_default=True,
+              help="Seed string for --split-mode grouped-random (recorded in the manifest).")
+@click.option("--merge-near-duplicates", is_flag=True,
+              help="Merge groups whose rows share rounded coordinates, area and USD price so "
+                   "near-duplicate listings cannot straddle splits (counts reported in quality_report.json).")
+def cli(as_of_text: str, version: str, output_dir: Path, source: str,
+        split_mode: str, split_seed: str, merge_near_duplicates: bool) -> None:
     """Export privacy-safe, group-isolated training/evaluation CSVs and quality metadata."""
     try:
         as_of = date.fromisoformat(as_of_text)
@@ -518,7 +670,10 @@ def cli(as_of_text: str, version: str, output_dir: Path, source: str) -> None:
         session.close()
         engine.dispose()
 
-    splits, quality = prepare_snapshot(rows, as_of)
+    splits, quality = prepare_snapshot(rows, as_of, split_mode=split_mode, split_seed=split_seed,
+                                       merge_near_duplicates=merge_near_duplicates)
+    if split_mode == "grouped-random":
+        click.echo("WARNING: grouped-random split is NOT temporal; results are not forward-looking.", err=True)
     quality["quarantined_record_events_reported_by_ingestion_runs"] = quarantine_events
     artifacts = create_artifacts(splits, quality, version, as_of, source=source)
     output_path = write_versioned_snapshot(output_dir, version, artifacts)
