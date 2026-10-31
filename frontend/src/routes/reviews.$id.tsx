@@ -1,5 +1,5 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { Money, PageHeader, StatusBadge } from "@/components/ui-bits";
+import { Money, PageHeader, RateNote, StatusBadge } from "@/components/ui-bits";
 import { ReviewPreviewBanner } from "@/components/ReviewPreviewBanner";
 import { getListing, priceStatus } from "@/lib/data";
 
@@ -32,6 +32,7 @@ function ReviewCase() {
         <PageHeader title={`Case ${l.id}`} intro={l.title} />
       </div>
       <ReviewPreviewBanner />
+      <RateNote />
       <section className="card-surface p-5">
         <div className="flex flex-wrap items-center gap-3">
           <StatusBadge status={priceStatus(l)} />

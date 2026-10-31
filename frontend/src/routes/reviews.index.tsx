@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { PageHeader, StatusBadge } from "@/components/ui-bits";
+import { Money, PageHeader, RateNote, StatusBadge } from "@/components/ui-bits";
 import { ReviewPreviewBanner } from "@/components/ReviewPreviewBanner";
 import { LISTINGS, priceStatus } from "@/lib/data";
 
@@ -29,6 +29,7 @@ function Reviews() {
         intro="Listings flagged with risk evidence would appear here for human review."
       />
       <ReviewPreviewBanner />
+      <RateNote />
       <ul className="grid gap-3">
         {REVIEW_QUEUE.map((l) => (
           <li key={l.id}>
@@ -44,7 +45,10 @@ function Reviews() {
                     {l.risks.length} signal(s) · {l.district}
                   </p>
                 </div>
-                <StatusBadge status={priceStatus(l)} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold"><Money usd={l.askingUsd} /></span>
+                  <StatusBadge status={priceStatus(l)} />
+                </div>
               </div>
             </Link>
           </li>
