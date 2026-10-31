@@ -31,3 +31,7 @@ npm run build
 ```
 
 Then check mock queue filters, review draft validation, history/evidence text, 401/403/409 error handling and mobile/keyboard usability. Real session tests and persistence tests remain blocked on the approved C05 browser sign-in integration. No local checks were run as part of this remote GitHub edit.
+
+## Display currency
+
+The review queue and review details now reuse the existing `Money` and `RateNote` components and global `usePrefs` currency setting. Canonical API values remain USD. Display switches to AMD only when the shared exchange-rate response permits conversion, matching D02–D06. No fixed rate is introduced and no new preference state is created. Verify the header USD/AMD toggle on both review routes, including rate-unavailable behavior.

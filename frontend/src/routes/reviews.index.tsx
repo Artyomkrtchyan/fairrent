@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { apiMode } from "@/api/client";
 import { getReviews, type ReviewFilters, type ReviewStatus } from "@/api/reviews";
-import { PageHeader } from "@/components/ui-bits";
+import { Money, PageHeader, RateNote } from "@/components/ui-bits";
 
 export const Route = createFileRoute("/reviews/")({
   head: () => ({
@@ -67,6 +67,7 @@ function Reviews() {
           </label>
         </div>
       </section>
+      <RateNote />
       {query.isPending && <p role="status">Loading review cases…</p>}
       {query.isError && (
         <section role="alert" className="card-surface p-5">
@@ -88,7 +89,7 @@ function Reviews() {
                       <p className="font-semibold">{review.listing.title || "Untitled listing"}</p>
                       <p className="mt-1 text-xs text-muted-foreground">{review.listing.district_id ?? "Unknown area"} · {review.signals.length} signal(s) · updated {new Date(review.updated_at).toLocaleDateString()}</p>
                     </div>
-                    <span className="rounded-md border px-3 py-1 text-sm">{review.status.replace("_", " ")}</span>
+                    <div className="flex flex-wrap items-center gap-3"><span className="text-sm font-semibold">{review.listing.price_monthly_normalized === null ? "Rent unavailable" : <Money usd={review.listing.price_monthly_normalized} />}</span><span className="rounded-md border px-3 py-1 text-sm">{review.status.replace("_", " ")}</span></div>
                   </div>
                 </Link>
               </li>

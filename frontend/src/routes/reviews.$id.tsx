@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { apiMode } from "@/api/client";
 import { getReviews, validateReviewDraft, type ReviewDecision, type ReviewUpdate } from "@/api/reviews";
-import { PageHeader } from "@/components/ui-bits";
+import { Money, PageHeader, RateNote } from "@/components/ui-bits";
 
 export const Route = createFileRoute("/reviews/$id")({
   head: () => ({ meta: [{ title: "Review case — FairRent" }, { name: "robots", content: "noindex" }] }),
@@ -46,6 +46,7 @@ function ReviewCase() {
       <Link to="/reviews" className="text-sm font-semibold text-primary">← Review queue</Link>
       <PageHeader title="Review case" intro="Review evidence and prepare a reasoned decision." />
       {apiMode === "mock" && <p role="note" className="rounded-lg border border-above/40 bg-warn-banner p-4 text-sm text-warn-banner-foreground"><strong>Synthetic preview.</strong> Drafts stay in this browser view and are not saved.</p>}
+      <RateNote />
       {query.isPending && <p role="status">Loading case…</p>}
       {query.isError && <div role="alert" className="card-surface p-5">{query.error.message}<button type="button" className="ml-3 underline" onClick={() => void query.refetch()}>Retry</button></div>}
       {query.isSuccess && !review && <p className="card-surface p-5">Case not found.</p>}
@@ -53,7 +54,7 @@ function ReviewCase() {
         <section className="card-surface space-y-3 p-5">
           <h2 className="text-xl font-semibold">{review.listing.title ?? "Untitled listing"}</h2>
           <p className="text-sm">Status: <strong>{review.status.replace("_", " ")}</strong> · Version {review.version}</p>
-          <p className="text-sm">District: {review.listing.district_id ?? "Unknown"} · Asking rent: {review.listing.price_monthly_normalized === null ? "Unavailable" : `$${review.listing.price_monthly_normalized} USD/month`}</p>
+          <p className="text-sm">District: {review.listing.district_id ?? "Unknown"} · Asking rent: {review.listing.price_monthly_normalized === null ? "Unavailable" : <Money usd={review.listing.price_monthly_normalized} suffix="/month" />}</p>
           <a href={review.listing.source_url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-primary underline">Original listing</a>
           <h3 className="font-semibold">Signal evidence</h3>
           {review.signals.length === 0 ? <p>No signals recorded.</p> : <ul className="space-y-3">{review.signals.map((signal) => <li key={signal.id} className="rounded-md border p-3 text-sm"><p className="font-semibold">{signal.category.replace("_", " ")} · {signal.rule_id}</p><p className="mt-1">{signal.explanation}</p><ul className="mt-2 list-disc pl-5">{signal.evidence.map((evidence, index) => <li key={index}>{evidence}</li>)}</ul></li>)}</ul>}
