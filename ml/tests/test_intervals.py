@@ -213,3 +213,26 @@ def test_gate_is_fitted_on_train_only_and_serialises_counts_not_raw_points():
 def test_gate_needs_some_usable_area_in_training():
   with pytest.raises(iv.CalibrationError):
     iv.ServingGate.fit(pd.DataFrame({"latitude": [40.1], "longitude": [44.5], "area_sqm": [None]}))
+
+
+# ---- regression: an interval must never exclude its own prediction (PR #85 review) ----
+
+@pytest.mark.parametrize("pred", [0.0, 0.5, 0.999, -5.0, float("nan")])
+def test_predictions_below_the_minimum_get_no_interval_instead_of_one_that_excludes_them(pred):
+  wide = iv.IntervalCalibration(method="relative", levels={"0.95": 0.5}, n_calibration=100,
+                                calibration_version="w")
+  assert iv.prediction_interval(pred, wide) == iv.null_interval()
+
+
+def test_every_returned_interval_encloses_its_prediction_including_near_the_minimum():
+  wide = iv.IntervalCalibration(method="relative", levels={"0.95": 0.5}, n_calibration=100,
+                                calibration_version="w")
+  for pred in (1.0, 1.0001, 1.5, 7.77, 100.0, 1e6):
+    block = iv.prediction_interval(pred, wide)
+    assert block["lower_bound_usd"] <= pred <= block["upper_bound_usd"], pred
+    assert block["interval_width_usd"] == round(block["upper_bound_usd"] - block["lower_bound_usd"], 2)
+  absolute = iv.IntervalCalibration(method="absolute", levels={"0.95": 300.0}, n_calibration=100,
+                                    calibration_version="a")
+  for pred in (1.0, 50.0, 12345.678):
+    block = iv.prediction_interval(pred, absolute)
+    assert block["lower_bound_usd"] <= pred <= block["upper_bound_usd"], pred

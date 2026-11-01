@@ -8,8 +8,10 @@ python -m ml.calibrate_intervals --b04 artifacts/b04/b04-v1.0.0-grouped-merged \
     --snapshot data/processed/v1.0.0-grouped-merged --version b05-v1.0.0
 ```
 
-Use the **same snapshot** B04 trained on: the tool refuses a different SHA-256, altered B04 files
-(`SHA256SUMS.json`), or different split sizes. Outputs go to `artifacts/b05/<version>/` (git-ignored):
+Use the **same snapshot** B04 trained on. The tool refuses: snapshot files that no longer match the digest in
+`manifest.json` (recomputed from `train/validation/test.csv`, `quality_report.json` and the manifest metadata,
+so a modified file is caught even when the manifest is unchanged), a different snapshot SHA-256, different
+split sizes, or altered B04 files (`SHA256SUMS.json`). Outputs go to `artifacts/b05/<version>/` (git-ignored):
 `interval_calibration.json` (quantiles, serving gate, binding to the B04 model SHA-256), `b05_report.json`,
 `SHA256SUMS.json`. The calibration file is deterministic; the report carries a timestamp.
 
@@ -38,6 +40,8 @@ rounding cannot break coverage or `lower <= expected <= upper`, and the width is
 bounds. With no calibration, no prediction, or any gate reason, all four fields are `null` and
 `calibration_version` is absent.
 
+Every returned interval satisfies `lower <= expected <= upper`.
+
 `price_status(asking_price_usd, interval)`: `within_range` when `lower <= asking <= upper` (edges inclusive),
 `above_range` above the upper bound, `below_range` below the lower bound, `insufficient_data` when the asking
 price is missing/non-finite/non-positive or either bound is null. Assessment status
@@ -52,12 +56,14 @@ Fitted on the **train** split only; rules fixed in advance, not tuned on test re
 | `coordinate_only_no_calibrated_interval` | `area_sqm` unknown (contract: coordinate-only intervals are not calibrated) |
 | `area_outside_training_range` | area outside the 0.5%-99.5% training quantiles |
 | `sparse_local_training_data` | fewer than 3 training listings in the 3x3 grid block (0.01° cells) around the point |
+| `prediction_below_minimum` | model prediction under $1 or not finite: relative intervals are undefined there and could not enclose the prediction |
 
 Training coordinates are stored as grid-cell counts, not raw points. The count/threshold values are provisional,
 like the contract's `< 3 comparables` rule.
 
 ## Evaluation in `b05_report.json`
-Held-out coverage and width per level (served rows, and all rows for transparency); abstention counts and the
+Held-out coverage and width per level (served rows, and all rows for transparency; for `relative_by_district` every
+conditional breakdown uses the district quantiles the intervals were built from); abstention counts and the
 coverage those rows *would* have had; variants; conditional coverage; and scenarios:
 * **sparse**: test rows with thin local training data;
 * **missing features**: rooms, floors, landmark distances, all optional inputs, and area blanked, with the coverage

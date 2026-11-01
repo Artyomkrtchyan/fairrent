@@ -39,6 +39,7 @@ REASON_MISSING_COORDINATES = "missing_or_invalid_coordinates"
 REASON_NO_AREA = "coordinate_only_no_calibrated_interval"
 REASON_AREA_RANGE = "area_outside_training_range"
 REASON_SPARSE = "sparse_local_training_data"
+REASON_LOW_PREDICTION = "prediction_below_minimum"
 
 
 class CalibrationError(ValueError):
@@ -194,6 +195,17 @@ def _ceil_cents(value: float) -> float:
     return math.ceil(round(value * 100, 6)) / 100
 
 
+def prediction_reasons(pred_usd: Sequence[float] | float) -> List[List[str]]:
+    """Reason codes per prediction: a prediction under ``MIN_PRED_USD`` (or not finite) gets no interval.
+
+    Relative scores are undefined around a near-zero centre, and the interval would have to
+    exclude the expected price (centres are floored at ``MIN_PRED_USD``). Withholding keeps the
+    contract rule ``lower <= expected <= upper`` true for every interval that is returned.
+    """
+    values = np.atleast_1d(np.asarray(pred_usd, dtype=float))
+    return [[] if (np.isfinite(v) and v >= MIN_PRED_USD) else [REASON_LOW_PREDICTION] for v in values]
+
+
 def null_interval() -> Dict[str, Any]:
     """The contract's four interval fields, all null (no calibration_version key)."""
     return {"lower_bound_usd": None, "upper_bound_usd": None, "confidence_level": None,
@@ -205,13 +217,14 @@ def prediction_interval(pred_usd: Optional[float], calibration: Optional[Interva
                         reasons: Sequence[str] = ()) -> Dict[str, Any]:
     """The ``ml_prediction_interval`` block.
 
-    Returns the all-null block when there is no calibration, no prediction, or the serving gate
-    reported any reason to withhold. Bounds are rounded outward to whole cents so rounding can
+    Returns the all-null block when there is no calibration, no prediction, a prediction below
+    ``MIN_PRED_USD`` (see ``prediction_reasons``), or the serving gate reported any reason to withhold. Bounds are rounded outward to whole cents so rounding can
     never break coverage or the ``lower <= expected <= upper`` rule, and ``interval_width_usd``
     is computed from the rounded bounds so it always equals upper minus lower.
     """
     if (calibration is None or reasons or pred_usd is None
-            or not isinstance(pred_usd, (int, float)) or not math.isfinite(pred_usd)):
+            or not isinstance(pred_usd, (int, float)) or not math.isfinite(pred_usd)
+            or pred_usd < MIN_PRED_USD):
         return null_interval()
     lower, upper = calibration.bounds(pred_usd, level, group)
     lo, hi = _floor_cents(float(lower[0])), _ceil_cents(float(upper[0]))

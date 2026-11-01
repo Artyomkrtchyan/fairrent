@@ -95,13 +95,17 @@ def test_end_to_end_writes_bound_artifacts_and_reports_heldout_coverage(world):
   assert set(report["variants_compared_on_test"]) >= {"absolute", "relative", "relative_by_district"}
 
 
-def test_calibration_does_not_depend_on_test_labels(world):
+def test_calibration_does_not_depend_on_test_labels(world, monkeypatch):
   ci.run(_args(world, "labels-a"))
   tampered = world["root"] / "snapshot-tampered"
   shutil.copytree(world["snapshot"], tampered)
   test = pd.read_csv(tampered / "test.csv")
   test["price_usd"] = test["price_usd"] * 10 + 5000          # wildly different test labels
   test.to_csv(tampered / "test.csv", index=False)
+  # This test isolates the calibration maths; the integrity checks that would (rightly) reject a
+  # modified snapshot are covered by test_refuses_snapshot_files_modified_after_export.
+  monkeypatch.setattr(ci, "verify_snapshot_digest", lambda path: None)
+  monkeypatch.setattr(ci, "check_snapshot_matches", lambda meta, splits, manifest: None)
   report_b = ci.run(_args(world, "labels-b", snapshot=str(tampered)))
   a = (world["root"] / "b05" / "labels-a" / "interval_calibration.json").read_bytes()
   b = (world["root"] / "b05" / "labels-b" / "interval_calibration.json").read_bytes()
@@ -144,3 +148,95 @@ def test_relative_by_district_method_runs(world):
   report = ci.run(_args(world, "mondrian", method="relative_by_district"))
   assert report["metadata"]["method"] == "relative_by_district"
   assert report["held_out_test"]["0.95"]["served_rows"]["coverage"] >= 0.8
+
+
+# ---- regression tests for the PR #85 review findings ----
+
+def test_snapshot_digest_recomputed_from_files_matches_the_exporter(world):
+  from data_pipeline import export_dataset as ex
+
+  manifest = json.loads((world["snapshot"] / "manifest.json").read_text(encoding="utf-8"))
+  names = ("train.csv", "validation.csv", "test.csv", "quality_report.json")
+  artifacts = {name: (world["snapshot"] / name).read_bytes() for name in names}
+  metadata = {k: v for k, v in manifest.items() if k != "snapshot_sha256"}
+  assert ci.recompute_snapshot_sha256(world["snapshot"], manifest) == manifest["snapshot_sha256"]
+  assert ci.recompute_snapshot_sha256(world["snapshot"], manifest) == ex.snapshot_digest(artifacts, metadata)
+  ci.verify_snapshot_digest(world["snapshot"])               # untouched snapshot passes
+
+
+@pytest.mark.parametrize("victim", ["validation.csv", "test.csv", "train.csv", "quality_report.json"])
+def test_refuses_snapshot_files_modified_after_export(world, victim):
+  tampered = world["root"] / f"tampered-{victim}"
+  shutil.copytree(world["snapshot"], tampered)
+  path = tampered / victim
+  path.write_bytes(path.read_bytes() + b" ")                  # manifest and row counts stay unchanged
+  with pytest.raises(ci.ArtifactError, match="do not match the SHA-256"):
+    ci.run(_args(world, f"tamper-{victim}", snapshot=str(tampered)))
+  assert not (world["root"] / "b05" / f"tamper-{victim}").exists()   # nothing written
+
+
+def test_refuses_snapshot_with_changed_validation_labels_but_same_row_counts(world):
+  tampered = world["root"] / "tampered-labels"
+  shutil.copytree(world["snapshot"], tampered)
+  val = pd.read_csv(tampered / "validation.csv")
+  val["price_usd"] = val["price_usd"] * 2
+  val.to_csv(tampered / "validation.csv", index=False)
+  with pytest.raises(ci.ArtifactError, match="modified after export"):
+    ci.run(_args(world, "tamper-labels", snapshot=str(tampered)))
+
+
+def test_refuses_snapshot_missing_a_file_or_manifest(world):
+  broken = world["root"] / "missing-file"
+  shutil.copytree(world["snapshot"], broken)
+  (broken / "validation.csv").unlink()
+  with pytest.raises(ci.ArtifactError, match="validation.csv is missing"):
+    ci.verify_snapshot_digest(broken)
+  (broken / "manifest.json").unlink()
+  with pytest.raises(ci.ArtifactError, match="manifest.json not found"):
+    ci.verify_snapshot_digest(broken)
+
+
+def test_conditional_metrics_use_district_quantiles_for_relative_by_district():
+  # Global quantile is huge (everything covered); district "A" quantile is tiny (nothing covered).
+  cal = iv.IntervalCalibration(
+      method="relative_by_district", levels={"0.95": 10.0}, n_calibration=40, calibration_version="t",
+      group_levels={"A": {"0.95": 0.01}}, group_sizes={"A": 40}, min_group_size=1)
+  y, pred = np.full(40, 150.0), np.full(40, 100.0)
+  groups = np.array(["A"] * 40)
+  served = np.ones(40, bool)
+
+  assert ci._metrics(y, pred, cal, 0.95, served, groups)["coverage"] == 0.0     # the truth
+  wrong = ci._conditional(y, pred, cal, 0.95, served, groups)                   # no labels passed
+  right = ci._conditional(y, pred, cal, 0.95, served, groups, groups=groups)
+  assert wrong[0]["coverage"] == 1.0                                            # documents the pitfall
+  assert right[0]["coverage"] == 0.0 and right[0]["group"] == "A"
+
+
+def test_relative_by_district_report_conditional_coverage_matches_direct_computation(world):
+  report = ci.run(_args(world, "mondrian-cond", method="relative_by_district"))
+  calibration = iv.IntervalCalibration.from_json(json.loads(
+      (world["root"] / "b05" / "mondrian-cond" / "interval_calibration.json").read_text(encoding="utf-8")))
+  assert calibration.method == "relative_by_district"
+  splits, _ = tc.load_snapshot(world["snapshot"])
+  test = splits["test"]
+  meta, pre, model, _ = ci.load_b04(world["b04"])
+  pred = tc.predict_usd(model, pre, test)
+  y = test["price_usd"].to_numpy(float)
+  groups = ci._district_labels(test)
+  gate = iv.ServingGate.fit(splits["train"])
+  served = np.array([not r for r in ci._all_reasons(gate, test, pred)])
+  for row in report["conditional_coverage"]["by_district"]:
+    sel = served & (groups == row["group"])
+    lo, hi = zip(*[(calibration.bounds(float(p), 0.95, str(g))[0][0], calibration.bounds(float(p), 0.95, str(g))[1][0])
+                   for p, g in zip(pred[sel], groups[sel])])
+    expected = iv.interval_metrics(y[sel], pred[sel], lo, hi)["coverage"]
+    assert row["coverage"] == expected, row["group"]
+
+
+def test_prediction_below_one_dollar_is_withheld_and_counted_as_a_reason(world):
+  assert iv.prediction_reasons([0.0, 0.99, 1.0, 750.0, float("nan"), -3.0]) == [
+      [iv.REASON_LOW_PREDICTION], [iv.REASON_LOW_PREDICTION], [], [], [iv.REASON_LOW_PREDICTION],
+      [iv.REASON_LOW_PREDICTION]]
+  report = ci.run(_args(world, "enclosure"))
+  checks = report["price_status_checks"]
+  assert checks["bounds_enclose_prediction"] and checks["intervals_checked_for_enclosure"] > 40

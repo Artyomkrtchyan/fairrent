@@ -73,6 +73,43 @@ def load_b04(b04_dir: Path) -> Tuple[dict, tc.Preprocessor, Any, str]:
     return meta, pre, model, _sha256(b04_dir / "model.cbm")
 
 
+SNAPSHOT_FILES = ("quality_report.json", "test.csv", "train.csv", "validation.csv")
+
+
+def _json_bytes(value: dict) -> bytes:
+    # Byte-identical to data_pipeline.export_dataset.json_bytes (kept separate so ml/ does not
+    # import the database layer); a test compares both digests on a real exporter snapshot.
+    return (json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2,
+                       separators=(",", ": ")) + "\n").encode("utf-8")
+
+
+def recompute_snapshot_sha256(snapshot_dir: Path, manifest: dict) -> str:
+    """The A06 snapshot digest recomputed from the files on disk (not the one stored in the manifest)."""
+    digest = hashlib.sha256()
+    for name in SNAPSHOT_FILES:
+        path = snapshot_dir / name
+        if not path.is_file():
+            raise ArtifactError(f"snapshot file {name} is missing from {snapshot_dir}")
+        digest.update(name.encode("utf-8") + b"\0" + path.read_bytes() + b"\0")
+    metadata = {key: value for key, value in manifest.items() if key != "snapshot_sha256"}
+    digest.update(b"manifest-metadata\0" + _json_bytes(metadata))
+    return digest.hexdigest()
+
+
+def verify_snapshot_digest(snapshot_dir: Path) -> None:
+    """Refuse a snapshot whose files no longer match the digest recorded in its manifest."""
+    manifest_path = snapshot_dir / "manifest.json"
+    if not manifest_path.is_file():
+        raise ArtifactError(f"{manifest_path} not found")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    recorded = manifest.get("snapshot_sha256")
+    actual = recompute_snapshot_sha256(snapshot_dir, manifest)
+    if recorded != actual:
+        raise ArtifactError(
+            "snapshot files do not match the SHA-256 recorded in manifest.json "
+            f"(recorded {recorded}, recomputed {actual}); the snapshot was modified after export")
+
+
 def check_snapshot_matches(meta: dict, splits: Dict[str, pd.DataFrame], manifest: dict) -> None:
     """Calibrating against a different snapshot than the model was trained on would void the guarantee."""
     trained = meta.get("dataset", {})
@@ -124,11 +161,14 @@ def _district_labels(frame: pd.DataFrame) -> np.ndarray:
 
 
 def _conditional(y: np.ndarray, pred: np.ndarray, cal: iv.IntervalCalibration, level: float,
-                 served: np.ndarray, keys: np.ndarray, order: Optional[List[str]] = None) -> List[dict]:
+                 served: np.ndarray, keys: np.ndarray, order: Optional[List[str]] = None,
+                 groups: Optional[np.ndarray] = None) -> List[dict]:
+    """Coverage/width per ``keys`` value. ``groups`` are the district labels the intervals were built
+    from; they must be passed for ``relative_by_district`` or the global quantile would be used."""
     rows = []
     for key in (order or sorted(set(keys[served]))):
         sel = served & (keys == key)
-        m = _metrics(y, pred, cal, level, sel)
+        m = _metrics(y, pred, cal, level, sel, groups)
         m.update({"group": str(key), "small_sample_warning": m["n"] < SMALL_SAMPLE})
         rows.append(m)
     return rows
@@ -137,6 +177,7 @@ def _conditional(y: np.ndarray, pred: np.ndarray, cal: iv.IntervalCalibration, l
 def run(args: argparse.Namespace) -> dict:
     b04_dir = Path(args.b04)
     meta04, pre, model, model_sha = load_b04(b04_dir)
+    verify_snapshot_digest(Path(args.snapshot))      # before reading any split
     splits, manifest = tc.load_snapshot(Path(args.snapshot))
     check_snapshot_matches(meta04, splits, manifest)
     train, val, test = splits["train"], splits["validation"], splits["test"]
@@ -148,7 +189,7 @@ def run(args: argparse.Namespace) -> dict:
     p_val, p_test = tc.predict_usd(model, pre, val), tc.predict_usd(model, pre, test)
 
     gate = iv.ServingGate.fit(train)
-    val_reasons, test_reasons = gate.reasons(val), gate.reasons(test)
+    val_reasons, test_reasons = _all_reasons(gate, val, p_val), _all_reasons(gate, test, p_test)
     val_served = np.array([not r for r in val_reasons])
     test_served = np.array([not r for r in test_reasons])
     if val_served.sum() == 0:
@@ -205,10 +246,12 @@ def run(args: argparse.Namespace) -> dict:
                            for a in area_test])
     conditional = {
         "level": primary,
-        "by_district": _conditional(y_test, p_test, cal, primary, test_served, test_dist),
-        "by_predicted_price_quartile": _conditional(y_test, p_test, cal, primary, test_served, tier, ["Q1", "Q2", "Q3", "Q4"]),
+        "by_district": _conditional(y_test, p_test, cal, primary, test_served, test_dist, groups=groups_for),
+        "by_predicted_price_quartile": _conditional(y_test, p_test, cal, primary, test_served, tier,
+                                                    ["Q1", "Q2", "Q3", "Q4"], groups=groups_for),
         "by_area_bin": _conditional(y_test, p_test, cal, primary, test_served, area_bin,
-                                    [b for b in ["Q1", "Q2", "Q3", "Q4", "top5pct"] if (test_served & (area_bin == b)).any()]),
+                                    [b for b in ["Q1", "Q2", "Q3", "Q4", "top5pct"] if (test_served & (area_bin == b)).any()],
+                                    groups=groups_for),
         "price_quartile_cutpoints_usd": [round(float(c), 2) for c in quart],
         "area_bin_cutpoints_sqm": [round(float(c), 1) for c in area_cuts],
     }
@@ -238,7 +281,7 @@ def run(args: argparse.Namespace) -> dict:
     for name, columns in MISSING_SCENARIOS.items():
         masked = _mask(test, columns)
         pm = tc.predict_usd(model, pre, masked)
-        reasons_masked = gate.reasons(masked)
+        reasons_masked = _all_reasons(gate, masked, pm)
         served_masked = np.array([not r for r in reasons_masked])
         m = _metrics(y_test, pm, cal, primary, test_served, groups_for)
         scenarios["missing_features"][name] = {
@@ -270,6 +313,7 @@ def run(args: argparse.Namespace) -> dict:
         "missing_asking_price": _status_counts([iv.price_status(None, b) for b in blocks]),
         "bounds_enclose_prediction": bool(all(b["lower_bound_usd"] <= p <= b["upper_bound_usd"]
                                               for p, b in zip(p_test, blocks) if b["lower_bound_usd"] is not None)),
+        "intervals_checked_for_enclosure": int(sum(b["lower_bound_usd"] is not None for b in blocks)),
         "width_equals_upper_minus_lower": bool(all(
             abs(b["interval_width_usd"] - (b["upper_bound_usd"] - b["lower_bound_usd"])) < 1e-9
             for b in blocks if b["lower_bound_usd"] is not None)),
@@ -331,6 +375,11 @@ def run(args: argparse.Namespace) -> dict:
     (out / "SHA256SUMS.json").write_text(json.dumps(digest, indent=2), encoding="utf-8")
     report["artifact_dir"] = str(out)
     return report
+
+
+def _all_reasons(gate: iv.ServingGate, frame: pd.DataFrame, pred: np.ndarray) -> List[List[str]]:
+    """Serving-gate reasons plus the reason for a prediction too small to build an interval around."""
+    return [g + p for g, p in zip(gate.reasons(frame), iv.prediction_reasons(pred))]
 
 
 def _reason_counts(reasons: List[List[str]]) -> Dict[str, int]:
