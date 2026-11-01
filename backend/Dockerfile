@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY main.py model_stub.py listing_models.py listing_repository.py listing_routes.py source_adapter.py sync_listings.py ./
 COPY market_models.py market_repository.py market_routes.py ./
+COPY review_models.py review_repository.py review_routes.py reviewer_auth.py ./
 COPY sql/ ./sql/
 
 EXPOSE 8000

@@ -11,12 +11,10 @@ if (configuredMode !== "mock" && configuredMode !== "real") {
 export const apiMode = configuredMode;
 
 const configuredBaseUrl = import.meta.env["VITE_API_BASE_URL"]?.trim();
+export const apiBaseUrl = configuredBaseUrl || window.location.origin;
 
 export const api = createClient<paths>({
-  baseUrl:
-    apiMode === "mock"
-      ? "https://mock.fairrent.invalid"
-      : configuredBaseUrl || window.location.origin,
+  baseUrl: apiMode === "mock" ? "https://mock.fairrent.invalid" : apiBaseUrl,
 
   fetch: apiMode === "mock" ? mockFetch : globalThis.fetch.bind(globalThis),
 });

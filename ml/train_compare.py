@@ -198,6 +198,18 @@ class Preprocessor:
     def feature_names(self) -> List[str]:
         return NUMERIC_FEATURES + [f"{c}_missing" for c in MISSING_INDICATORS] + CATEGORICAL_FEATURES
 
+    @classmethod
+    def from_json(cls, payload: dict) -> "Preprocessor":
+        """Rebuild a frozen preprocessor from ``preprocessing.json`` (used by B05/B07)."""
+        pre = cls()
+        pre.global_area = float(payload["global_area_sqm"])
+        pre.global_rooms = float(payload["global_rooms"])
+        pre.district_area = {str(k): float(v) for k, v in payload["district_median_area_sqm"].items()}
+        pre.district_rooms = {str(k): float(v) for k, v in payload["district_mode_rooms"].items()}
+        pre.numeric_median = {str(k): float(v) for k, v in payload["numeric_median"].items()}
+        pre.category_levels = {str(k): list(v) for k, v in payload["category_levels"].items()}
+        return pre
+
     def to_json(self) -> dict:
         return {
             "global_area_sqm": self.global_area, "global_rooms": self.global_rooms,
@@ -206,6 +218,19 @@ class Preprocessor:
             "constants": {"no_landmark_distance_m": NO_LANDMARK_M, "unknown_category": "unknown"},
             "fitted_on": "train split only",
         }
+
+
+def predict_usd(model: Any, pre: "Preprocessor", frame: pd.DataFrame) -> np.ndarray:
+    """Monthly USD predictions from a fitted CatBoost ``model`` and frozen ``pre`` (floored at 0).
+
+    Same transform and clipping as ``run``; shared so B05/B07 predict exactly as B04 evaluated.
+    """
+    from catboost import Pool
+
+    feats = pre.feature_names
+    cat_idx = [feats.index(c) for c in CATEGORICAL_FEATURES]
+    x = pre.transform(frame)
+    return np.maximum(model.predict(Pool(x[feats], cat_features=cat_idx)), 0.0)
 
 
 # ------------------------------------------------------------------------ metrics
@@ -268,12 +293,23 @@ def district_ppsqm_fallback(train: pd.DataFrame, test: pd.DataFrame) -> np.ndarr
 # --------------------------------------------------------------------- leakage
 
 
-def leakage_checks(splits: Dict[str, pd.DataFrame], features_used: List[str]) -> dict:
+def leakage_checks(splits: Dict[str, pd.DataFrame], features_used: List[str],
+                   temporal: bool = True) -> dict:
+    """``temporal=False`` is for A06 snapshots exported with the grouped-random fallback.
+
+    The chronological check is then reported as not applicable instead of being run: with a
+    single observation date its "<=" comparison would pass trivially and falsely suggest the
+    split is time-ordered. Every other check (group overlap, near-duplicates, target-derived
+    columns, correlation) still applies in full.
+    """
     g = {k: set(v["dedup_group_id"]) for k, v in splits.items()}
     dates = {k: (v["observation_date"].min(), v["observation_date"].max()) for k, v in splits.items() if len(v)}
     overlap = {f"{a}&{b}": len(g[a] & g[b]) for a, b in (("train", "validation"), ("train", "test"), ("validation", "test"))}
-    ordered = (dates["train"][1] <= dates["validation"][0] <= dates["validation"][1] <= dates["test"][0]
-               if len(splits["validation"]) else dates["train"][1] <= dates["test"][0])
+    if not temporal:
+        ordered = True
+    else:
+        ordered = (dates["train"][1] <= dates["validation"][0] <= dates["validation"][1] <= dates["test"][0]
+                   if len(splits["validation"]) else dates["train"][1] <= dates["test"][0])
     # Duplicate fingerprints that straddle splits even under different group ids.
     def fp(df):
         keep = df[["latitude", "longitude", "area_sqm", "price_usd"]].dropna()
@@ -294,7 +330,8 @@ def leakage_checks(splits: Dict[str, pd.DataFrame], features_used: List[str]) ->
             corr[c] = round(abs(float(np.corrcoef(s[ok], train.loc[ok, "price_usd"])[0, 1])), 3)
     return {
         "group_overlap_between_splits": overlap,
-        "chronological_order_ok": bool(ordered),
+        "chronological_order_ok": bool(ordered) if temporal else "not_applicable",
+        "temporal_split": temporal,
         "split_date_ranges": {k: list(v) for k, v in dates.items()},
         "near_duplicate_rows_between_splits(coords+area+price)": near_dup,
         "target_derived_columns_in_features": forbidden,
@@ -310,9 +347,10 @@ class SplitValidationError(RuntimeError):
     """Raised before training when the splits fail the leakage checks."""
 
 
-def validate_splits(splits: Dict[str, pd.DataFrame], features_used: List[str]) -> dict:
+def validate_splits(splits: Dict[str, pd.DataFrame], features_used: List[str],
+                    temporal: bool = True) -> dict:
     """Run the leakage checks and refuse to continue if any of them fails."""
-    report = leakage_checks(splits, features_used)
+    report = leakage_checks(splits, features_used, temporal=temporal)
     if not report["passed"]:
         raise SplitValidationError(
             "Split validation failed; no model was trained and no artifacts were written.\n"
@@ -377,10 +415,15 @@ def run(args: argparse.Namespace) -> dict:
         splits, manifest = load_snapshot(Path(args.snapshot))
     train, val, test = splits["train"], splits["validation"], splits["test"]
     if len(val) == 0:
-        raise SystemExit("Validation split is empty (A06 had <3 anchor dates); cannot early-stop honestly.")
+        raise SystemExit("Validation split is empty (A06 had <3 anchor dates); cannot early-stop honestly. "
+                         "For a one-date snapshot, re-export with --split-mode grouped-random "
+                         "(non-temporal; needs A/B owner agreement).")
+
+    split_policy = manifest.get("split_policy") or {}
+    temporal = bool(split_policy.get("temporal", True))
 
     # Validate the splits BEFORE any fitting; a failure stops the experiment.
-    leak = validate_splits(splits, Preprocessor().feature_names)
+    leak = validate_splits(splits, Preprocessor().feature_names, temporal=temporal)
 
     pre = Preprocessor().fit(train)
     xtr, xva, xte = (pre.transform(d) for d in (train, val, test))
@@ -423,7 +466,12 @@ def run(args: argparse.Namespace) -> dict:
         "dataset": {"version": manifest.get("dataset_version"), "snapshot_sha256": manifest.get("snapshot_sha256"),
                     "contract_version": manifest.get("contract_version"),
                     "split_rows": {k: int(len(v)) for k, v in splits.items()},
+                    "split_method": split_policy.get("method"),
+                    "temporal_split": temporal,
                     "is_synthetic": bool(args.synthetic)},
+        "evidence_level": ("temporal holdout" if temporal else
+                           "non-temporal grouped-random split: in-time estimate, optimistic, "
+                           "not forward-looking; provisional until A/B owners agree the fallback"),
         "serving_decision": decision,
         "fallback": "B03 ComparableMedianBaseline (ml/baseline.py)",
         "decision_rule": "ML only if MAE < baseline MAE and median AE <= baseline median AE on commonly answered test rows",
@@ -440,6 +488,15 @@ def run(args: argparse.Namespace) -> dict:
         "large_errors_baseline": large_error_review(test[answered].reset_index(drop=True), base_pred[answered]) if answered.any() else None,
         "leakage": leak,
     }
+    if not temporal:
+        report["limitations"] = [
+            "Split is NOT chronological: the snapshot has too few observation dates. Train, validation "
+            "and test are random duplicate-group-isolated samples of the same period.",
+            "Metrics estimate in-time accuracy and are optimistic compared with pricing future listings; "
+            "do not present them as forward-looking performance.",
+            "The serving decision is provisional until the A and B owners agree this fallback "
+            "(docs/contract-semantics.md) and a temporal holdout is possible.",
+        ]
 
     out = Path(args.output_dir) / args.version
     out.mkdir(parents=True, exist_ok=True)
@@ -471,6 +528,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     print("baseline:", c["baseline_b03_comparable_median"])
     print("catboost:", c["catboost"])
     print("leakage passed:", rep["leakage"]["passed"], " artifacts:", rep["artifact_dir"])
+    if not rep["metadata"]["dataset"]["temporal_split"]:
+        print("WARNING: non-temporal split; results are in-time estimates, not forward-looking "
+              "(see report.json 'limitations').")
     return 0
 
 
