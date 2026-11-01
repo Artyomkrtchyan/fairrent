@@ -86,7 +86,7 @@ export async function updateReview(id: string, update: ReviewUpdate, signal?: Ab
   const { data, response } = await api.PATCH("/api/v1/reviews/{id}", {
     params: { path: { id } },
     body: update,
-    signal,
+    ...(signal ? { signal } : {}),
   });
   if (!data) {
     throw new ReviewApiError(
