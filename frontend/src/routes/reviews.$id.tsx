@@ -76,8 +76,9 @@ function ReviewCase() {
               </select>
             </label>}
             <label className="block text-sm font-semibold">Required reason
-              <textarea className="mt-1 w-full rounded-md border bg-card p-3" rows={4} value={reason} onChange={(e) => { setReason(e.target.value); setChecked(false); }} placeholder="Describe evidence checked and the reason for this decision" />
+              <textarea className="mt-1 w-full rounded-md border bg-card p-3" rows={4} maxLength={2000} value={reason} onChange={(e) => { setReason(e.target.value); setChecked(false); }} placeholder="Describe evidence checked and the reason for this decision" />
             </label>
+            <p className="text-xs text-muted-foreground">{reason.length} / 2,000 characters</p>
             <button type="button" className="rounded-md border px-4 py-2 text-sm font-semibold" onClick={() => setChecked(true)}>Validate draft</button>
             {checked && (error ? <p role="alert" className="text-sm text-red-600">{error}</p> : <p role="status" className="text-sm">Draft is valid against the local form rules. It has not been saved. Case version: {review.version}.</p>)}
             <button type="button" disabled className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground opacity-50">Save decision — awaiting approved session integration</button>

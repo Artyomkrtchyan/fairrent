@@ -29,6 +29,7 @@ export function validateReviewDraft(
   reason: string,
 ): string | null {
   if (!reason.trim()) return "A reason is required for every review action.";
+  if (reason.length > 2000) return "The reason must be 2,000 characters or fewer.";
   if (status === "resolved" && !decision) return "Choose a decision to resolve this case.";
   if (status === "in_review" && decision !== null)
     return "An in-review case cannot have a final decision.";
@@ -59,7 +60,7 @@ export async function getReviews(filters: ReviewFilters, signal?: AbortSignal) {
 
   const { data, response, error } = await api.GET("/api/v1/reviews", {
     params: { query: filters },
-    signal,
+    ...(signal ? { signal } : {}),
   });
   if (!data) {
     throw new ReviewApiError(

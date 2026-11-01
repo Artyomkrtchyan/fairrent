@@ -35,3 +35,9 @@ Then check mock queue filters, review draft validation, history/evidence text, 4
 ## Display currency
 
 The review queue and review details now reuse the existing `Money` and `RateNote` components and global `usePrefs` currency setting. Canonical API values remain USD. Display switches to AMD only when the shared exchange-rate response permits conversion, matching D02–D06. No fixed rate is introduced and no new preference state is created. Verify the header USD/AMD toggle on both review routes, including rate-unavailable behavior.
+
+## Review follow-up — CI and validation
+
+- Omit optional `signal` from OpenAPI request options when undefined (`exactOptionalPropertyTypes`).
+- Enforce C01 `ReviewUpdate.reason` maximum length of 2,000 characters, in addition to non-whitespace and decision/status checks. The textarea uses the same maximum and shows the count.
+- Test compilation and boundary validation in frontend CI before requesting review; session integration remains deferred.
