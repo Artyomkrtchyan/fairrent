@@ -198,6 +198,18 @@ class Preprocessor:
     def feature_names(self) -> List[str]:
         return NUMERIC_FEATURES + [f"{c}_missing" for c in MISSING_INDICATORS] + CATEGORICAL_FEATURES
 
+    @classmethod
+    def from_json(cls, payload: dict) -> "Preprocessor":
+        """Rebuild a frozen preprocessor from ``preprocessing.json`` (used by B05/B07)."""
+        pre = cls()
+        pre.global_area = float(payload["global_area_sqm"])
+        pre.global_rooms = float(payload["global_rooms"])
+        pre.district_area = {str(k): float(v) for k, v in payload["district_median_area_sqm"].items()}
+        pre.district_rooms = {str(k): float(v) for k, v in payload["district_mode_rooms"].items()}
+        pre.numeric_median = {str(k): float(v) for k, v in payload["numeric_median"].items()}
+        pre.category_levels = {str(k): list(v) for k, v in payload["category_levels"].items()}
+        return pre
+
     def to_json(self) -> dict:
         return {
             "global_area_sqm": self.global_area, "global_rooms": self.global_rooms,
@@ -206,6 +218,19 @@ class Preprocessor:
             "constants": {"no_landmark_distance_m": NO_LANDMARK_M, "unknown_category": "unknown"},
             "fitted_on": "train split only",
         }
+
+
+def predict_usd(model: Any, pre: "Preprocessor", frame: pd.DataFrame) -> np.ndarray:
+    """Monthly USD predictions from a fitted CatBoost ``model`` and frozen ``pre`` (floored at 0).
+
+    Same transform and clipping as ``run``; shared so B05/B07 predict exactly as B04 evaluated.
+    """
+    from catboost import Pool
+
+    feats = pre.feature_names
+    cat_idx = [feats.index(c) for c in CATEGORICAL_FEATURES]
+    x = pre.transform(frame)
+    return np.maximum(model.predict(Pool(x[feats], cat_features=cat_idx)), 0.0)
 
 
 # ------------------------------------------------------------------------ metrics
