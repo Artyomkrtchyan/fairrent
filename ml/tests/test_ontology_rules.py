@@ -154,3 +154,34 @@ def test_attributions_group_missing_indicators_and_normalise():
     with pytest.raises(ValueError):
         attributions_from_shap(["a"], [float("nan")])
     assert attributions_from_shap(["a"], [0.0]) == []
+
+
+def test_description_is_checked_independently_from_title():
+    listing = {"title": "2 սենյականոց բնակարան, Կենտրոն, 65 քմ",
+               "description": "3 սենյականոց բնակարան, Արաբկիր, 120 քմ",
+               "area_sqm": 65, "rooms": 2, "district": "kentron"}
+    res = r.evaluate_listing(listing)
+    for rule in ("DESC-AREA-MATCH", "DESC-ROOMS-MATCH", "DESC-DISTRICT-MATCH"):
+        assert _status(res["checks"], rule) == "flagged", rule
+    flagged = next(c for c in res["checks"] if c["rule_id"] == "DESC-AREA-MATCH")
+    assert any(e.startswith("source=description") for e in flagged["evidence"])
+
+
+def test_matching_title_and_description_stay_clear_and_missing_text_unknown():
+    both = {"title": "2 սենյականոց, Կենտրոն, 65 քմ", "description": "2 սենյականոց, Կենտրոն, 65 քմ",
+            "area_sqm": 65, "rooms": 2, "district": "kentron"}
+    assert _status(r.evaluate_listing(both)["checks"], "DESC-AREA-MATCH") == "clear"
+    none = r.evaluate_listing({"area_sqm": 65})
+    assert _status(none["checks"], "DESC-AREA-MATCH") == "unknown"
+
+
+def test_canonical_district_ids_are_accepted():
+    from data_pipeline import geography as geo
+    for key in geo.DISTRICTS:
+        assert r._district_id(key) == key
+    assert r._district_id("Nor Nork") == "nor-nork"
+    rows = [{"latitude": 40.2, "longitude": 44.55, "district": "nor-nork"}] * 25
+    support = r.DistrictSupport.fit(rows)
+    assert support.n_reference == 25
+    assert support.check(40.2, 44.55, "nor-nork")["status"] == "clear"
+    assert support.check(40.2, 44.55, "kentron")["status"] == "flagged"

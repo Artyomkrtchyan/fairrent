@@ -166,7 +166,12 @@ def _valid_point(lat: Optional[float], lon: Optional[float]) -> bool:
 
 def _district_id(value: Any) -> Optional[str]:
     geo = _geography()
-    return geo.normalize_district(value) if geo is not None and isinstance(value, str) else None
+    if geo is None or not isinstance(value, str):
+        return None
+    canonical = value.strip()
+    if canonical in geo.DISTRICTS:          # registry keys such as "nor-nork" are accepted as they are
+        return canonical
+    return geo.normalize_district(value)
 
 
 # -------------------------------------------------------------------------- proximity facts
@@ -439,6 +444,36 @@ def description_checks(text: Optional[str], *, area_sqm: Any = None, rooms: Any 
     return out
 
 
+def description_checks_by_source(sources: Mapping[str, Optional[str]], *, area_sqm: Any = None, rooms: Any = None,
+                                 floor: Any = None, total_floors: Any = None,
+                                 district: Any = None) -> List[Dict[str, Any]]:
+    """Run ``description_checks`` on each text source (e.g. title, description) separately and merge per rule.
+
+    A contradiction in *any* source is flagged, so an independent description cannot be masked by a title
+    that matches the structured fields. Evidence lines are prefixed with ``source=<name>``."""
+    per_source = {name: description_checks(text, area_sqm=area_sqm, rooms=rooms, floor=floor,
+                                           total_floors=total_floors, district=district)
+                  for name, text in sources.items()}
+    merged: List[Dict[str, Any]] = []
+    for index in range(len(next(iter(per_source.values()), []))):
+        candidates = [(name, checks[index]) for name, checks in per_source.items()]
+        flagged = [(n, c) for n, c in candidates if c["status"] == "flagged"]
+        clear = [(n, c) for n, c in candidates if c["status"] == "clear"]
+        chosen = flagged or clear or candidates
+        base = dict(chosen[0][1])
+        base["evidence"] = [f"source={n}; {e}" for n, c in chosen for e in c["evidence"]]
+        if flagged:
+            base["status"] = "flagged"
+            base["explanation"] = " ".join(f"[{n}] {c['explanation']}" for n, c in flagged)
+        elif clear:
+            base["status"] = "clear"
+        else:
+            base["status"] = "unknown"
+            base["reason"] = chosen[0][1].get("reason")
+        merged.append(base)
+    return merged
+
+
 def area_plausibility(area_sqm: Any = None, rooms: Any = None) -> Dict[str, Any]:
     rid, p = "FEAT-AREA-PLAUSIBILITY", RULES["FEAT-AREA-PLAUSIBILITY"].parameters
     area, rooms_v = _num(area_sqm), _num(rooms)
@@ -522,14 +557,14 @@ def evaluate_listing(listing: Mapping[str, Any], *, district_support: Optional[D
                      interval: Optional[Mapping[str, Any]] = None, in_reference: bool = False) -> Dict[str, Any]:
     """All listing-level rules. ``listing`` keys: latitude, longitude, district, area_sqm, rooms, floor,
     total_floors, title/description (text), asking_price_usd, coordinate_confidence, distances."""
-    text = " ".join(str(listing[k]) for k in ("title", "description") if isinstance(listing.get(k), str))
+    sources = {k: listing[k] for k in ("title", "description") if isinstance(listing.get(k), str)}
     facts = proximity_facts(listing.get("latitude"), listing.get("longitude"), distances=listing.get("distances"),
                             coordinate_confidence=listing.get("coordinate_confidence"))
     checks: List[Dict[str, Any]] = []
     if district_support is not None:
         checks.append(district_support.check(listing.get("latitude"), listing.get("longitude"),
                                              listing.get("district"), exclude_self=in_reference))
-    checks.extend(description_checks(text, area_sqm=listing.get("area_sqm"), rooms=listing.get("rooms"),
+    checks.extend(description_checks_by_source(sources or {"text": None}, area_sqm=listing.get("area_sqm"), rooms=listing.get("rooms"),
                                      floor=listing.get("floor"), total_floors=listing.get("total_floors"),
                                      district=listing.get("district")))
     checks.append(area_plausibility(listing.get("area_sqm"), listing.get("rooms")))
