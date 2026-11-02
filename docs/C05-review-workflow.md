@@ -32,10 +32,11 @@ There are no default reviewer tokens and no tokens in environment examples.
 
 ## Queue and decisions
 
-- `GET /api/v1/reviews`: optional `status`, `listing_id`, `page`, `page_size`
+- `GET /api/v1/reviews`: optional `status`, `listing_id`, `category`, `rule_id`, `page`, `page_size`
   (1–100), ordered by latest update descending then UUID ascending. A
   repeatable-read snapshot keeps count, rows, listing evidence and history
-  consistent. Unknown/repeated parameters are rejected.
+  consistent. Unknown/repeated parameters are rejected. Category/rule filters
+  match the same signal when combined.
 - `PATCH /api/v1/reviews/{id}`: C01 `status`, `decision`, `reason`, `version`.
   A nonblank reason of at most 2,000 characters is required. Actor identity is
   derived from the session and cannot be supplied in the request body.

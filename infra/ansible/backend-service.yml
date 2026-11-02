@@ -1,0 +1,108 @@
+---
+- name: Configure autonomous FairRent backend startup
+  hosts: "{{ target_hosts | default('backend') }}"
+  become: true
+
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    aws_region: eu-central-1
+    ecr_registry: 566663271715.dkr.ecr.eu-central-1.amazonaws.com
+    backend_image: "{{ ecr_registry }}/fairrent-backend:demo-v1"
+    db_host: fairrent-dev.c5kc8mweigwg.eu-central-1.rds.amazonaws.com
+    db_secret_name: fairrent/dev/backend-db
+    backend_start: true
+    # Preserve the existing ALB:8000 path until the staged Nginx rollout finishes.
+    backend_bind_address: "0.0.0.0"
+
+  tasks:
+    - name: Verify existing AWS CLI installation
+      ansible.builtin.command: /usr/local/bin/aws --version
+      changed_when: false
+
+    - name: Enable and start Docker
+      ansible.builtin.systemd_service:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: Create backend configuration directory
+      ansible.builtin.file:
+        path: /etc/fairrent
+        state: directory
+        owner: root
+        group: root
+        mode: "0750"
+
+    - name: Write nonsecret backend settings
+      ansible.builtin.copy:
+        dest: /etc/fairrent/backend.json
+        owner: root
+        group: root
+        mode: "0640"
+        content: >-
+          {{ {'aws_region': aws_region, 'ecr_registry': ecr_registry,
+              'backend_image': backend_image, 'db_host': db_host,
+              'db_port': 5432, 'db_name': 'fairrent',
+              'backend_bind_address': backend_bind_address,
+              'db_secret_name': db_secret_name} | to_nice_json }}
+      notify: Restart FairRent backend
+
+    - name: Install backend bootstrap script
+      ansible.builtin.copy:
+        src: files/fairrent-backend-start.py
+        dest: /usr/local/sbin/fairrent-backend-start.py
+        owner: root
+        group: root
+        mode: "0750"
+        validate: /usr/bin/python3 -m py_compile %s
+      notify: Restart FairRent backend
+
+    - name: Install backend systemd service
+      ansible.builtin.template:
+        src: templates/fairrent-backend.service.j2
+        dest: /etc/systemd/system/fairrent-backend.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Restart FairRent backend
+
+    - name: Apply service changes
+      ansible.builtin.meta: flush_handlers
+
+    - name: Enable backend startup on boot
+      ansible.builtin.systemd_service:
+        name: fairrent-backend
+        enabled: true
+        daemon_reload: true
+        state: "{{ 'started' if (backend_start | bool) else 'stopped' }}"
+
+    - name: Remove previous persistent root ECR authentication
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/docker
+          - logout
+          - "{{ ecr_registry }}"
+      changed_when: false
+      when: backend_start | bool
+
+    - name: Check backend health and database readiness
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:8000/{{ item }}"
+        status_code: 200
+        timeout: 10
+      loop:
+        - health
+        - ready
+      register: backend_check
+      until: backend_check.status | default(0) == 200
+      retries: 36
+      delay: 10
+      when: backend_start | bool
+
+  handlers:
+    - name: Restart FairRent backend
+      ansible.builtin.systemd_service:
+        name: fairrent-backend
+        daemon_reload: true
+        state: restarted
+      when: backend_start | bool

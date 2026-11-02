@@ -99,3 +99,26 @@ def test_revoked_session_is_rejected(database, setup):
         connection.execute("UPDATE api_reviewer_sessions SET revoked_at=CURRENT_TIMESTAMP WHERE id=%s", (session_id,))
     with TestClient(app) as http:
         assert http.get("/api/v1/reviews", headers={"Authorization": f"Bearer {token}"}).status_code == 401
+
+
+def test_category_and_rule_filters_match_the_same_signal(database, setup, populated, record):
+    _, review_id, _, token = setup
+    listing_id = populated[1].id
+    first = {**record["signals"][0], "id": uuid4(), "listing_id": listing_id,
+             "category": "risk_evidence", "rule_id": "synthetic-risk-rule"}
+    second = {**first, "id": uuid4(), "category": "price_anomaly", "rule_id": "other-price-rule"}
+    with database() as connection:
+        other_id = enqueue(connection, listing_id, [first, second])
+    with TestClient(app) as http:
+        http.headers["Authorization"] = f"Bearer {token}"
+        def matches(**filters):
+            result = http.get("/api/v1/reviews", params=filters)
+            assert result.status_code == 200, result.text
+            validate_contract(result.json(), "ReviewPage")
+            assert result.json()["total"] == len(result.json()["items"])
+            return {item["id"] for item in result.json()["items"]}
+        assert matches(category="price_anomaly") == {str(review_id), str(other_id)}
+        assert matches(category="risk_evidence", rule_id="synthetic-risk-rule") == {str(other_id)}
+        assert matches(category="price_anomaly", rule_id="synthetic-risk-rule") == set()
+        assert matches(rule_id="synthetic-price-rule") == {str(review_id)}
+        assert matches(rule_id="x' OR TRUE--") == set()

@@ -21,3 +21,10 @@ artifacts/
 Thumbs.db
 .venv-wsl/
 .venv-c03/
+
+
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars

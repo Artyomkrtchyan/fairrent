@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 
 import { PrefsProvider } from "@/lib/prefs";
+import { ReviewerSessionProvider } from "@/lib/reviewer-session";
 import { SiteFooter, SiteHeader } from "@/components/SiteHeader";
 
 function NotFoundComponent() {
@@ -86,7 +87,9 @@ function RootComponent() {
         <SiteHeader />
 
         <div id="main" className="min-h-[70vh]">
-          <Outlet />
+          <ReviewerSessionProvider>
+            <Outlet />
+          </ReviewerSessionProvider>
         </div>
 
         <SiteFooter />

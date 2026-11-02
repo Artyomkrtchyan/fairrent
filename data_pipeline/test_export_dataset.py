@@ -1,3 +1,4 @@
+import json
 from datetime import date, datetime, timezone
 import pytest
 
@@ -148,3 +149,135 @@ def test_versioned_snapshot_is_idempotent_and_rejects_changed_content(tmp_path):
     changed["quality_report.json"] = b"{}\n"
     with pytest.raises(Exception, match="already exists with different content"):
         write_versioned_snapshot(tmp_path, "v1.0.0", changed)
+
+
+def _one_day_rows(count=40):
+    # One observation date for every listing, like a single-scrape import.
+    return [_row(i, "2026-10-31T09:47:00") for i in range(1, count + 1)]
+
+
+def test_grouped_random_split_works_on_one_observation_date_and_is_labeled_non_temporal():
+    splits, report = prepare_snapshot(_one_day_rows(), date(2026, 10, 31), split_mode="grouped-random")
+
+    counts = {name: len(rows) for name, rows in splits.items()}
+    assert all(count > 0 for count in counts.values()), counts
+    assert sum(counts.values()) == 40
+    assert counts == {"train": 28, "validation": 6, "test": 6}
+    assert report["splits"]["method"] == "grouped-random"
+    assert report["splits"]["temporal_validity"] is False
+    assert report["splits"]["distinct_observation_dates"] == 1
+    assert report["splits"]["train_end_date"] is None
+    assert report["splits"]["test_start_date"] is None
+    assert "optimistic" in report["splits"]["warning"]
+    assert report["splits"]["rows_excluded_after_group_split_boundary"] == {}
+
+
+def test_default_chronological_mode_still_cannot_split_one_observation_date():
+    splits, report = prepare_snapshot(_one_day_rows(), date(2026, 10, 31))
+
+    assert len(splits["train"]) == 40
+    assert len(splits["validation"]) == len(splits["test"]) == 0
+    assert "method" not in report["splits"]
+
+
+def test_grouped_random_split_is_deterministic_and_keeps_groups_together():
+    rows = _one_day_rows(30) + [_row(5, "2026-10-31T10:00:00", external_id="repost", area_sqm=55.2)]
+
+    first, _ = prepare_snapshot(rows, date(2026, 10, 31), split_mode="grouped-random")
+    second, _ = prepare_snapshot(list(reversed(rows)), date(2026, 10, 31), split_mode="grouped-random")
+
+    assert first == second  # independent of input row order
+    locations = {}
+    for split_name, split_rows in first.items():
+        for row in split_rows:
+            locations.setdefault(row["dedup_group_id"], set()).add(split_name)
+    assert all(len(value) == 1 for value in locations.values())
+    other_seed, _ = prepare_snapshot(rows, date(2026, 10, 31), split_mode="grouped-random", split_seed="other")
+    assert other_seed != first
+
+
+def test_grouped_random_manifest_records_non_temporal_policy_and_default_manifest_is_unchanged():
+    rows = _one_day_rows(12)
+    splits, quality = prepare_snapshot(rows, date(2026, 10, 31), split_mode="grouped-random")
+    manifest = json.loads(create_artifacts(splits, quality, "v1.0.0-grouped", date(2026, 10, 31))["manifest.json"])
+    policy = manifest["split_policy"]
+    assert policy["temporal"] is False
+    assert policy["seed"] == quality["splits"]["seed"]
+    assert "A and B owners" in policy["approval"]
+
+    default_splits, default_quality = prepare_snapshot(rows, date(2026, 10, 31))
+    default = json.loads(create_artifacts(default_splits, default_quality, "v1.0.0", date(2026, 10, 31))["manifest.json"])
+    assert "temporal" not in default["split_policy"]
+    assert default["split_policy"]["method"].startswith("chronological")
+
+
+def test_grouped_random_rejects_unknown_mode_and_handles_tiny_inputs():
+    with pytest.raises(ValueError):
+        prepare_snapshot(_one_day_rows(3), date(2026, 10, 31), split_mode="shuffle")
+    one, _ = prepare_snapshot(_one_day_rows(1), date(2026, 10, 31), split_mode="grouped-random")
+    assert (len(one["train"]), len(one["validation"]), len(one["test"])) == (1, 0, 0)
+    three, _ = prepare_snapshot(_one_day_rows(3), date(2026, 10, 31), split_mode="grouped-random")
+    assert all(len(rows) == 1 for rows in three.values())
+
+
+def _twin(property_id, observed="2026-10-31T09:47:00", **overrides):
+    # Same coordinates / area / price as _row(1, ...) but a different property (own group).
+    base = _row(1, observed)
+    return _row(property_id, observed, latitude=base["latitude"], longitude=base["longitude"], **overrides)
+
+
+def test_merge_near_duplicates_puts_identical_fingerprints_in_one_group():
+    rows = [_row(1, "2026-10-31T09:47:00"), _twin(2), _twin(3, external_id="repost"), _row(4, "2026-10-31T09:47:00")]
+
+    plain, _ = prepare_snapshot(rows, date(2026, 10, 31), split_mode="grouped-random")
+    merged, quality = prepare_snapshot(rows, date(2026, 10, 31), split_mode="grouped-random",
+                                       merge_near_duplicates=True)
+
+    plain_groups = {r["dedup_group_id"] for part in plain.values() for r in part}
+    merged_groups = {r["dedup_group_id"] for part in merged.values() for r in part}
+    assert len(plain_groups) == 4
+    assert len(merged_groups) == 2  # properties 1,2,3 merge; 4 differs in latitude
+    stats = quality["duplicates"]["near_duplicate_merge"]
+    assert stats["merged_groups_created"] == 1
+    assert stats["groups_absorbed"] == 3
+    assert stats["rows_in_merged_groups"] == 3
+    assert stats["largest_merged_group_rows"] == 3
+    locations = {}
+    for split_name, part in merged.items():
+        for row in part:
+            locations.setdefault(row["dedup_group_id"], set()).add(split_name)
+    assert all(len(value) == 1 for value in locations.values())
+
+
+def test_merge_near_duplicates_is_deterministic_and_chains_through_shared_groups():
+    # A~B share a fingerprint and B~C share another, so all three must collapse into one group.
+    a = _row(1, "2026-10-31T09:47:00")
+    b = _twin(2)
+    c = _twin(3, area_sqm=60.0)
+    b2 = _twin(2, area_sqm=60.0)  # a second row of property 2 with C's fingerprint
+    first, _ = prepare_snapshot([a, b, c, b2], date(2026, 10, 31), merge_near_duplicates=True)
+    second, _ = prepare_snapshot([b2, c, b, a], date(2026, 10, 31), merge_near_duplicates=True)
+    ids = {r["dedup_group_id"] for part in first.values() for r in part}
+    assert len(ids) == 1
+    assert first == second
+
+
+def test_merge_ignores_rows_without_area_and_default_output_has_no_merge_fields():
+    no_area_a = _row(1, "2026-10-31T09:47:00", area_sqm=None)
+    no_area_b = _twin(2, area_sqm=None)
+    splits, quality = prepare_snapshot([no_area_a, no_area_b], date(2026, 10, 31), merge_near_duplicates=True)
+    assert len({r["dedup_group_id"] for part in splits.values() for r in part}) == 2
+    assert quality["duplicates"]["near_duplicate_merge"]["merged_groups_created"] == 0
+
+    _, default_quality = prepare_snapshot([no_area_a], date(2026, 10, 31))
+    assert "near_duplicate_merge" not in default_quality["duplicates"]
+
+
+def test_merge_is_recorded_in_manifest_only_when_enabled():
+    rows = [_row(1, "2026-10-31T09:47:00"), _twin(2)]
+    splits, quality = prepare_snapshot(rows, date(2026, 10, 31), merge_near_duplicates=True)
+    on = json.loads(create_artifacts(splits, quality, "v1", date(2026, 10, 31))["manifest.json"])
+    assert "merged into one group" in on["dedup_group_policy"]
+    splits, quality = prepare_snapshot(rows, date(2026, 10, 31))
+    off = json.loads(create_artifacts(splits, quality, "v1", date(2026, 10, 31))["manifest.json"])
+    assert "merged" not in off["dedup_group_policy"]

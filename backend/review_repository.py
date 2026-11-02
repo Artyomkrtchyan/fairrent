@@ -61,6 +61,14 @@ class ReviewRepository:
             if value is not None:
                 clauses.append(f"{field} = %s")
                 values.append(value)
+        evidence = {}
+        for field in ("category", "rule_id"):
+            value = getattr(query, field)
+            if value is not None:
+                evidence[field] = value
+        if evidence:
+            clauses.append("signals @> %s")
+            values.append(Jsonb([evidence]))
         where = " AND ".join(clauses) or "TRUE"
         with psycopg.connect(connect_timeout=3, row_factory=dict_row) as connection:
             connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")

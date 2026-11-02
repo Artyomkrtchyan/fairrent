@@ -81,6 +81,8 @@ class ReviewQuery(ContractModel):
     page_size: int = Field(default=20, ge=1, le=100)
     status: Status | None = None
     listing_id: UUID | None = None
+    category: Literal["price_anomaly", "risk_evidence"] | None = None
+    rule_id: str | None = None
 
 
 class ReviewUpdate(ContractModel):

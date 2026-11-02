@@ -91,7 +91,7 @@ def test_duplicate_authorization_is_rejected(client):
     assert result.status_code == 401
 
 
-@pytest.mark.parametrize("query", ["page=0", "page_size=101", "status=bogus", "listing_id=bad", "unknown=x", "page=1&page=2"])
+@pytest.mark.parametrize("query", ["page=0", "page_size=101", "status=bogus", "listing_id=bad", "category=bogus", "category=price_anomaly&category=risk_evidence", "unknown=x", "page=1&page=2"])
 def test_invalid_queue_queries(client, query):
     assert client[0].get("/api/v1/reviews?" + query).status_code == 422
 

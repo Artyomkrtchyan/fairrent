@@ -22,6 +22,37 @@ Real results require an A06 snapshot exported from the database.
 - `renovation` is excluded (always null in A06). `price_usd`, conversion fields and group/date keys
   are never inputs.
 
+## One-date snapshots: grouped-random fallback (non-temporal)
+A06's split is chronological, which needs at least three distinct observation dates. A single scrape
+imported in one run stamps every listing with the same `last_seen_at`, so the default export puts all
+rows in `train` and B04 stops ("Validation split is empty").
+
+For that case only, export with an explicit fallback:
+
+```
+python -m data_pipeline.export_dataset --as-of 2026-10-31 --version v1.0.0-grouped --split-mode grouped-random --merge-near-duplicates
+python -m ml.train_compare --snapshot data/processed/v1.0.0-grouped --version b04-v1.0.0-grouped
+```
+
+- Duplicate groups are ordered by SHA-256(seed:`dedup_group_id`) and cut 70/15/15, so the split is
+  deterministic, independent of database row order, and keeps every group in one split. The seed is
+  recorded in `manifest.json`.
+- `--as-of` must be on or after the import date (rows observed later than the end of that day are excluded).
+- The manifest and `quality_report.json` are labeled `temporal: false`. B04 reports the chronological check as
+  `not_applicable` (it would pass trivially on one date), still enforces every other leakage check, and adds
+  `evidence_level` and `limitations` to its outputs.
+- **This is not a forward-looking evaluation.** Metrics are in-time estimates and are optimistic. Per
+  `docs/contract-semantics.md`, the A and B owners must explicitly agree this fallback before the numbers are
+  used as project evidence. Treat the serving decision as provisional and re-run on a chronological snapshot once
+  at least three distinct observation dates exist.
+- `--merge-near-duplicates` is needed on scraped data. Listings that repeat one apartment (or identical units in one
+  building) share rounded coordinates, area and USD price but have separate groups, so a split can put twins in
+  train and test; B04's near-duplicate leakage check then refuses to train. The flag merges such groups into one
+  (same fingerprint the B04 check uses), keeps every row, and reports counts in `quality_report.json`
+  (`duplicates.near_duplicate_merge`). On the 2026-10-29 scrape about 19% of listings sit in such clusters. Big
+  towers with many identical units form large groups, so a few clusters can weigh heavily in the test set.
+- The default mode is unchanged.
+
 ## Decision rule (fixed in advance)
 Serve ML only if MAE < baseline MAE **and** median AE ≤ baseline median AE on common rows; otherwise
 `serving_decision` is `baseline` and B03 stays the fallback. Provisional contract targets (MAE ≤ $45,
