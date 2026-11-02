@@ -1,0 +1,16 @@
+**
+!backend/
+!backend/requirements.txt
+!backend/requirements-signals.txt
+!backend/listing_models.py
+!backend/review_models.py
+!backend/review_repository.py
+!backend/signal_repository.py
+!backend/generate_signals.py
+!backend/sql/
+!backend/sql/*.sql
+!ml/
+!ml/ontology_rules.py
+!ml/intervals.py
+!data_pipeline/
+!data_pipeline/geography.py

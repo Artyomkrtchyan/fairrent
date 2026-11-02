@@ -1,0 +1,9 @@
+FROM python:3.10-slim
+WORKDIR /app
+COPY backend/requirements.txt backend/requirements-signals.txt ./backend/
+RUN pip install --no-cache-dir -r backend/requirements-signals.txt
+COPY backend/listing_models.py backend/review_models.py backend/review_repository.py backend/signal_repository.py backend/generate_signals.py ./backend/
+COPY backend/sql/ ./backend/sql/
+COPY ml/ontology_rules.py ml/intervals.py ./ml/
+COPY data_pipeline/geography.py ./data_pipeline/
+CMD ["python", "-m", "backend.generate_signals"]

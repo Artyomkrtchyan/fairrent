@@ -21,7 +21,10 @@ mapping, date coverage and integration tests.
 
 C05 adds the protected reviewer queue, versioned decisions and revocable bearer
 sessions. See [C05 setup and remaining integration work](../docs/C05-review-workflow.md).
-Production signal generation awaits C04/B06; this foundation does not close C05.
+B06 consistency rules now feed the queue through a one-shot producer:
+`docker compose --profile signals run --build --rm signals` after publication.
+Apply `docker compose exec api python -m reviewer_auth migrate` before serving
+the new listing-detail code. C04/B07 calibrated-price integration remains pending.
 
 Run these commands from the repository root. Docker Engine and Docker Compose are required.
 
