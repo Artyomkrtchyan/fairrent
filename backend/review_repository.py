@@ -22,15 +22,18 @@ def document(connection, record):
         FROM api_review_events WHERE review_id = %s ORDER BY id
     """, (record["id"],)).fetchall()
     listing = connection.execute("SELECT document FROM api_listing_projection WHERE id = %s", (record["listing_id"],)).fetchone()
-    return Review.model_validate({**record, "history": events,
-                                  "listing": public_listing(ListingData.model_validate(listing["document"]))})
+    snapshot = dict(record)
+    archived = snapshot.pop("listing_snapshot")
+    listing_data = listing["document"] if listing else {**archived, "status": "inactive"}
+    return Review.model_validate({**snapshot, "history": events,
+                                  "listing": public_listing(ListingData.model_validate(listing_data))})
 
 
 def enqueue(connection, listing_id, signals):
     """Trusted producer boundary; stores explicit evidence, never infers fraud from price.
 
     One open review per listing. Repeated identical evidence is idempotent; changed
-    evidence must be reconciled by the future signal producer, not silently replaced.
+    evidence is reconciled by signal_repository without replacing a review snapshot.
     """
     signals = [RiskSignal.model_validate(s) for s in signals]
     ids = [s.id for s in signals]
@@ -39,7 +42,8 @@ def enqueue(connection, listing_id, signals):
     if any(s.created_at.tzinfo is None for s in signals):
         raise ValueError("Signal timestamps must include a timezone")
     # Lock the subject to serialize competing producers before examining the open queue.
-    if connection.execute("SELECT id FROM api_listing_projection WHERE id=%s FOR UPDATE", (listing_id,)).fetchone() is None:
+    subject = connection.execute("SELECT document FROM api_listing_projection WHERE id=%s FOR UPDATE", (listing_id,)).fetchone()
+    if subject is None:
         raise ValueError("Listing not published")
     existing = connection.execute("SELECT id, signals FROM api_review_queue WHERE listing_id=%s AND status <> 'resolved'", (listing_id,)).fetchone()
     documents = [s.model_dump(mode="json") for s in sorted(signals, key=lambda s: str(s.id))]
@@ -48,8 +52,8 @@ def enqueue(connection, listing_id, signals):
             raise ReviewConflict("Open review already contains different evidence")
         return existing[0]
     review_id = uuid4()
-    connection.execute("INSERT INTO api_review_queue(id, listing_id, signal_ids, signals) VALUES (%s,%s,%s,%s)",
-                       (review_id, listing_id, [s.id for s in sorted(signals, key=lambda s: str(s.id))], Jsonb(documents)))
+    connection.execute("INSERT INTO api_review_queue(id, listing_id, signal_ids, signals, listing_snapshot) VALUES (%s,%s,%s,%s,%s)",
+                       (review_id, listing_id, [s.id for s in sorted(signals, key=lambda s: str(s.id))], Jsonb(documents), Jsonb(subject[0])))
     return review_id
 
 

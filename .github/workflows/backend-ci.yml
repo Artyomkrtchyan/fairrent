@@ -79,6 +79,11 @@ jobs:
       - name: Build API image
         run: docker build --tag fairrent-api:ci-${{ github.sha }} ./backend
 
+      - name: Build and smoke-test B06 signal worker
+        run: |
+          docker build --file backend/Dockerfile.signals --tag fairrent-signals:ci .
+          docker run --rm fairrent-signals:ci python -c "from backend.generate_signals import evaluate; from data_pipeline import geography; from ml import ontology_rules; assert ontology_rules._geography() is not None"
+
   contract-validation:
     name: Contract validation
     runs-on: ubuntu-latest

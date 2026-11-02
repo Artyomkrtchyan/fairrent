@@ -33,6 +33,8 @@ def database(monkeypatch):
         with connect() as connection:
             migration = Path(__file__).resolve().parents[1] / "sql" / "001_listing_projection.sql"
             connection.execute(migration.read_text(encoding="utf-8"))
+            for name in ("003_review_workflow.sql", "004_listing_signals.sql"):
+                connection.execute((migration.parent / name).read_text(encoding="utf-8"))
         monkeypatch.setattr(psycopg, "connect", connect)
         yield connect
     finally:

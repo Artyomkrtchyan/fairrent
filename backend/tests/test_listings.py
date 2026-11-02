@@ -24,6 +24,9 @@ def client(listing_document):
         def get(self, listing_id):
             return ListingData.model_validate(listing_document) if str(listing_id) == listing_document["id"] else None
 
+        def detail(self, listing_id):
+            return self.get(listing_id), []
+
     repo = Repo()
     app.dependency_overrides[repository] = lambda: repo
     with TestClient(app) as client:
