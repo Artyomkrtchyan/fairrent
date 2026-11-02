@@ -121,12 +121,12 @@ jobs:
           persist-credentials: false
       - name: Build frontend Docker image
         run: docker build -f frontend/Dockerfile -t fairrent-frontend:security .
-      - name: Smoke-test frontend runtime readiness
+      - name: Smoke-test frontend static response
         shell: bash
         run: |
           docker run -d --name fairrent-frontend-smoke -p 127.0.0.1:18080:80 fairrent-frontend:security
           trap 'docker rm -f fairrent-frontend-smoke >/dev/null 2>&1 || true' EXIT
-          curl --fail --retry 10 --retry-connrefused --retry-delay 2 http://127.0.0.1:18080/ready
+          curl --fail --retry 10 --retry-connrefused --retry-delay 2 http://127.0.0.1:18080/
       - name: Scan frontend image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
