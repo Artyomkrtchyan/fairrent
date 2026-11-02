@@ -45,6 +45,12 @@ No genuine credentials were used as fixtures, and no cloud credentials were adde
 - A temporary exception, if necessary, must list specific CVE/package/image digest, justification, compensating controls, approver, creation date, expiry date (suggest at most 30 days for HIGH), and evidence of retest. Store the record in the issue or a reviewed exception file; do not blanket-ignore all findings.
 - No exceptions are approved or active in this report.
 
+## Latest follow-up (2026-11-02)
+- Security CI run #3: Gitleaks, frontend npm, frontend Trivy, backend runtime pip-audit, backend development pip-audit, and contracts pip-audit passed. ML training pip-audit and backend Trivy failed.
+- ML audit reported 39 advisories in Pillow 12.3.0, with Pillow 13.0.0 identified as fix. Do not force that major-version update until the ML owner confirms Python interpreter and dependent-library compatibility; current CI sets Python 3.10.
+- Added CI synthetic-secret positive control using a temporary test-only regex and a separate frontend static-root runtime smoke test. These changes require hosted CI validation.
+- No unapproved backend/ML dependency or deployment changes were made, and no exceptions granted.
+
 ## Outstanding acceptance and handoff
 - First GitHub Actions run examined: 3 security jobs passed, 2 failed; the Python audit now uses four independent matrix children. Verify the newest runs and archive results.
 - Reproduce a CI-level synthetic negative control in an isolated throwaway branch/fixture without committing fake keys to main; record expected failure.
