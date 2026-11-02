@@ -5,7 +5,8 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <http://example.org/fairrent> a owl:Ontology ;
-    rdfs:comment "Municipal Real Estate Ontology for Yerevan Fair-Price Estimator" .
+    owl:versionInfo "1.1.0" ;
+    rdfs:comment "Municipal Real Estate Ontology for Yerevan Fair-Price Estimator. v1.1 (B06) separates inferred facts, consistency findings, price-anomaly findings and learned price effects." .
 
 #################################################################
 #    Classes
@@ -16,7 +17,20 @@
 :District a owl:Class ; rdfs:label "District" .
 :InfrastructureNode a owl:Class ; rdfs:label "Infrastructure Node" .
 :ValuationEstimate a owl:Class ; rdfs:label "Valuation Estimate" .
-:RiskEvidence a owl:Class ; rdfs:label "Risk Evidence" .
+:RiskEvidence a owl:Class ; rdfs:label "Risk Evidence" ;
+    rdfs:comment "Review evidence raised by a versioned rule. Never a verdict of fraud." .
+
+# B06 (v1.1): four kinds of statement are kept apart on purpose.
+:Rule a owl:Class ; rdfs:label "Rule" ; rdfs:comment "A versioned ontology rule (ml/ontology_rules.py)." .
+:InferredFact a owl:Class ; rdfs:label "Inferred Fact" ;
+    rdfs:comment "A fact derived from coordinates and the A05 registry (e.g. within 500 m of a metro station). Not a price effect." .
+:ConsistencyFinding a owl:Class ; rdfs:subClassOf :RiskEvidence ; rdfs:label "Consistency Finding" ;
+    rdfs:comment "Description/location/feature inconsistency (contract category risk_evidence)." .
+:PriceAnomalyFinding a owl:Class ; rdfs:subClassOf :RiskEvidence ; rdfs:label "Price Anomaly Finding" ;
+    rdfs:comment "Asking price outside the calibrated interval (contract category price_anomaly). Replaces the demo's price-only HIGH/predatory labels." .
+:LearnedPriceEffect a owl:Class ; rdfs:label "Learned Price Effect" ;
+    rdfs:comment "Model attribution for one estimate. Disjoint from InferredFact." .
+[] a owl:AllDisjointClasses ; owl:members ( :InferredFact :RiskEvidence :LearnedPriceEffect ) .
 
 :MetroStation a owl:Class ; rdfs:subClassOf :InfrastructureNode .
 :University a owl:Class ; rdfs:subClassOf :InfrastructureNode .
@@ -46,6 +60,11 @@
     rdfs:domain :Listing ;
     rdfs:range :RiskEvidence .
 
+:hasInferredFact a owl:ObjectProperty ; rdfs:domain :Listing ; rdfs:range :InferredFact .
+:hasLearnedEffect a owl:ObjectProperty ; rdfs:domain :ValuationEstimate ; rdfs:range :LearnedPriceEffect .
+:derivedByRule a owl:ObjectProperty ; rdfs:range :Rule .
+:aboutNode a owl:ObjectProperty ; rdfs:domain :InferredFact ; rdfs:range :InfrastructureNode .
+
 #################################################################
 #    Data Properties
 #################################################################
@@ -54,7 +73,17 @@
 :hasAreaSqm a owl:DatatypeProperty ; rdfs:domain :Property ; rdfs:range xsd:float .
 :hasRooms a owl:DatatypeProperty ; rdfs:domain :Property ; rdfs:range xsd:integer .
 :hasDistanceMeters a owl:DatatypeProperty ; rdfs:domain :Property ; rdfs:range xsd:float .
-:hasSeverity a owl:DatatypeProperty ; rdfs:domain :RiskEvidence ; rdfs:range xsd:string .
+:hasSeverity a owl:DatatypeProperty ; owl:deprecated true ; rdfs:domain :RiskEvidence ; rdfs:range xsd:string ;
+    rdfs:comment "Deprecated in v1.1: severity labels were price-only. Use the contract category instead." .
+:hasRuleId a owl:DatatypeProperty ; rdfs:domain :Rule ; rdfs:range xsd:string .
+:hasRuleVersion a owl:DatatypeProperty ; rdfs:domain :Rule ; rdfs:range xsd:string .
+:hasStatus a owl:DatatypeProperty ; rdfs:range xsd:string ; rdfs:comment "holds | unknown | clear | flagged" .
+:hasCategory a owl:DatatypeProperty ; rdfs:domain :RiskEvidence ; rdfs:range xsd:string ; rdfs:comment "price_anomaly | risk_evidence" .
+:hasEvidence a owl:DatatypeProperty ; rdfs:range xsd:string .
+:hasReason a owl:DatatypeProperty ; rdfs:range xsd:string .
+:hasFeature a owl:DatatypeProperty ; rdfs:domain :LearnedPriceEffect ; rdfs:range xsd:string .
+:hasImpactPct a owl:DatatypeProperty ; rdfs:domain :LearnedPriceEffect ; rdfs:range xsd:float .
+:hasDirection a owl:DatatypeProperty ; rdfs:domain :LearnedPriceEffect ; rdfs:range xsd:string .
 
 #################################################################
 #    Yerevan Sample Data (Instances)
@@ -86,8 +115,8 @@
     :describesProperty :Prop_002 ;
     :hasPriceUSD "1800.0"^^xsd:float .
 
-:Risk_HighPrice a :RiskEvidence ;
-    :hasSeverity "HIGH" ;
-    rdfs:comment "Price significantly exceeds average district baseline per sq.m." .
+:Risk_PriceAnomaly_002 a :PriceAnomalyFinding ;
+    :hasCategory "price_anomaly" ;
+    rdfs:comment "Asking price above the calibrated interval for comparable properties (sample). Not evidence of fraud." .
 
-:Listing_002 :flagsRisk :Risk_HighPrice .
+:Listing_002 :flagsRisk :Risk_PriceAnomaly_002 .

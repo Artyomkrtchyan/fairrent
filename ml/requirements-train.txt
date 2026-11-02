@@ -2,3 +2,4 @@
 -r requirements.txt
 catboost>=1.2.5
 scikit-learn>=1.5
+rdflib>=7.0

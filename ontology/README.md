@@ -95,3 +95,8 @@ Run the verification script from the root or `ontology/` folder:
 py demo_inference.py
 ```
 *(or `python demo_inference.py`)*
+
+## v1.1 (B06)
+
+Adds `Rule`, `InferredFact`, `ConsistencyFinding`, `PriceAnomalyFinding` and `LearnedPriceEffect`.
+Run `python -m ontology.demo_inference` from the repository root (needs `rdflib`). See `docs/B06-ontology-rules.md`.
