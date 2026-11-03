@@ -1,0 +1,14 @@
+# Used by `docker build -f backend/Dockerfile .` (repository-root context): send only what the image needs.
+**
+!backend/
+!ml/
+!data_pipeline/__init__.py
+!data_pipeline/geography.py
+!contracts/openapi.json
+**/__pycache__
+**/*.pyc
+**/.venv
+**/.env
+**/.env.*
+ml/tests
+backend/tests

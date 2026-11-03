@@ -6,7 +6,7 @@ inferred facts: a rule fact is never an attribution and an attribution never a r
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
@@ -38,11 +38,15 @@ def attributions_from_shap(feature_names: Sequence[str], shap_values: Sequence[f
     return out
 
 
-def explain_with_catboost(model: Any, features: Any, *, top_k: int = 5) -> List[Dict[str, Any]]:
-    """SHAP attributions for the first row of ``features`` (a preprocessed one-row DataFrame)."""
+def explain_with_catboost(model: Any, features: Any, *, top_k: int = 5,
+                          cat_features: Optional[Sequence[str]] = None) -> List[Dict[str, Any]]:
+    """SHAP attributions for the first row of ``features`` (a preprocessed one-row DataFrame).
+
+    ``cat_features`` names the categorical columns; when omitted, object-dtype columns are used."""
     from catboost import Pool
 
     names = list(features.columns)
-    cat = [i for i, c in enumerate(names) if features[c].dtype == object]
+    cat = [i for i, c in enumerate(names)
+           if (c in cat_features if cat_features is not None else features[c].dtype == object)]
     shap = model.get_feature_importance(Pool(features.iloc[:1], cat_features=cat), type="ShapValues")[0]
     return attributions_from_shap(names, shap[:-1], top_k=top_k)   # last column is the expected value

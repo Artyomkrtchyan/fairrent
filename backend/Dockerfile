@@ -1,15 +1,34 @@
-FROM python:3.10-slim
+# Build from the repository root (the ML package and A05 registry live outside backend/):
+#   docker build -f backend/Dockerfile -t fairrent-api .                      # API image (default target)
+#   docker build -f backend/Dockerfile --target verify -t fairrent-api-verify .   # B07 verification
+FROM python:3.10-slim AS base
 
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY backend/requirements.txt ./requirements.txt
+COPY ml/requirements.txt ml/requirements-inference.txt ./ml/
+RUN pip install --no-cache-dir -r requirements.txt -r ml/requirements-inference.txt
 
-COPY main.py model_stub.py listing_models.py listing_repository.py listing_routes.py source_adapter.py sync_listings.py ./
-COPY market_models.py market_repository.py market_routes.py ./
-COPY review_models.py review_repository.py review_routes.py reviewer_auth.py ./
-COPY sql/ ./sql/
+COPY backend/main.py backend/model_stub.py backend/listing_models.py backend/listing_repository.py backend/listing_routes.py backend/source_adapter.py backend/sync_listings.py ./
+COPY backend/market_models.py backend/market_repository.py backend/market_routes.py ./
+COPY backend/review_models.py backend/review_repository.py backend/review_routes.py backend/reviewer_auth.py ./
+COPY backend/sql/ ./sql/
 
+# B07 inference runtime: only the modules ml.inference imports, plus the A05 geography registry (no database code).
+COPY ml/inference.py ml/intervals.py ml/ontology_rules.py ml/attributions.py ml/train_compare.py ml/baseline.py ml/verify_package.py ./ml/
+COPY ml/examples/ ./ml/examples/
+COPY data_pipeline/__init__.py data_pipeline/geography.py ./data_pipeline/
+COPY contracts/openapi.json ./contracts/openapi.json
+
+# Verification target: loads a mounted package and runs the example assessments inside the backend image.
+#   docker run --rm -v "<abs path to artifacts/b07/VERSION>:/package:ro" fairrent-api-verify
+FROM base AS verify
+RUN pip install --no-cache-dir "jsonschema>=4.20"
+ENV FAIRRENT_MODEL_PACKAGE=/package PYTHONDONTWRITEBYTECODE=1
+CMD ["python", "-m", "ml.verify_package"]
+
+# Last stage = default build target.
+FROM base AS api
 EXPOSE 8000
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
