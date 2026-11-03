@@ -9,9 +9,7 @@ COPY backend/requirements.txt ./requirements.txt
 COPY ml/requirements.txt ml/requirements-inference.txt ./ml/
 RUN pip install --no-cache-dir -r requirements.txt -r ml/requirements-inference.txt
 
-COPY backend/main.py backend/model_stub.py backend/listing_models.py backend/listing_repository.py backend/listing_routes.py backend/source_adapter.py backend/sync_listings.py ./
-COPY backend/market_models.py backend/market_repository.py backend/market_routes.py ./
-COPY backend/review_models.py backend/review_repository.py backend/review_routes.py backend/reviewer_auth.py ./
+COPY backend/*.py ./
 COPY backend/sql/ ./sql/
 
 # B07 inference runtime: only the modules ml.inference imports, plus the A05 geography registry (no database code).
@@ -19,6 +17,7 @@ COPY ml/inference.py ml/intervals.py ml/ontology_rules.py ml/attributions.py ml/
 COPY ml/examples/ ./ml/examples/
 COPY data_pipeline/__init__.py data_pipeline/geography.py ./data_pipeline/
 COPY contracts/openapi.json ./contracts/openapi.json
+COPY contracts/openapi.json /contracts/openapi.json
 
 # Verification target: loads a mounted package and runs the example assessments inside the backend image.
 #   docker run --rm -v "<abs path to artifacts/b07/VERSION>:/package:ro" fairrent-api-verify

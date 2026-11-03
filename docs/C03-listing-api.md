@@ -73,11 +73,13 @@ inactivity: it copies Alice's explicit `is_active` state.
   labeled `static-config`; this does not certify an official/live provider.
 - `url` -> source_url; first/last seen -> UTC timestamps; published_at remains null
   because the source has not supplied a publication date. Unknown values stay null.
-- Geolocation comes from Property.geom and is labeled approximate, never verified
-  exact. Missing coordinates preserve catalogue/detail records but exclude markers.
-- District aliases Kentron/kentron and Arabkir/arabkir map to existing C01 fixture
-  slugs. Other names remain null until the A05 registry is supplied. Current raw
-  district/address enrichment takes precedence over older stored property text.
+- Geolocation comes from Property.geom. A05's persisted exact/approximate/unknown
+  confidence is preserved; missing coordinates always have unknown confidence.
+  Missing coordinates preserve catalogue/detail records but exclude markers.
+- District labels use the full A05 registry (12 stable slugs and Armenian/English
+  aliases). Current explicit raw district fields take precedence; without one,
+  use the validated persisted A05 district_id or normalize the property label.
+  Unknown explicit labels remain null. Address enrichment keeps its prior policy.
 - Rooms/floor/area are validated; unsupported building materials remain null while
   building_type_raw is preserved. Thumbnails and renovation remain null until
   their collection is integrated. Missing source URL excludes the record.
@@ -88,7 +90,7 @@ no ML or fraud conclusions are fabricated.
 
 ## Provisioning
 
-Apply Alice's Alembic migrations first (see database documentation), then finish
+Apply Alice's migrations through A05 (`a05_geo_20261022`) first, then finish
 an A03 crawl/import using the pipeline's DATABASE_URL configuration. With the C02
 Compose database running:
 
@@ -143,7 +145,7 @@ atomic publication -> HTTP API. They exercise monthly AMD prices, source URLs,
 missing coordinates, filters/map bounds, stable UUIDs, changed prices, inactive
 details, repeat publication, legacy/demo exclusions and rollback on failure.
 
-Remaining external work: teammate PR review, the A05 district registry, an agreed
+Remaining external work: teammate PR review, an agreed
 production exchange-rate provider and C09 scheduling. These do not add fake data
 or block testing the C03 storage/API integration. Live list.am selector/access
 verification remains A03's documented operational work; tests do not claim a live

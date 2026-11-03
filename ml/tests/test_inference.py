@@ -16,7 +16,7 @@ from ml import calibrate_intervals as ci  # noqa: E402
 from ml import inference as inf  # noqa: E402
 from ml import package_inference as pk  # noqa: E402
 from ml import train_compare as tc  # noqa: E402
-from test_calibrate_intervals import _args, _snapshot  # noqa: E402
+from ml.tests.test_calibrate_intervals import _args, _snapshot  # noqa: E402
 
 NOW = datetime(2026, 11, 2, 12, 0, tzinfo=timezone.utc)
 BASE = {"latitude": 40.18, "longitude": 44.51, "as_of": "2026-10-31T09:47:00Z", "radius_m": 1000, "window_days": 30}

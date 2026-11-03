@@ -22,7 +22,7 @@ except ImportError:
 
 
 SOURCE_SQL = """
-    SELECT l.*, p.district, p.address_raw,
+    SELECT l.*, p.district, p.district_id, p.address_raw, p.coordinate_confidence,
            ST_Y(p.geom) AS latitude, ST_X(p.geom) AS longitude
     FROM listings l LEFT JOIN properties p ON p.id = l.property_id
     WHERE l.source = 'list.am'
