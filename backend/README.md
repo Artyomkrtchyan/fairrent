@@ -19,6 +19,10 @@ mapping, date coverage and integration tests.
 
 ## Local development with Docker Compose
 
+C05 adds the protected reviewer queue, versioned decisions and revocable bearer
+sessions. See [C05 setup and remaining integration work](../docs/C05-review-workflow.md).
+Production signal generation awaits C04/B06; this foundation does not close C05.
+
 Run these commands from the repository root. Docker Engine and Docker Compose are required.
 
 Create local configuration on the first run:
@@ -95,3 +99,14 @@ The endpoint requires PostGIS, the C03 projection, the C04 migration and
 the supplied municipal coverage/district snapshots and accepted A05 code.
 Apply the source A05 migration before publishing inventory. The old `model_stub.py` remains a legacy example;
 it is not used by the C04 endpoint.
+
+
+### C04 valuation deployment
+
+`POST /api/v1/valuations` selects and deduplicates current inventory, computes a
+versioned estimate, and saves its response and inference provenance atomically.
+Apply `python -m valuation_repository` after the listing projection migration.
+B03 is used when `FAIRRENT_MODEL_PACKAGE` is empty; configure a B07 directory to
+serve calibrated estimates and learned factors with B06 explanations. Missing or
+corrupt configured packages abstain and never silently use B03. See
+[the C04 deployment and validation guide](../docs/C04-valuation-integration.md).

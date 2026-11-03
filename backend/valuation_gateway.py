@@ -88,3 +88,37 @@ class BaselineGateway:
         result["feature_attributions"] = []
         result["selection_explanation"] += f" Radius {radius_m} m; window {window_days} days; one observation per duplicate group."
         return result
+
+
+class PackagedGateway:
+    """B07 adapter. A configured but unavailable package never silently uses B03."""
+
+    def __init__(self, snapshot, *, dataset_version):
+        self.snapshot = snapshot
+        self.dataset_version = dataset_version
+
+    def assess(self, payload, *, as_of, radius_m=1000, window_days=30):
+        from ml import inference
+        try:
+            from .valuation_coverage import OutsideCoverage
+        except ImportError:
+            from valuation_coverage import OutsideCoverage
+        dates = pd.to_datetime(self.snapshot['listing_date'], utc=True, errors='coerce')
+        cutoff = dates.max() if dates.notna().any() else as_of
+        model_input = {**payload, 'as_of': cutoff.isoformat().replace('+00:00', 'Z'),
+                       'radius_m': radius_m, 'window_days': window_days}
+        # Only the backend's already selected/deduplicated cohort reaches B07.
+        comparables = self.snapshot[['price_usd', 'area_sqm']].to_dict('records')
+        try:
+            result = inference.assess(model_input, comparables=comparables, now=as_of)
+        except inference.OutsideCoverageError as exc:
+            raise OutsideCoverage(str(exc)) from exc
+        result['selection_explanation'] = result['explanation']
+        result['kind'] = inference.kind_for(result)
+        return result
+
+
+def configured_gateway(snapshot, *, dataset_version):
+    import os
+    gateway = PackagedGateway if os.environ.get('FAIRRENT_MODEL_PACKAGE') else BaselineGateway
+    return gateway(snapshot, dataset_version=dataset_version)

@@ -1,7 +1,9 @@
-# C04: baseline valuation API
+# C04: versioned valuation and ontology API
 
-MVP implementation on top of C03 and accepted B03 (`23f4244`). Issue #20.
-The final B07 package and B06 ontology rules remain later integration work.
+Implements issue #20 on top of C03, accepted B03, B06 and B07. The API uses the
+B03 baseline when no package is configured, and B07 when `FAIRRENT_MODEL_PACKAGE`
+points to a versioned package. A configured package failure abstains; it never
+silently switches to the baseline.
 
 ## Behavior
 
@@ -54,15 +56,23 @@ curl -X POST http://localhost:8000/api/v1/valuations \
 - B03 has no calibrated interval or attribution factors: interval fields are
   null and factors empty. Therefore price_status remains insufficient_data even
   when a point estimate exists. Asking price never enters model inputs.
-- rule_engine_version is `ontology-not-connected`: the demo's price-only fraud
-  labels are not production B06 rules. No fraud verdict is generated.
+- B06 supplies versioned rule facts and a readable explanation, with structured
+  evidence retained in the audit record. Rule facts and learned price effects
+  remain separate. No fraud verdict is generated.
+- B07 returns calibrated intervals and SHAP factors for supported complete-property
+  predictions, a training-fitted reference area for incomplete features, and null
+  estimates/intervals for sparse evidence, serving-gate failures or model/package
+  errors. The actual source observation cutoff reaches B07 for freshness checks.
+- `deviation_from_baseline_pct` compares the estimate with the observed cohort
+  mean. The supplied asking price affects only `price_status`.
 
 ## Persistence and freshness
 
 Apply `backend/sql/002_valuation_estimates.sql` using the CLI below. The append-only
 application path saves request, validated response, observation/computation times,
 model/policy versions, candidate-snapshot SHA-256 and coverage provenance checksum
-inside the same repeatable-read transaction used to read inventory. An invalid
+and `inference_provenance` (package/calibration/training snapshot versions, B06
+structured evidence and fallback reasons) inside the same repeatable-read transaction used to read inventory. An invalid
 model result is rejected before persistence. Persistence/commit failure fails the
 request; it does not claim a saved success. The migration is repeatable.
 
@@ -75,7 +85,7 @@ subject identity/exclusion contract and is not guessed from matching coordinates
 ## Deployment
 
 Docker build context is now the repository root so it can package the accepted
-ML module and canonical response schema. `.dockerignore` allows only required
+ML module and canonical response schema. `backend/Dockerfile.dockerignore` allows only required
 runtime sources; raw data, local configuration and Git files stay out.
 
 ```bash
@@ -98,22 +108,39 @@ and district GeoJSON paths respectively.
 Health/readiness and listing routes remain independent of coverage configuration.
 A DB without PostGIS/migrations returns a dependency error for valuations.
 
-## Model provider seam and remaining dependencies
+## B07 deployment and provider interface
 
-`ValuationService(provider=...)` accepts a versioned provider factory with the
-same internal `assess` interface as BaselineGateway. C01 response validation,
-calibrated-interval consistency, asking-price isolation, failure mapping and
-persistence stay in the service. A synthetic provider verifies interval and
-attribution mapping; it is not a real B07 model or measured accuracy claim.
+Build a package using `ml.package_inference` as documented in
+[B07](B07-inference-package.md). Place it in `artifacts/b07/<version>/` on the
+host, set `FAIRRENT_MODEL_PACKAGE=/models/<version>` in `.env`, and recreate the
+API container. Compose mounts `artifacts/b07` read-only at `/models`.
+Omit the setting to explicitly use the B03 MVP baseline. Package binaries are
+not committed. The package evidence level and training limitations remain in
+the audit record; synthetic test packages are verification evidence only.
 
-B07 will need an adapter to its delivered package API, artifact/version provenance
-and a fitted area-reference policy. B06 will supply authoritative rule results.
-A05's district IDs are used by C04's municipal polygon snapshot for coordinate
-lookup. C04 derives city coverage from the same polygons so the two checks agree.
-Both artifacts have version/provenance checksums. The older HDX city polygon is
-retained only for comparison. See coverage documentation for source metadata and
-the municipal layer's unspecified reuse license. B06/B07 integration remains open.
-Affected owners should review the disclosed MVP configured reference-area policy.
+Run `python -m valuation_repository` again to add the `inference_provenance`
+column to an existing audit table. The migration preserves existing records.
+
+`ValuationService(provider=...)` retains its injectable provider interface.
+The default factory selects `PackagedGateway` when a package path is configured.
+The adapter passes only the selected deduplicated cohort and ModelInput fields
+to `ml.inference.assess`; asking price never reaches inference. Observed dataset
+provenance and training snapshot provenance are stored separately. Each POST
+recomputes current comparables and persists the validated public response.
+
+B07 also enforces its documented provisional coverage box after C04's municipal
+polygon check. A location outside either supported boundary yields
+`400/outside_coverage`. Coverage configuration errors and unexpected/invalid
+provider results yield 503; the B07 documented model-failure path returns a
+200 abstention with observed statistics and an audited fallback reason.
+
+The backend Dockerfile includes both baseline and package runtimes and preserves
+B07's `verify` target. To verify a built package in that image:
+
+```bash
+docker build -f backend/Dockerfile --target verify -t fairrent-api-verify .
+docker run --rm -v "$(pwd)/artifacts/b07/<version>:/package:ro" fairrent-api-verify
+```
 
 ## Validation
 
@@ -128,7 +155,7 @@ python contracts/validate.py
 
 The backend workflow runs all three suites and builds the API from repository root.
 
-Verified on 2026-10-24: **271 tests passed, none skipped** across backend,
+Prior baseline validation on 2026-10-24: **271 tests passed, none skipped** across backend,
 pipeline and ML using a disposable PostGIS 16/3.4 container. C01 validation passed
 (32 schemas, 35 fixtures, 16 rejected inputs). The root-context Docker build and
 packaged API/A05 imports passed. Native PostGIS checks cover district lookup,
@@ -141,3 +168,13 @@ Independent Shapely checks confirmed all 12 district geometries are valid, city
 coverage equals their union, six known locations resolve correctly, a shared
 district junction is ambiguous, and Gyumri lies outside coverage. Importer output
 reproduces the pinned export and preserves every district geometry coordinate.
+
+
+Final integration verification on 2026-11-04: seven HTTP tests exercise a real
+checksummed synthetic B07 package (success, calibrated interval/factors, B06
+explanation, fitted area reference, missing/corrupt package, model exception,
+serving-gate/sparse/stale abstention and coverage rejection). A disposable PostGIS
+test also checks package/calibration/ontology provenance and migration upgrades.
+The Python 3.10 backend `verify` target returned `VERIFIED`; the API image also
+completed real B07 inference, municipal coverage/cohort selection and PostgreSQL
+audit persistence. These checks verify integration, not production model quality.

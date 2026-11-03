@@ -35,7 +35,7 @@ def test_canonical_district_and_consistent_cohort_reach_model_and_audit(monkeypa
             return nullcontext(Connection())
         def candidates(self, connection, query, now):
             return records, 'observed-test-snapshot'
-        def save(self, connection, query, result, dataset_version, geography_version):
+        def save(self, connection, query, result, dataset_version, geography_version, **metadata):
             self.saved = result, geography_version
     class Coverage:
         version = 'city:checksum'

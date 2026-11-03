@@ -1,6 +1,7 @@
 import { mockInfrastructurePage } from "./mock-infrastructure";
 import fixtures from "../../../contracts/fixtures.json";
 import { mockListingPage } from "./mock-listings";
+import { mockMarketPage } from "./mock-market";
 
 type FixtureName = keyof typeof fixtures;
 
@@ -42,8 +43,18 @@ export const mockFetch: typeof fetch = async (input, init) => {
     case "/api/v1/exchange-rate":
       return fixtureResponse("exchange-rate");
 
-    case "/api/v1/market-index":
-      return fixtureResponse("market-index");
+    case "/api/v1/market-index": {
+      const page = mockMarketPage(new URL(request.url));
+
+      if (!page) {
+        return fixtureResponse("error-validation_error", 422);
+      }
+
+      return new Response(JSON.stringify(page), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     case "/api/v1/infrastructure": {
       const page = mockInfrastructurePage(new URL(request.url));

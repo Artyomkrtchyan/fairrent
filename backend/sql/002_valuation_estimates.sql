@@ -17,3 +17,7 @@ CREATE INDEX IF NOT EXISTS api_listing_valuation_location
     ON api_listing_projection USING gist
     ((ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography))
     WHERE status = 'active' AND latitude IS NOT NULL AND longitude IS NOT NULL;
+
+-- Additive upgrade for existing baseline audit tables.
+ALTER TABLE api_valuation_estimates
+    ADD COLUMN IF NOT EXISTS inference_provenance jsonb NOT NULL DEFAULT '{}'::jsonb;

@@ -1,4 +1,4 @@
-"""C04 orchestration: B03 -> C01 response -> immutable PostgreSQL record."""
+"""C04 orchestration: versioned B03/B07 and B06 results -> C01 -> PostgreSQL audit."""
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from statistics import mean, stdev
@@ -6,23 +6,24 @@ import os
 
 import pandas as pd
 from ml.baseline import haversine_distance_km
+from ml import ontology_rules
 
 try:
-    from .valuation_gateway import BaselineGateway, ModelUnavailable
+    from .valuation_gateway import ModelUnavailable, configured_gateway
     from .valuation_models import validate_response
     from .valuation_repository import ValuationRepository, period
-    from .valuation_coverage import Coverage
+    from .valuation_coverage import Coverage, OutsideCoverage
     from .valuation_districts import DistrictRegistry
     from .geographic_features import GEOGRAPHY_VERSION, MODEL_DISTANCE_FIELDS, district_label, model_distances
 except ImportError:
-    from valuation_gateway import BaselineGateway, ModelUnavailable
+    from valuation_gateway import ModelUnavailable, configured_gateway
     from valuation_models import validate_response
     from valuation_repository import ValuationRepository, period
-    from valuation_coverage import Coverage
+    from valuation_coverage import Coverage, OutsideCoverage
     from valuation_districts import DistrictRegistry
     from geographic_features import GEOGRAPHY_VERSION, MODEL_DISTANCE_FIELDS, district_label, model_distances
 
-POLICY_VERSION = 'c04-observed-cohort-v3-a05'
+POLICY_VERSION = 'c04-observed-cohort-v4-b07'
 
 
 def timestamp(value):
@@ -34,7 +35,7 @@ def summary(values):
 
 
 class ValuationService:
-    def __init__(self, repository=None, provider=BaselineGateway, coverage=None, clock=None):
+    def __init__(self, repository=None, provider=configured_gateway, coverage=None, clock=None):
         self.repository = repository or ValuationRepository()
         self.provider = provider
         self.coverage = coverage  # Load configuration at request time, not import/startup.
@@ -101,15 +102,21 @@ class ValuationService:
                         deviation_from_baseline_pct=None)
                 elif area_reference:
                     assessment = {**assessment, 'assessment_status': 'COORDINATE_BASELINE_ONLY'}
-                else:
-                    # Asking price is never passed to the predictor.
-                    assessment['deviation_from_baseline_pct'] = (
-                        round((query.asking_price_usd_month / assessment['estimated_price_usd'] - 1) * 100, 2)
-                        if query.asking_price_usd_month is not None else None)
                 prices = [r.price_monthly_normalized for r, _ in selected]
-                units = [r.price_monthly_normalized / r.area_sqm for r, _ in selected if r.area_sqm is not None]
+                units = [r.price_monthly_normalized / r.area_sqm for r, _ in selected if r.area_sqm is not None and r.area_sqm > 0]
                 monthly_mean, monthly_std = summary(prices)
                 unit_mean, unit_std = summary(units)
+                if not insufficient:
+                    estimate = assessment['estimated_price_usd']
+                    assessment['deviation_from_baseline_pct'] = (
+                        round((estimate / monthly_mean - 1) * 100, 2) if monthly_mean else None)
+                ontology = prediction.get('ontology') or ontology_rules.explain_valuation(
+                    payload, learned_attributions=prediction.get('feature_attributions', []))
+                inference_provenance = dict(prediction.get('provenance') or {})
+                inference_provenance['model_version'] = prediction['versions']['model_version']
+                inference_provenance['rules_version'] = ontology_rules.RULES_VERSION
+                inference_provenance['ontology'] = ontology
+                inference_provenance['observed_dataset_version'] = dataset_version
                 interval = prediction.get('ml_prediction_interval')
                 if insufficient or area_reference or interval is None:
                     interval = dict(lower_bound_usd=None, upper_bound_usd=None, confidence_level=None,
@@ -123,7 +130,7 @@ class ValuationService:
                 result = dict(request_id=request_id,
                     coordinates=dict(latitude=query.latitude, longitude=query.longitude),
                     versions=dict(model_version=prediction['versions']['model_version'],
-                                  rule_engine_version=prediction['versions'].get('rule_engine_version', 'ontology-not-connected')),
+                                  rule_engine_version=prediction['versions'].get('rule_engine_version', ontology_rules.RULE_ENGINE_VERSION)),
                     valuation_assessment=assessment,
                     observed_market_statistics=dict(cluster_mean_price_usd=monthly_mean,
                         observed_price_std_dev_usd=monthly_std, comparables_count=len(prices),
@@ -132,23 +139,25 @@ class ValuationService:
                         observed_price_std_dev_per_sqm_usd=unit_std, area_comparables_count=len(units)),
                     ml_prediction_interval=interval,
                     feature_attributions=[] if insufficient else prediction.get('feature_attributions', []),
-                    area_reference=(prediction.get('area_reference') or dict(district=None, reference_area_sqm=60,
-                        note='B03 configured reference area, not a fitted district median.')) if area_reference else None,
-                    kind='area_reference' if area_reference else 'property_valuation',
+                    area_reference=(prediction.get('area_reference') if prediction.get('provenance') else
+                        dict(district=None, reference_area_sqm=60,
+                             note='B03 configured reference area, not a fitted district median.'))
+                        if area_reference else None,
+                    kind=prediction.get('kind', 'area_reference' if area_reference else 'property_valuation'),
                     cohort=dict(radius_m=query.radius_m, period_start=str(start), period_end=str(end),
                         minimum_sample_size=3, selection_version=POLICY_VERSION,
                         duplicate_policy='latest_observation_per_duplicate_group', inventory_policy='active_at_data_as_of'),
                     freshness=dict(data_as_of=timestamp(data_as_of), generated_at=timestamp(now),
                         is_stale=stale, max_age_days=60, policy_version=POLICY_VERSION),
                     explanation=prediction['selection_explanation'] +
-                        ' Observed inventory baseline; last_seen_at is the observation date, not publication/training data. '
-                        'B03 caps comparable age at 60 days even if a longer window was requested. '
+                        ' Comparable inventory uses last_seen_at as the observation date, not publication/training data. '
+                        'Comparable age is capped at 60 days even if a longer window was requested. '
                         + ((f'District {subject_district[1]} ({subject_district[0]}) resolved from municipal polygons; '
                             'comparables are restricted to this district. ' if subject_district else
                             'District unresolved (polygon gap or shared boundary); radius-only cohort. ')
                            if districts else 'District polygons are not configured; radius-only cohort. ')
                         +
-                        'Ontology rules are not connected; no fraud classification is made.',
+                        (ontology['text'] if not prediction.get('ontology') else ''),
                     price_status=price_status)
                 validate_response(result)
                 bounds = result['ml_prediction_interval']
@@ -157,11 +166,12 @@ class ValuationService:
                     if not (bounds['lower_bound_usd'] <= expected <= bounds['upper_bound_usd']) or abs(
                         bounds['interval_width_usd'] - (bounds['upper_bound_usd']-bounds['lower_bound_usd'])) > 0.01:
                         raise ValueError('Invalid calibrated interval')
-            except ModelUnavailable:
+            except (ModelUnavailable, OutsideCoverage):
                 raise
             except Exception as exc:
                 raise ModelUnavailable('Invalid model result') from exc
             geography_version = (coverage.version + (';districts=' + districts.version if districts else '')
                                  + ';a05=' + GEOGRAPHY_VERSION)
-            self.repository.save(connection, query, result, dataset_version, geography_version)
+            self.repository.save(connection, query, result, dataset_version, geography_version,
+                                 inference_provenance=inference_provenance)
         return result

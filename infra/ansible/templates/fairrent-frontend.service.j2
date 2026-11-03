@@ -1,0 +1,24 @@
+[Unit]
+Description=FairRent frontend and Nginx reverse proxy
+Wants=network-online.target fairrent-backend.service
+After=network-online.target docker.service fairrent-backend.service
+Requires=docker.service
+PartOf=docker.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+User=root
+UMask=0077
+RuntimeDirectory=fairrent-frontend
+RuntimeDirectoryMode=0700
+ExecStart=/usr/bin/python3 /usr/local/sbin/fairrent-frontend-start.py
+ExecStop=-/usr/bin/docker stop --time 30 fairrent-frontend
+Restart=always
+RestartSec=20
+TimeoutStopSec=45
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

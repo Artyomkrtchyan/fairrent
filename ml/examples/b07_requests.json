@@ -1,0 +1,32 @@
+{
+  "now": "2026-11-02T12:00:00Z",
+  "note": "Synthetic requests. 'comparables' stand in for the B09 cohort the backend supplies; they are not real listings. The 'as_of' date is relative to 'now' (the stale case is older than 60 days). expected_status holds for any package whose serving gate supports central Yerevan at 65 m2; a gate-withheld case is covered separately.",
+  "cases": [
+    {"name": "full_property", "expected_status": "VALUATION_SUCCESS",
+     "model_input": {"latitude": 40.1776, "longitude": 44.5126, "as_of": "2026-10-31T09:47:00Z", "radius_m": 1000,
+                     "window_days": 30, "area_sqm": 65, "rooms": 2, "district": "Kentron", "floor": 3, "total_floors": 9},
+     "comparables": [{"price_usd": 500, "area_sqm": 50}, {"price_usd": 600, "area_sqm": 50},
+                     {"price_usd": 700, "area_sqm": 50}, {"price_usd": 650, "area_sqm": 55}]},
+    {"name": "coordinate_only", "expected_status": "COORDINATE_BASELINE_ONLY",
+     "model_input": {"latitude": 40.1776, "longitude": 44.5126, "as_of": "2026-10-31T09:47:00Z", "radius_m": 1000,
+                     "window_days": 30},
+     "comparables": [{"price_usd": 500, "area_sqm": 50}, {"price_usd": 600, "area_sqm": 50},
+                     {"price_usd": 700, "area_sqm": 50}]},
+    {"name": "sparse_cohort", "expected_status": "INSUFFICIENT_DATA_ABSTAIN",
+     "model_input": {"latitude": 40.1776, "longitude": 44.5126, "as_of": "2026-10-31T09:47:00Z", "radius_m": 1000,
+                     "window_days": 30, "area_sqm": 65, "rooms": 2},
+     "comparables": [{"price_usd": 500, "area_sqm": 50}]},
+    {"name": "stale_snapshot", "expected_status": "INSUFFICIENT_DATA_ABSTAIN",
+     "model_input": {"latitude": 40.1776, "longitude": 44.5126, "as_of": "2026-07-01T00:00:00Z", "radius_m": 1000,
+                     "window_days": 30, "area_sqm": 65, "rooms": 2},
+     "comparables": [{"price_usd": 500, "area_sqm": 50}, {"price_usd": 600, "area_sqm": 50},
+                     {"price_usd": 700, "area_sqm": 50}]}
+  ],
+  "errors": [
+    {"name": "outside_coverage", "expected_error": "OutsideCoverageError",
+     "model_input": {"latitude": 41.7, "longitude": 44.5, "as_of": "2026-10-31T09:47:00Z", "radius_m": 1000, "window_days": 30}},
+    {"name": "asking_price_is_not_an_input", "expected_error": "InputValidationError",
+     "model_input": {"latitude": 40.18, "longitude": 44.51, "as_of": "2026-10-31T09:47:00Z", "radius_m": 1000,
+                     "window_days": 30, "asking_price_usd_month": 600}}
+  ]
+}

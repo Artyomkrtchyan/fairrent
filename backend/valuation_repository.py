@@ -44,15 +44,16 @@ class ValuationRepository:
                                     sort_keys=True).encode()).hexdigest()
         return records, version
 
-    def save(self, connection, query, result, dataset_version, coverage_version):
+    def save(self, connection, query, result, dataset_version, coverage_version, *, inference_provenance=None):
         connection.execute('''INSERT INTO api_valuation_estimates
             (request_id, generated_at, data_as_of, dataset_version, model_version,
-             policy_version, coverage_version, request_document, response_document)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)''',
+             policy_version, coverage_version, request_document, response_document, inference_provenance)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',
             (result['request_id'], result['freshness']['generated_at'],
              result['freshness']['data_as_of'], dataset_version,
              result['versions']['model_version'], result['cohort']['selection_version'],
-             coverage_version, Jsonb(query.model_dump(mode='json', exclude_none=True)), Jsonb(result)))
+             coverage_version, Jsonb(query.model_dump(mode='json', exclude_none=True)), Jsonb(result),
+             Jsonb(inference_provenance or {})))
 
 
 class CandidateLimit(RuntimeError):
