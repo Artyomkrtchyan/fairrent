@@ -28,3 +28,4 @@ Thumbs.db
 *.tfstate.*
 *.tfplan
 *.tfvars
+.worktrees/

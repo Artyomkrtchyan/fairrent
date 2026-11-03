@@ -1,0 +1,70 @@
+{
+  "id": "a6d8fac221e3492593303f6b2074101a",
+  "owner": "Tmcyc",
+  "orgId": "0123456789ABCDEF",
+  "created": 1773207999442,
+  "modified": 1773208247022,
+  "guid": null,
+  "name": "Yerevan_Districts",
+  "title": "Վարչական շրջաններ",
+  "type": "Feature Service",
+  "typeKeywords": [
+    "ArcGIS",
+    "ArcGIS Server",
+    "Data",
+    "Feature Access",
+    "Feature Service",
+    "Metadata",
+    "providerSDS",
+    "Service",
+    "Hosted Service"
+  ],
+  "description": "",
+  "tags": [
+    ""
+  ],
+  "snippet": "",
+  "thumbnail": "thumbnail/thumbnail.png",
+  "documentation": null,
+  "extent": [
+    [
+      8445641.185600001,
+      4437027.219900001
+    ],
+    [
+      8468112.9825,
+      4456559.525900001
+    ]
+  ],
+  "categories": [],
+  "spatialReference": "ARM_PCS",
+  "accessInformation": "",
+  "classification": null,
+  "licenseInfo": "",
+  "culture": "en-us",
+  "properties": null,
+  "advancedSettings": null,
+  "url": "https://gis.yerevan.am/server/rest/services/Hosted/Yerevan_Districts/FeatureServer",
+  "proxyFilter": null,
+  "access": "public",
+  "size": 239292,
+  "subInfo": 0,
+  "appCategories": [],
+  "industries": [],
+  "languages": [],
+  "largeThumbnail": null,
+  "banner": null,
+  "screenshots": [],
+  "listed": false,
+  "commentsEnabled": false,
+  "numComments": 0,
+  "numRatings": 0,
+  "avgRating": 0,
+  "numViews": 5181,
+  "privateUrl": "https://gisserver.yerevan.am:6443/arcgis/rest/services/Hosted/Yerevan_Districts/FeatureServer",
+  "scoreCompleteness": 33,
+  "groupDesignations": null,
+  "apiToken1ExpirationDate": -1,
+  "apiToken2ExpirationDate": -1,
+  "lastViewed": -1
+}

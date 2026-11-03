@@ -92,3 +92,24 @@ python -m pytest backend/tests -v
 Tests cover `/health`, successful database readiness, and database connection
 failure. Database connections are mocked; Docker and a running database are
 not required. Real PostGIS connectivity is verified separately through Compose.
+
+## C04 valuation integration
+
+POST `/api/v1/valuations` integrates the accepted B03 observed-inventory baseline
+and persists validated responses with dataset/model/policy/freshness metadata.
+See [C04 behavior, configuration and verification](../docs/C04-valuation-integration.md).
+The endpoint requires PostGIS, the C03 projection, the C04 migration and
+the supplied municipal coverage/district snapshots and accepted A05 code.
+Apply the source A05 migration before publishing inventory. The old `model_stub.py` remains a legacy example;
+it is not used by the C04 endpoint.
+
+
+### C04 valuation deployment
+
+`POST /api/v1/valuations` selects and deduplicates current inventory, computes a
+versioned estimate, and saves its response and inference provenance atomically.
+Apply `python -m valuation_repository` after the listing projection migration.
+B03 is used when `FAIRRENT_MODEL_PACKAGE` is empty; configure a B07 directory to
+serve calibrated estimates and learned factors with B06 explanations. Missing or
+corrupt configured packages abstain and never silently use B03. See
+[the C04 deployment and validation guide](../docs/C04-valuation-integration.md).

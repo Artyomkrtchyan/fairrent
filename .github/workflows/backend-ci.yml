@@ -77,7 +77,13 @@ jobs:
           persist-credentials: false
 
       - name: Build API image
-        run: docker build --tag fairrent-api:ci-${{ github.sha }} ./backend
+        run: docker build -f backend/Dockerfile --target api --tag fairrent-api:ci-${{ github.sha }} .
+
+      - name: Check the B07 inference runtime imports in the API image
+        run: docker run --rm fairrent-api:ci-${{ github.sha }} python -c "from ml import inference; print(inference.INFERENCE_INTERFACE_VERSION)"
+
+      - name: Build the B07 verification target
+        run: docker build -f backend/Dockerfile --target verify --tag fairrent-api-verify:ci-${{ github.sha }} .
 
       - name: Build and smoke-test B06 signal worker
         run: |
@@ -183,7 +189,7 @@ jobs:
 
       - name: Build both release images before publishing
         run: |
-          docker build --platform linux/amd64 -t "$ECR_REGISTRY/fairrent-backend:$RELEASE_TAG" ./backend
+          docker build --platform linux/amd64 -f backend/Dockerfile --target api -t "$ECR_REGISTRY/fairrent-backend:$RELEASE_TAG" .
           docker build --platform linux/amd64 -f frontend/Dockerfile -t "$ECR_REGISTRY/fairrent-frontend:$RELEASE_TAG" .
 
       - name: Publish and resolve immutable digests

@@ -57,6 +57,31 @@ def test_current_raw_enrichment_and_unknown_materials(source_row):
     assert adapt_source(source_row).district_id is None
 
 
+@pytest.mark.parametrize('name,slug', [
+    ('Աջափնյակ', 'ajapnyak'), ('Malatia Sebastia', 'malatia-sebastia'),
+    ('Քանաքեռ-Զեյթուն', 'kanaker-zeytun'), ('nor-nork', 'nor-nork'),
+    ('Nubarashen', 'nubarashen'), ('Davtashen', 'davtashen'),
+])
+def test_a05_district_names_publish_beyond_the_two_legacy_districts(source_row, name, slug):
+    source_row['raw_data'] = {'district': name}
+    assert adapt_source(source_row).district_id == slug
+
+
+def test_persisted_a05_district_survives_missing_current_scrape_field(source_row):
+    source_row.update(district_id='avan', district='unrecognized legacy text', raw_data={'district': None})
+    assert adapt_source(source_row).district_id == 'avan'
+    source_row['raw_data']['district'] = 'Shengavit'
+    assert adapt_source(source_row).district_id == 'shengavit'
+
+
+@pytest.mark.parametrize('confidence', ['exact', 'approximate', 'unknown'])
+def test_a05_coordinate_confidence_is_not_replaced_by_approximate(source_row, confidence):
+    source_row.update(latitude=40.18, longitude=44.51, coordinate_confidence=confidence)
+    assert adapt_source(source_row).coordinate_confidence == confidence
+    source_row.update(latitude=None, longitude=None)
+    assert adapt_source(source_row).coordinate_confidence == 'unknown'
+
+
 @pytest.mark.parametrize("changes,reason", [
     ({"last_seen_run_id": None}, "unobserved_legacy_record"),
     ({"original_price": None}, "missing_original_price"),
