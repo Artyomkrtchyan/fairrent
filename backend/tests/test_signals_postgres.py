@@ -167,7 +167,7 @@ def test_cli_reports_committed_counts_and_replays(database, contradictory, capsy
     import json
     assert main([]) == 0
     summary = json.loads(capsys.readouterr().out)
-    assert summary["queued"] == 3 and summary["price_checks"] == "withheld_until_B07"
+    assert summary["queued"] == 3 and summary["price_checks"] == "withheld_no_package"
     assert main([]) == 0
     assert json.loads(capsys.readouterr().out)["queued"] == 0
 

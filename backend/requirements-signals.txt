@@ -1,3 +1,2 @@
 -r requirements.txt
-numpy==2.2.6
-pandas==2.3.3
+-r ../ml/requirements-inference.txt

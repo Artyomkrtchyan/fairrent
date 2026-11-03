@@ -46,3 +46,44 @@ def test_bad_reference_fails_before_connecting(tmp_path, monkeypatch, capsys):
     path.write_text(json.dumps({"rules_version": "old"}))
     assert main(["--district-support", str(path)]) == 1
     assert "previous signals and reviews preserved" in capsys.readouterr().err
+
+
+def test_only_successful_calibrated_valuation_can_raise_price_anomaly(listing_document):
+    record = ListingData.model_validate({**listing_document, 'price_monthly_normalized':10000,
+        'title':None, 'description':None, 'area_sqm':65, 'rooms':2})
+    interval = dict(lower_bound_usd=500,upper_bound_usd=900,confidence_level=0.95,
+        interval_width_usd=400,calibration_version='test-calibration')
+    assessment = dict(valuation_assessment=dict(assessment_status='VALUATION_SUCCESS'),
+        ml_prediction_interval=interval)
+    signal, = evaluate(record, valuation=assessment)
+    assert signal['category'] == 'price_anomaly'
+    assert signal['rule_id'] == 'PRICE-OUTSIDE-INTERVAL'
+    assert 'not evidence of fraud' in signal['explanation']
+    assessment['valuation_assessment']['assessment_status'] = 'INSUFFICIENT_DATA_ABSTAIN'
+    assert evaluate(record, valuation=assessment) == []
+    assessment['valuation_assessment']['assessment_status'] = 'VALUATION_SUCCESS'
+    interval['calibration_version'] = None
+    assert evaluate(record, valuation=assessment) == []
+
+
+def test_invalid_package_fails_before_database_connection(tmp_path, monkeypatch, capsys):
+    import backend.generate_signals as producer
+    monkeypatch.setattr(producer.psycopg, 'connect', lambda **kw: (_ for _ in ()).throw(AssertionError('no database')))
+    assert main(['--package', str(tmp_path / 'missing')]) == 1
+    assert 'previous signals and reviews preserved' in capsys.readouterr().err
+
+
+def test_price_identity_tracks_model_version_but_not_replay_time(listing_document):
+    from types import SimpleNamespace
+    record = ListingData.model_validate({**listing_document,'title':None,'description':None,
+        'area_sqm':65,'rooms':2,'price_monthly_normalized':10000})
+    valuation = dict(valuation_assessment=dict(assessment_status='VALUATION_SUCCESS'),
+        ml_prediction_interval=dict(lower_bound_usd=500,upper_bound_usd=900,
+            confidence_level=0.95,interval_width_usd=400,calibration_version='test-calibration'))
+    package = SimpleNamespace(versions={'model_version':'test-model'},manifest={'package_version':'test-package'})
+    first, = evaluate(record,valuation=valuation,package=package,created_at='2026-11-02T10:00:00Z')
+    replay, = evaluate(record,valuation=valuation,package=package,created_at='2026-11-03T10:00:00Z')
+    assert first['id'] == replay['id']
+    package.versions['model_version']='test-model-v2'
+    upgraded, = evaluate(record,valuation=valuation,package=package)
+    assert upgraded['id'] != first['id']

@@ -28,7 +28,8 @@ BEGIN
                   jsonb_object_agg(k, OLD.document -> k)
            FROM unnest(ARRAY['latitude', 'longitude', 'district_id', 'area_sqm', 'rooms',
                             'floor', 'total_floors', 'title', 'description',
-                            'coordinate_confidence', 'price_monthly_normalized']) AS k)
+                            'coordinate_confidence', 'price_monthly_normalized', 'building_type',
+                            'renovation', 'dedup_group_id']) AS k)
     THEN
         UPDATE api_listing_signals SET active = false WHERE listing_id = NEW.id AND active;
     END IF;

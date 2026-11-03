@@ -1,8 +1,9 @@
-# C05 reviewer workflow and B06 signal production
+# C05 reviewer workflow and calibrated signal production
 
 This implements the protected C01 queue, decision API and B06 consistency-signal
-producer. C04/B07 calibrated-price integration remains pending; C05 is not yet
-fully complete. Signals are review evidence, never a fraud conclusion.
+producer, including calibrated price anomalies from accepted C04/B07. Price
+anomalies and independent risk evidence remain separate categories. Signals
+are review evidence, never a fraud conclusion.
 
 ## Setup and sessions
 
@@ -85,18 +86,20 @@ python -m backend.generate_signals
 ```
 
 The worker is a separate one-shot image (`backend/Dockerfile.signals`, repository
-root build context). It ships B06, the A05 geography registry and numpy/pandas,
-without CatBoost or model artifacts. The API image stays small and only reads
-published signals. Generation is an explicit post-publication step; scheduling
-belongs to C09. All signal and queue writes in one run commit together, and a
+root build context). It ships C04/B07, B06 and the A05 registry; model artifacts
+are mounted read-only. API listing/review reads consume published signals;
+the C04 valuation endpoint remains separate. Generation is an explicit post-publication step; scheduling
+belongs to C09. All valuation audit, signal and queue writes in one run commit together, and a
 failed run rolls them all back. Output contains counts and versions, not raw
 listing descriptions or credentials. Concurrent runs serialize using an advisory
-transaction lock; listing row locks also serialize other trusted producers.
+session lock; listing row locks also serialize other trusted producers. Schema
+migrations commit before inference begins so their DDL locks do not block API
+reads for the duration of the batch. Data writes remain one atomic transaction.
 
 The command evaluates active listings only. Description/field consistency and
 area plausibility can produce `risk_evidence`. District/location support requires
-the optional **train-fitted** B06 artifact; without it no district-support finding
-is raised. To supply it, bind-mount the artifact into the worker:
+a **train-fitted** B06 artifact, taken from the B07 package by default. Without
+a package or explicit reference, no district-support finding is raised. To supply it, bind-mount the artifact into the worker:
 
 ```bash
 docker compose --profile signals run --build --rm \
@@ -107,8 +110,35 @@ docker compose --profile signals run --build --rm \
 Use `python -m ml.fit_district_support` to create that artifact from a training
 snapshot; never fit it on the current serving inventory. Its rules version must
 match the loaded B06 rules. Record the snapshot/reference version with the release.
-No price anomaly is generated until B07 provides a model-bound calibrated interval;
-the asking price alone does not trigger a review.
+## Calibrated price anomalies (C04/B07)
+
+Set `FAIRRENT_MODEL_PACKAGE=/models/<version>` in `.env` and place the verified
+package under `artifacts/b07/<version>/`. The API and signals worker share the
+same read-only package and municipal coverage/district mounts. Alternatively,
+pass `--package /absolute/package/path` to the local worker. The worker applies
+migration 002 as well as 003/004 when a package is configured; initialize the
+C03 projection and PostGIS first. No package means consistency checks only and
+`price_checks=withheld_no_package`; no uncalibrated price alert is invented.
+
+For each active geolocated listing, the worker invokes C04 with a trusted subject
+identity and the caller-owned transaction. The subject and its entire duplicate
+group are removed before exact cohort selection, deduplication and statistics.
+The asking price stays outside model inputs. Only `VALUATION_SUCCESS` with a
+calibrated B07 interval and a nonfuture asking observation no older than B07's
+60-day freshness cap can raise `PRICE-OUTSIDE-INTERVAL`, always with category
+`price_anomaly`. Sparse/stale/unsupported data or a runtime model abstention
+withholds the price check while B06 consistency checks still run. Missing/invalid
+configured package files or coverage configuration fail the batch atomically.
+
+Each internal valuation audit stores `subject_listing_id`, the excluded group,
+source snapshot and package/calibration/ontology provenance. Price-signal evidence
+contains stable model/package/calibration versions and bounds; random audit IDs
+and run timestamps never enter signal identity. Replays preserve first-observation
+times and cannot reopen previously reviewed evidence. Regenerate after input or
+package/reference updates; do not serve old evidence as a new model result.
+
+The command reports calibrated and withheld counts. A price outside the interval
+is a price anomaly, never proof of fraud; the asking price alone cannot trigger it.
 
 ## Evidence lifecycle and public detail
 
@@ -150,9 +180,9 @@ release security work under E03/E05.
 ## Verification
 
 ```bash
-python -m pytest backend/tests/test_reviews.py backend/tests/test_generate_signals.py -q
+python -m pytest backend/tests/test_reviews.py backend/tests/test_generate_signals.py backend/tests/test_valuation_subject.py -q
 C03_TEST_DATABASE_URL=postgresql://.../c05_test \
-  python -m pytest backend/tests/test_reviews_postgres.py backend/tests/test_signals_postgres.py -q
+  python -m pytest backend/tests/test_reviews_postgres.py backend/tests/test_signals_postgres.py backend/tests/test_price_signals_postgres.py -q
 python contracts/validate.py
 ```
 
@@ -163,7 +193,16 @@ rollback after an audit failure. Existing CI runs these tests with PostGIS.
 Signal tests also cover independent description contradictions, missing inputs,
 no uncalibrated price alerts, concurrent producers, replay across resolved reviews,
 deferred changed evidence, public invalidation, first-observation timestamps,
-archived listings, existing-review migration and transaction rollback. These
-backend signal tests need PostgreSQL but do not require the PostGIS extension.
+real B07 intervals, subject/duplicate exclusion, atomic valuation/signal rollback,
+archived listings, existing-review migration and transaction rollback. Consistency-only signal tests need PostgreSQL; calibrated C04/B07 tests also
+require PostGIS and municipal coverage.
 The pipeline-to-API tests remain a separate PostGIS check in CI. CI also builds
 and imports the worker image so omission of the B06/geography modules fails early.
+
+
+Validated on 2026-11-04: the complete backend/data/ML suite passed 484 tests
+without skips on disposable PostGIS. Nine targeted checks of the final price
+freshness, duplicate exclusion, invalidation, replay and CLI transaction changes
+also passed. C01 validation passed (32 schemas, 35 fixtures, 16 rejected inputs).
+The test B07 artifacts are generated from synthetic training data; these results
+verify integration and do not measure fraud detection or production model quality.
