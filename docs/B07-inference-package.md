@@ -49,24 +49,23 @@ Distances missing from the input are computed from the A05 registry; the distric
 Exceptions (not abstentions): `InputValidationError` -> 422; `OutsideCoverageError` -> 400 `outside_coverage`;
 `PackageError` is raised only by `load_package` (so a deploy can fail fast), never by `assess`.
 
-## 4. Verify in a container
+## 4. Verify in the backend container
 
-Python 3.10 (the backend image) with only the inference dependencies (`ml/requirements-inference.txt`: numpy, pandas,
-catboost; no scikit-learn, rdflib or database libraries):
+The backend image (`backend/Dockerfile`, now built from the repository root) contains the inference runtime:
+`ml/requirements-inference.txt` (numpy, pandas, catboost), the runtime `ml/` modules, the A05 geography registry and
+the contract. Nothing in the API routes calls it yet (the backend owner wires `assess` in; `model_stub.py` is unchanged).
 
 ```
-docker build -f ml/docker/Dockerfile.verify -t fairrent-b07-verify .
-docker run --rm -v "<absolute path>\artifacts\b07\<version>:/package:ro" fairrent-b07-verify
+docker build -f backend/Dockerfile --target verify -t fairrent-api-verify .
+docker run --rm -v "<absolute path>\artifacts\b07\<version>:/package:ro" fairrent-api-verify
 ```
 
-It prints the versions, runs the cases in `ml/examples/b07_requests.json`, validates each assembled
-`ValuationResponse` against `contracts/openapi.json` and ends with `VERIFIED` (exit code 0). The same command
-without Docker: `python -m ml.verify_package --package artifacts/b07/<version>`.
-
-To run inside the backend's own image, its build context must include `ml/` and `data_pipeline/geography.py`
-(today it is `./backend`): change `compose.yml` to `context: .` + `dockerfile: backend/Dockerfile`, copy those paths and
-`pip install -r ml/requirements-inference.txt`. That edit belongs to the backend owner; nothing in `backend/` was
-changed here, and `backend/model_stub.py` is untouched until they wire `assess` in.
+`verify` is the API image's base (Python 3.10, backend requirements + inference dependencies) plus `jsonschema`. It
+loads the mounted package, runs the cases in `ml/examples/b07_requests.json`, validates each assembled
+`ValuationResponse` against `contracts/openapi.json` and ends with `VERIFIED` (exit code 0). The default
+`docker build -f backend/Dockerfile -t fairrent-api .` still produces the API image; `compose.yml` and CI use it
+with `target: api`, and CI also checks that `ml.inference` imports there and that the `verify` target builds.
+Without Docker: `python -m ml.verify_package --package artifacts/b07/<version>`.
 
 ## 5. Decisions and limits (need owner confirmation)
 

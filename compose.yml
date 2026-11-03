@@ -3,7 +3,9 @@ name: fairrent
 services:
   api:
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
+      target: api
     ports:
       - "127.0.0.1:8000:8000"
     environment:
