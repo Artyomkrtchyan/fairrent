@@ -418,7 +418,7 @@
     ],
     "goal": "Deploy the application using the agreed AWS architecture.",
     "criteria": [
-      "Terraform defines frontend S3/CloudFront, backend ECS/ECR, RDS/PostGIS, artifact storage, networking, and logging.",
+      "Terraform defines the accepted EC2/ASG + Nginx/FastAPI deployment, HTTPS ALB, immutable ECR, private RDS/PostGIS, versioned private S3 artifacts, networking, and CloudWatch logging.",
       "Configure HTTPS, appropriate CORS, private database access, and secrets handling; record cost assumptions before provisioning.",
       "Deploy versioned images/frontend builds and document migrations, rollback, and teardown; do not place credentials in Git."
     ]

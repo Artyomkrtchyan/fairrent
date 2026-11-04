@@ -4,7 +4,7 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 
 resource "aws_iam_role" "github_deploy" {
-  name = "fairrent-github-deploy"
+  name                 = "fairrent-github-deploy"
   max_session_duration = 7200
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -76,8 +76,8 @@ resource "aws_iam_role_policy" "github_deploy" {
         ]
       },
       {
-        Effect = "Allow"
-        Action = "ec2:CreateTags"
+        Effect   = "Allow"
+        Action   = "ec2:CreateTags"
         Resource = "arn:aws:ec2:eu-central-1:566663271715:instance/*"
         Condition = {
           StringEquals = { "ec2:CreateAction" = "RunInstances" }
@@ -106,7 +106,7 @@ resource "aws_iam_role_policy" "github_deploy" {
 variable "github_main_oidc_subject" {
   description = "Exact GitHub OIDC sub claim for this repository's main branch."
   type        = string
-  default     = "repo:Artyomkrtchyan/fairrent:ref:refs/heads/main"
+  default     = "repo:Artyomkrtchyan@182556169/fairrent@1422583355:ref:refs/heads/main"
 }
 
 output "github_deploy_role_arn" {

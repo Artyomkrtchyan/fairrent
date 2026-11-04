@@ -2,6 +2,7 @@
 """Start the backend using the EC2 role; keep credentials in temporary /run files."""
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -27,8 +28,21 @@ def pgpass_value(value):
     return value.replace("\\", "\\\\").replace(":", "\\:")
 
 
+
+def log_arguments(config):
+    group = config.get("log_group")
+    if group is None:
+        return ["--log-driver", "json-file", "--log-opt", "max-size=10m", "--log-opt", "max-file=3"]
+    if not isinstance(group, str) or not re.fullmatch(r"/fairrent/[A-Za-z0-9_./-]+", group):
+        raise ValueError("Invalid CloudWatch log group")
+    return ["--log-driver", "awslogs", "--log-opt", f"awslogs-region={config['aws_region']}",
+            "--log-opt", f"awslogs-group={group}", "--log-opt", "awslogs-create-group=false",
+            "--log-opt", "mode=non-blocking", "--log-opt", "max-buffer-size=4m"]
+
+
 def prepare(config, runtime):
     """Prepare before replacing the old container; return a foreground Docker command."""
+    logging = log_arguments(config)
     environment = os.environ.copy()
     for key in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
                 "AWS_PROFILE", "AWS_DEFAULT_PROFILE", "AWS_WEB_IDENTITY_TOKEN_FILE",
@@ -84,8 +98,7 @@ def prepare(config, runtime):
         command([DOCKER, "rm", "--force", NAME], environment)
 
     arguments = [DOCKER, "run", "--rm", "--restart=no", "--name", NAME,
-                 "--publish", f"{bind_address}:8000:8000", "--log-driver", "json-file",
-                 "--log-opt", "max-size=10m", "--log-opt", "max-file=3",
+                 "--publish", f"{bind_address}:8000:8000", *logging,
                  "--mount", f"type=bind,src={passfile},dst=/run/secrets/pgpass,readonly",
                  "--env", f"PGHOST={config['db_host']}",
                  "--env", f"PGPORT={config['db_port']}",

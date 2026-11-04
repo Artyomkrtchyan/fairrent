@@ -12,3 +12,6 @@
 **/.env.*
 ml/tests
 backend/tests
+
+!infra/valuation-coverage/coverage.geojson
+!infra/valuation-coverage/districts.geojson

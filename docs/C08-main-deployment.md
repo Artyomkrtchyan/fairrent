@@ -1,7 +1,7 @@
 # Deploy main to FairRent AWS
 
 The `Deploy main to AWS` job in `.github/workflows/backend-ci.yml` runs after
-all four existing component CI jobs succeed. It deploys only `main`, including
+all component and infrastructure CI jobs succeed. It deploys only `main`, including
 manual runs selected on `main`, and only when repository variable
 `AWS_DEPLOY_ENABLED` equals `true`. Pull requests never deploy.
 
@@ -9,9 +9,11 @@ Both images are built from the checked-out commit, published with a unique
 SHA/run/attempt tag and deployed by digest. The workflow copies the ASG's
 currently active numbered launch template version and changes only its user
 data. The existing Ubuntu AMI must contain Docker, AWS CLI, both FairRent systemd
-units, bootstrap scripts and nonsecret `/etc/fairrent/{backend,frontend}.json`.
+units and nonsecret `/etc/fairrent/{backend,frontend}.json`.
 The release boot script changes image references in those JSON files, preserving
-database settings. No migrations or demo-data imports run during deployment.
+database settings. Each release installs its reviewed backend/frontend bootstrap
+scripts and configures the two CloudWatch log groups before service restart. No
+migrations or demo-data imports run during deployment.
 
 ## One-time activation (run by the infrastructure owner)
 
@@ -34,9 +36,9 @@ database settings. No migrations or demo-data imports run during deployment.
    ```
 
    The default trust subject is
-   `repo:Artyomkrtchyan/fairrent:ref:refs/heads/main`. If the repository uses
-   GitHub's immutable-ID subject format, set `github_main_oidc_subject` in local
-   `terraform.tfvars` to the exact main-branch subject before applying. Do not
+   `repo:Artyomkrtchyan@182556169/fairrent@1422583355:ref:refs/heads/main`. This is
+   the immutable-ID subject verified against the deployed IAM role on 2026-11-04.
+   For another repository set `github_main_oidc_subject` to its exact subject. Do not
    broaden it to all repositories or branches. No GitHub environment is used.
 
 2. Review and merge the workflow, `infra/scripts/deploy_asg.py`, Terraform files
@@ -67,7 +69,7 @@ database settings. No migrations or demo-data imports run during deployment.
 
 - Terraform manages infrastructure and the initial launch template configuration.
   GitHub Actions manages application user data and the ASG's selected launch
-  template version. Terraform ignores these two release fields, so a normal
+  template version. Terraform ignores the release user data/description and selected ASG version, so a normal
   apply does not undo an application deployment.
 - Changing Terraform's `frontend_image` after this handover does not release a
   new frontend. Push application changes to `main` instead.
@@ -104,6 +106,9 @@ database settings. No migrations or demo-data imports run during deployment.
 References: [GitHub OIDC in AWS](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-aws),
 [AWS instance refresh rollback](https://docs.aws.amazon.com/autoscaling/ec2/userguide/instance-refresh-rollback.html).
 
-These files were prepared locally without running checks or applying AWS changes,
-at the infrastructure owner's request. The first cloud run remains necessary to
-confirm the account's OIDC subject, IAM permissions and AMI boot behavior.
+Deployment is active. The main C05 release completed successfully on 2026-11-04:
+[workflow 41778909110](https://github.com/Artyomkrtchyan/fairrent/actions/runs/41778909110).
+Its ASG refresh reached 100%, using numbered template version 15. The public site,
+/health, /ready and listing API passed HTTPS checks; reviewer requests without a
+token returned 401. See [C08 completion, costs and operational runbook](C08-completion.md)
+for the actual architecture, artifact/logging additions and final rollout checks.

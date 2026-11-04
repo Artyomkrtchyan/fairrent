@@ -5,6 +5,7 @@ import os
 import re
 import subprocess
 import time
+from pathlib import Path
 
 
 def aws(service, operation, **parameters):
@@ -13,6 +14,45 @@ def aws(service, operation, **parameters):
         args.extend(["--" + key.replace("_", "-"),
                      json.dumps(value) if isinstance(value, (dict, list)) else str(value)])
     return json.loads(subprocess.check_output(args, text=True) or "{}")
+
+
+def build_user_data(images, bootstrap_directory=None):
+    # Read each AMI-provided config, preserving its database/secret/region settings.
+    # Only public image references change. Credentials still come from the EC2 role.
+    bootstrap = """import json, os, subprocess
+from pathlib import Path
+images = IMAGES
+for name, image in images.items():
+    path = Path('/etc/fairrent') / (name + '.json')
+    config = json.loads(path.read_text())
+    config[name + '_image'] = image
+    config['log_group'] = '/fairrent/dev/' + name
+    temporary = path.with_suffix('.json.release')
+    temporary.write_text(json.dumps(config) + '\\n')
+    temporary.chmod(0o640)
+    os.replace(temporary, path)
+subprocess.run(['systemctl', 'restart', 'fairrent-backend.service'], check=True)
+subprocess.run(['systemctl', 'restart', 'fairrent-frontend.service'], check=True)
+""".replace("IMAGES", repr(images))
+    # JSON is valid YAML. This user data deliberately owns only release startup;
+    # systemd units, Docker and AWS CLI are already installed in the golden AMI.
+    cloud_config = {
+        "bootcmd": [["systemctl", "stop", "fairrent-frontend.service", "fairrent-backend.service"]],
+        "write_files": [{"path": "/opt/fairrent/release.py", "owner": "root:root",
+                         "permissions": "0600", "content": bootstrap}],
+        "runcmd": [["python3", "/opt/fairrent/release.py"]],
+    }
+    directory = bootstrap_directory or Path(__file__).resolve().parents[1] / "ansible" / "files"
+    for name in ("backend", "frontend"):
+        filename = f"fairrent-{name}-start.py"
+        cloud_config["write_files"].append({
+            "path": "/usr/local/sbin/" + filename, "owner": "root:root", "permissions": "0750",
+            "content": (directory / filename).read_text(encoding="utf-8"),
+        })
+    payload = ("#cloud-config\n" + json.dumps(cloud_config)).encode()
+    if len(payload) > 16384:
+        raise ValueError("Release user data exceeds the EC2 16 KiB limit")
+    return base64.b64encode(payload).decode()
 
 
 def main():
@@ -36,31 +76,7 @@ def main():
     if any(item["Status"] not in terminal for item in refreshes):
         raise RuntimeError("Another instance refresh is active; wait for it before deploying")
 
-    # Read each AMI-provided config, preserving its database/secret/region settings.
-    # Only public image references change. Credentials still come from the EC2 role.
-    bootstrap = """import json, os, subprocess
-from pathlib import Path
-images = IMAGES
-for name, image in images.items():
-    path = Path('/etc/fairrent') / (name + '.json')
-    config = json.loads(path.read_text())
-    config[name + '_image'] = image
-    temporary = path.with_suffix('.json.release')
-    temporary.write_text(json.dumps(config) + '\\n')
-    temporary.chmod(0o640)
-    os.replace(temporary, path)
-subprocess.run(['systemctl', 'restart', 'fairrent-backend.service'], check=True)
-subprocess.run(['systemctl', 'restart', 'fairrent-frontend.service'], check=True)
-""".replace("IMAGES", repr(images))
-    # JSON is valid YAML. This user data deliberately owns only release startup;
-    # systemd units, Docker and AWS CLI are already installed in the golden AMI.
-    cloud_config = {
-        "bootcmd": [["systemctl", "stop", "fairrent-frontend.service", "fairrent-backend.service"]],
-        "write_files": [{"path": "/opt/fairrent/release.py", "owner": "root:root",
-                         "permissions": "0600", "content": bootstrap}],
-        "runcmd": [["python3", "/opt/fairrent/release.py"]],
-    }
-    user_data = base64.b64encode(("#cloud-config\n" + json.dumps(cloud_config)).encode()).decode()
+    user_data = build_user_data(images)
     version = aws("ec2", "create-launch-template-version",
                   launch_template_id=current["LaunchTemplateId"],
                   source_version=current["Version"],

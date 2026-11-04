@@ -11,6 +11,7 @@
     db_host: fairrent-dev.c5kc8mweigwg.eu-central-1.rds.amazonaws.com
     db_secret_name: fairrent/dev/backend-db
     backend_start: true
+    backend_log_group: /fairrent/dev/backend
     # Preserve the existing ALB:8000 path until the staged Nginx rollout finishes.
     backend_bind_address: "0.0.0.0"
 
@@ -41,7 +42,7 @@
         mode: "0640"
         content: >-
           {{ {'aws_region': aws_region, 'ecr_registry': ecr_registry,
-              'backend_image': backend_image, 'db_host': db_host,
+              'backend_image': backend_image, 'log_group': backend_log_group, 'db_host': db_host,
               'db_port': 5432, 'db_name': 'fairrent',
               'backend_bind_address': backend_bind_address,
               'db_secret_name': db_secret_name} | to_nice_json }}

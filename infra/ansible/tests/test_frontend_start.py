@@ -68,5 +68,28 @@ class FrontendBootstrapTests(unittest.TestCase):
                 command.assert_not_called()
 
 
+    def test_cloudwatch_logging_keeps_credentials_out_of_container_metadata(self):
+        def fake_command(arguments, environment, **kwargs):
+            if arguments[1] == "secretsmanager":
+                return '{"username":"app","password":"synthetic-private-password"}'
+            return ""
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(bootstrap, "command", side_effect=fake_command):
+                arguments, _ = bootstrap.prepare({**self.config, "log_group":"/fairrent/dev/frontend"}, Path(directory))
+        self.assertEqual(arguments[arguments.index("--log-driver")+1], "awslogs")
+        self.assertIn("awslogs-create-group=false", arguments)
+        self.assertIn("awslogs-group=/fairrent/dev/frontend", arguments)
+        self.assertIn("mode=non-blocking", arguments)
+        self.assertNotIn("max-size=10m", arguments)
+        self.assertNotIn("synthetic-private-password", " ".join(arguments))
+
+    def test_invalid_log_group_fails_before_touching_the_running_service(self):
+        with tempfile.TemporaryDirectory() as directory:
+            with patch.object(bootstrap, "command") as command:
+                with self.assertRaises(ValueError):
+                    bootstrap.prepare({**self.config, "log_group":"/untrusted/group"}, Path(directory))
+                command.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
