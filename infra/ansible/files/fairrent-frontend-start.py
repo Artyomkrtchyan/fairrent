@@ -2,6 +2,7 @@
 """Pull the frontend with the EC2 role and run Nginx on the host network."""
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -20,7 +21,20 @@ def command(arguments, environment, *, stdin=None, timeout=60):
     return result.stdout.strip()
 
 
+
+def log_arguments(config):
+    group = config.get("log_group")
+    if group is None:
+        return ["--log-driver", "json-file", "--log-opt", "max-size=10m", "--log-opt", "max-file=3"]
+    if not isinstance(group, str) or not re.fullmatch(r"/fairrent/[A-Za-z0-9_./-]+", group):
+        raise ValueError("Invalid CloudWatch log group")
+    return ["--log-driver", "awslogs", "--log-opt", f"awslogs-region={config['aws_region']}",
+            "--log-opt", f"awslogs-group={group}", "--log-opt", "awslogs-create-group=false",
+            "--log-opt", "mode=non-blocking", "--log-opt", "max-buffer-size=4m"]
+
+
 def prepare(config, runtime):
+    logging = log_arguments(config)
     environment = os.environ.copy()
     for key in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
                 "AWS_PROFILE", "AWS_DEFAULT_PROFILE", "AWS_WEB_IDENTITY_TOKEN_FILE",
@@ -53,8 +67,7 @@ def prepare(config, runtime):
     if existing:
         command([DOCKER, "rm", "--force", NAME], environment)
     return [DOCKER, "run", "--rm", "--restart=no", "--name", NAME,
-            "--network", "host", "--log-driver", "json-file",
-            "--log-opt", "max-size=10m", "--log-opt", "max-file=3", image], environment
+            "--network", "host", *logging, image], environment
 
 
 def main():

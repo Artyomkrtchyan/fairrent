@@ -1,8 +1,8 @@
 # C08 frontend image with Nginx
 
 The frontend runs on the same EC2 instances as the API, behind the existing ALB.
-This replaces the planned S3/CloudFront frontend deployment for C08. No cloud
-resource is provisioned and no server is modified by these local build files.
+This replaces the planned S3/CloudFront frontend deployment for C08. The frontend and API are deployed through the main-branch ECR/ASG workflow.
+See [current deployment evidence and runbook](C08-completion.md).
 
 ```text
 Browser --HTTPS--> ALB --HTTP:80--> Nginx
@@ -54,7 +54,7 @@ containers are removed afterwards. It checks SPA fallback, hashed assets, API
 paths/query/body/auth forwarding, HTTPS forwarding metadata, genuine API errors
 and a database-readiness failure. No real secret is used.
 
-## Deployment prerequisites (not applied yet)
+## Reproducing the deployed architecture
 
 1. Create a private ECR repository fairrent-frontend with immutable tags.
 2. Extend the EC2 role's scoped ECR pull policy to this repository. Preserve the
@@ -94,7 +94,7 @@ AWS login output and credentials are never written to the application journal.
 
 ALB terminates HTTPS using the issued fairrent.online certificate. Nginx preserves
 the ALB's forwarded protocol. The same-origin /api client needs no new CORS rule.
-GitHub Actions/OIDC and rolling ASG deployment remain a subsequent C08 step.
+GitHub Actions/OIDC and rolling ASG deployment are active; see C08-main-deployment.md.
 
 ## MapLibre worker MIME type
 

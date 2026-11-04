@@ -13,8 +13,8 @@ The team's current stack for FairRent.
 | Machine Learning | pandas + scikit-learn + CatBoost | Data preparation, baseline estimation, rental price prediction, and model evaluation |
 | Knowledge Engineering | Protégé + OWL/RDF + RDFLib | Real estate ontology, relationships, and explainable inference rules |
 | Testing | pytest + Playwright | Backend tests, rule validation, and end-to-end user scenarios |
-| Frontend Hosting | AWS S3 + CloudFront | Hosting and delivering the frontend |
-| Backend Hosting | AWS ECS Fargate + ECR | Running Docker containers and storing container images |
+| Frontend Hosting | Nginx on EC2 Auto Scaling behind HTTPS ALB | Hosting React and forwarding the same-origin API |
+| Backend Hosting | EC2 Auto Scaling + systemd + ECR | Running versioned Docker containers and storing immutable images |
 | Managed Database | AWS RDS PostgreSQL + PostGIS | Hosting relational and geographic data |
 | Data & Model Storage | AWS S3 | Storing datasets, model artifacts, and evaluation outputs |
 | Scheduled Jobs | EventBridge Scheduler cron + ECS Tasks | Weekly listing collection and processing |

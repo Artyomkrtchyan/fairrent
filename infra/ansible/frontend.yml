@@ -9,6 +9,7 @@
     ecr_registry: 566663271715.dkr.ecr.eu-central-1.amazonaws.com
     frontend_image: "{{ ecr_registry }}/fairrent-frontend:demo-v2"
     frontend_start: true
+    frontend_log_group: /fairrent/dev/frontend
 
   tasks:
     - name: Verify existing AWS CLI installation
@@ -47,7 +48,7 @@
         mode: "0640"
         content: >-
           {{ {'aws_region': aws_region, 'ecr_registry': ecr_registry,
-              'frontend_image': frontend_image} | to_nice_json }}
+              'frontend_image': frontend_image, 'log_group': frontend_log_group} | to_nice_json }}
       notify: Restart FairRent frontend
 
     - name: Install frontend bootstrap script

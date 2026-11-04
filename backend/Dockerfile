@@ -18,6 +18,8 @@ COPY ml/examples/ ./ml/examples/
 COPY data_pipeline/__init__.py data_pipeline/geography.py ./data_pipeline/
 COPY contracts/openapi.json ./contracts/openapi.json
 COPY contracts/openapi.json /contracts/openapi.json
+COPY infra/valuation-coverage/coverage.geojson infra/valuation-coverage/districts.geojson ./valuation-coverage/
+ENV VALUATION_COVERAGE_FILE=/app/valuation-coverage/coverage.geojson VALUATION_DISTRICTS_FILE=/app/valuation-coverage/districts.geojson
 
 # Verification target: loads a mounted package and runs the example assessments inside the backend image.
 #   docker run --rm -v "<abs path to artifacts/b07/VERSION>:/package:ro" fairrent-api-verify

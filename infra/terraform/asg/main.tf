@@ -57,7 +57,7 @@ resource "aws_launch_template" "backend" {
 
   lifecycle {
     # GitHub Actions owns application releases after initial provisioning.
-    ignore_changes = [user_data]
+    ignore_changes = [user_data, description]
   }
 }
 
@@ -70,8 +70,8 @@ resource "aws_autoscaling_group" "backend" {
 
   vpc_zone_identifier = var.public_subnet_ids
   target_group_arns = [
-  var.target_group_arn,
-  var.frontend_target_group_arn,
+    var.target_group_arn,
+    var.frontend_target_group_arn,
   ]
 
   health_check_type         = "ELB"
