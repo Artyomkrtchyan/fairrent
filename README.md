@@ -41,8 +41,6 @@ A high price does not prove fraud. The system provides signals for review.
 
 ## Start here
 
-Current checkpoint: **C08 complete; C09 in preparation, scheduling not activated**. See [C08 completion](docs/C08-completion.md) and the [C09 runbook and remaining verification](docs/C09-weekly-ingestion.md).
-
 See the [implementation plan and task dependencies](docs/implementation-plan.md).
 
 1. [Scope and business rules](docs/business-rules.md).

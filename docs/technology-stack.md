@@ -17,7 +17,7 @@ The team's current stack for FairRent.
 | Backend Hosting | EC2 Auto Scaling + systemd + ECR | Running versioned Docker containers and storing immutable images |
 | Managed Database | AWS RDS PostgreSQL + PostGIS | Hosting relational and geographic data |
 | Data & Model Storage | AWS S3 | Storing datasets, model artifacts, and evaluation outputs |
-| Scheduled Jobs | Linux cron + CloakBrowser (C09, not activated) | Weekly collection, processing and run monitoring on a designated host |
+| Scheduled Jobs | EventBridge Scheduler cron + ECS Tasks | Weekly listing collection and processing |
 | Logging | AWS CloudWatch | Application logs and scheduled job monitoring |
 | Infrastructure as Code | Terraform | Reproducible AWS infrastructure provisioning |
 | CI/CD | GitHub Actions | Automated checks, container builds, and deployment |
@@ -30,7 +30,7 @@ The team's current stack for FairRent.
 - The frontend calls the FastAPI backend.
 - The backend reads PostgreSQL/PostGIS and invokes the valuation model within the application.
 - A separate collection process normalizes listings and writes observations to the database.
-- C09 prepares Linux cron for weekly collection; source access is locally confirmed by the owner but Linux activation remains pending. See [C09 runbook](C09-weekly-ingestion.md).
+- EventBridge Scheduler starts the collection process as an ECS task each week.
 - The coordinate valuation endpoint returns local sample standard deviations and valuation assessments from the Pandas/Scikit-Learn pipeline; CatBoost is the candidate price model.
 - The manual review queue is stored in PostgreSQL.
 - S3 stores datasets and model artifacts; ECR stores container images.

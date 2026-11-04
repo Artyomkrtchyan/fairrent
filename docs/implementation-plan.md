@@ -398,8 +398,6 @@ Acceptance criteria:
 
 ## C09: Configure weekly cron ingestion and operational monitoring
 
-Implementation and activation evidence: [C09 runbook](C09-weekly-ingestion.md). Status: in preparation; no schedule activated.
-
 Owner: @Artyomkrtchyan | Area: Infra | Phase: Release | Priority: P0
 
 Run ingestion on schedule and make failures visible.
@@ -408,8 +406,8 @@ Dependencies: [C08](#c08), [A04](#a04)
 
 Acceptance criteria:
 
-- [ ] Configure Linux cron on one designated stable host with overlap prevention and bounded execution, superseding the earlier EventBridge/ECS proposal. Confirm Sunday 03:00 Asia/Yerevan and the execution host before activation.
-- [ ] Record run status, bounded retries and freshness; connect failures and stale-data checks to the selected host monitoring before activation.
+- [ ] Configure an explicit weekly cron expression in Terraform for EventBridge Scheduler (initial schedule: Sunday 03:00, Asia/Yerevan) to launch the collection ECS task with overlap prevention; make the schedule configurable.
+- [ ] Record run status, retries, and freshness; add failure visibility through CloudWatch.
 - [ ] Demonstrate a manual run, a failed run, and recovery without clearing inventory; document rerun steps.
 
 <a id="c10"></a>
