@@ -73,7 +73,8 @@ async def invalid_request(request, exc):
 @app.exception_handler(HTTPException)
 async def http_error(request, exc):
     code = {401: "unauthenticated", 403: "forbidden", 404: "not_found",
-            409: "conflict", 422: "validation_error"}.get(exc.status_code, "internal_error")
+            409: "conflict", 422: "validation_error",
+            503: "service_unavailable"}.get(exc.status_code, "internal_error")
     response = api_error(request, exc.status_code, code, str(exc.detail))
     if exc.headers:
         response.headers.update(exc.headers)
