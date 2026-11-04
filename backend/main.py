@@ -10,6 +10,7 @@ from starlette.exceptions import HTTPException
 from pydantic import ValidationError
 
 try:
+    from .exchange_rate_routes import router as exchange_rate_router
     from .listing_routes import router
     from .market_routes import router as market_router
     from .review_routes import router as review_router
@@ -18,6 +19,7 @@ try:
     from .valuation_coverage import CoverageUnavailable, OutsideCoverage
     from .valuation_repository import CandidateLimit
 except ImportError:
+    from exchange_rate_routes import router as exchange_rate_router
     from listing_routes import router
     from market_routes import router as market_router
     from review_routes import router as review_router
@@ -40,6 +42,7 @@ app.include_router(router)
 app.include_router(valuation_router)
 app.include_router(market_router)
 app.include_router(review_router)
+app.include_router(exchange_rate_router)
 
 
 @app.middleware("http")
