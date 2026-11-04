@@ -92,7 +92,7 @@ No fraud labels exist. The numbers below therefore measure rule behaviour, not f
 
 | Asking price vs actual | x0.5 | x0.7 | x0.85 | x1 | x1.15 | x1.3 | x1.5 | x2 | x3 |
 |---|---|---|---|---|---|---|---|---|---|
-| Flagged | 62% | 9% | 3% | 5% | 13% | 26% | 56% | 93% | 99% |
+| Flagged | 63% | 9% | 3% | 5% | 13% | 27% | 57% | 94% | 100% |
 
 ![Price anomaly sensitivity](price_anomaly_sensitivity.png)
 
@@ -133,7 +133,7 @@ False flags on consistent synthetic text: 0 of 2,405 rows. With coordinates remo
 - Asking prices only; no signed rents. Renovation is always null in the A06 export, so it carries no signal.
 - Coverage is a marginal average, not a guarantee per listing, district or price level.
 - Listings from the same building can sit in both calibration and test, which makes coverage slightly optimistic.
-- The price-anomaly rule flags only large deviations: raising an asking price to 1.5x its actual value is flagged for 56% of listings, and 2x for 93%.
+- The price-anomaly rule flags only large deviations: raising an asking price to 1.5x its actual value is flagged for 57% of listings, and 2x for 94%.
 - Rule validation uses injected synthetic defects, and near-perfect detection of them is expected by construction: it shows the rules fire as designed, not that real errors look like these. No fraud labels exist, so fraud precision, recall and false positive rate on real listings are unmeasured and must not be inferred from this card.
 - Description-consistency rules cannot be evaluated on real text: the scrape parses fields from the title.
 - The district check compares labels with where other listings carry that label (no district polygons); it cannot tell whether the label or the pin is wrong.

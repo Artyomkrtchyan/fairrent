@@ -129,3 +129,39 @@ def test_proximity_effect_reports_confounding(world):
     res = vp.metro_proximity_effect(test)
     assert res["available"] and res["interpretation"].startswith("Ratio of median price per m2")
     assert set(res["buckets"]) == {"near", "between", "far"}
+
+
+def test_withheld_predictions_are_excluded_from_every_served_row_rate(world):
+    import numpy as np
+    inputs = ev.load_inputs(world["b04"], world["b05"], world["package"], world["snapshot"])
+    pred = ev.predictions(inputs)
+    package = inputs["package"]
+    assert ev.interval_for_row(float("nan"), float("nan"), package) is None      # NaN is "no interval", like None
+    assert ev.interval_for_row(None, 5.0, package) is None
+    pred.loc[:49, ["lower_usd", "upper_usd"]] = np.nan                            # withhold 50 more rows
+    pred.loc[:49, "price_status"] = "insufficient_data"
+    risk = ev.risk_validation(inputs, pred)
+    served = int((pred["price_status"] != "insufficient_data").sum())
+    assert served <= len(pred) - 50
+    assert all(p["n"] == served for p in risk["price_anomaly_sensitivity"]["points"])
+    assert risk["flag_rates_on_unmodified_rows"]["PRICE-OUTSIDE-INTERVAL"]["unknown"] >= 50
+
+
+def test_sensitivity_at_multiplier_one_equals_the_price_anomaly_rate(world):
+    summary = world["summary"]
+    at_one = next(p for p in summary["risk_rules"]["price_anomaly_sensitivity"]["points"] if p["price_multiplier"] == 1.0)
+    served = summary["price_anomaly"]["served_rows"]
+    assert at_one["n"] == served
+    assert round(at_one["detected"] / served, 4) == summary["price_anomaly"]["outside_rate"]
+
+
+def test_refuses_a_b05_calibration_that_differs_from_the_packaged_one(world, tmp_path):
+    ci.run(_args({"b04": world["b04"], "snapshot": world["snapshot"], "root": world["root"]},
+                 "b05-b08-absolute", method="absolute"))
+    absolute = world["root"] / "b05" / "b05-b08-absolute"
+    assert (absolute / "interval_calibration.json").read_bytes() != (world["b05"] / "interval_calibration.json").read_bytes()
+    with pytest.raises(ci.ArtifactError, match="calibration"):
+        ev.load_inputs(world["b04"], absolute, world["package"], world["snapshot"])
+    assert ev.main(["--b04", str(world["b04"]), "--b05", str(absolute), "--package", str(world["package"]),
+                    "--snapshot", str(world["snapshot"]), "--output", str(tmp_path / "o")]) == 2
+    ev.load_inputs(world["b04"], world["b05"], world["package"], world["snapshot"])   # the matching one still loads

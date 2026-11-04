@@ -105,6 +105,16 @@ def load_inputs(b04: Path, b05: Path, package_dir: Path, snapshot: Path) -> Dict
         raise ci.ArtifactError("B04, B05, the package and the snapshot do not refer to the same snapshot")
     if report05["metadata"]["b04_model_sha256"] != model_sha or package.manifest["model_sha256"] != model_sha:
         raise ci.ArtifactError("B05 or the package was built for a different B04 model")
+    # The interval metrics (B05 report) and the risk results (computed with the packaged calibration) must describe the
+    # same calibration: compare the calibration file byte for byte, then the identifying fields.
+    packaged_sha = _read_json(package_dir / "SHA256SUMS.json").get("interval_calibration.json")
+    if _sha256(b05 / "interval_calibration.json") != packaged_sha:
+        raise ci.ArtifactError("the B05 calibration does not match the calibration packaged in B07 "
+                               "(interval_calibration.json differs); rebuild the package from this B05 artifact")
+    meta05 = report05["metadata"]
+    if (meta05.get("method") != package.calibration.method
+            or package.manifest["calibration_version"] != package.calibration.calibration_version):
+        raise ci.ArtifactError("B05 report and packaged calibration disagree on the calibration method or version")
     return {"meta04": meta04, "report04": report04, "report05": report05, "package": package,
             "splits": splits, "manifest": manifest, "model_sha": model_sha, "dirs": (b04, b05, package_dir, snapshot)}
 
@@ -155,6 +165,18 @@ def predictions(inputs: Mapping[str, Any]) -> pd.DataFrame:
     return out
 
 
+def interval_for_row(lower: Any, upper: Any, package: Any) -> Optional[Dict[str, Any]]:
+    """The calibrated interval of a prediction row, or None when it was withheld.
+
+    Withheld bounds are None in Python but become NaN once stored in a DataFrame column, so both must count as
+    "no interval"; otherwise withheld rows leak into every rate that is computed over served rows."""
+    if lower is None or upper is None or not (math.isfinite(float(lower)) and math.isfinite(float(upper))):
+        return None
+    return {"lower_bound_usd": float(lower), "upper_bound_usd": float(upper),
+            "confidence_level": package.calibration.primary_level,
+            "calibration_version": package.calibration.calibration_version}
+
+
 def price_anomaly_section(pred: pd.DataFrame) -> Dict[str, Any]:
     served = pred[pred["price_status"] != "insufficient_data"]
     counts = {k: int((served["price_status"] == k).sum()) for k in ("within_range", "above_range", "below_range")}
@@ -201,9 +223,7 @@ def risk_validation(inputs: Mapping[str, Any], pred: pd.DataFrame) -> Dict[str, 
     test = pred.reset_index(drop=True)
     rng = np.random.default_rng(SEED)
     rows = test.to_dict("records")
-    intervals = [{"lower_bound_usd": lo, "upper_bound_usd": hi, "confidence_level": package.calibration.primary_level,
-                  "calibration_version": package.calibration.calibration_version}
-                 if lo is not None else None for lo, hi in zip(test["lower_usd"], test["upper_usd"])]
+    intervals = [interval_for_row(lo, hi, package) for lo, hi in zip(test["lower_usd"], test["upper_usd"])]
 
     # A. flag rates on unmodified rows -------------------------------------------------------
     base = _eval_rows(rows, support, intervals, prices=list(test["price_usd"]))
@@ -310,10 +330,7 @@ def ontology_evaluation(inputs: Mapping[str, Any], pred: pd.DataFrame) -> Dict[s
     for index, row in sample.iterrows():
         listing = _row_listing(row)
         listing["asking_price_usd"] = row["price_usd"]
-        interval = ({"lower_bound_usd": row["lower_usd"], "upper_bound_usd": row["upper_usd"],
-                     "confidence_level": package.calibration.primary_level,
-                     "calibration_version": package.calibration.calibration_version}
-                    if row["lower_usd"] is not None else None)
+        interval = interval_for_row(row["lower_usd"], row["upper_usd"], package)
         result = rules.evaluate_listing(listing, district_support=package.district_support, interval=interval)
         learned = None
         if index < SHAP_SAMPLE_ROWS:
