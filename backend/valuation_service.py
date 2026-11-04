@@ -1,4 +1,5 @@
 """C04 orchestration: versioned B03/B07 and B06 results -> C01 -> PostgreSQL audit."""
+from contextlib import nullcontext
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from statistics import mean, stdev
@@ -41,16 +42,23 @@ class ValuationService:
         self.coverage = coverage  # Load configuration at request time, not import/startup.
         self.clock = clock or (lambda: datetime.now(timezone.utc))
 
-    def assess(self, query, request_id):
+    def assess(self, query, request_id, *, subject=None, connection=None):
         now = self.clock()
         coverage = self.coverage or Coverage()
         district_path = os.environ.get('VALUATION_DISTRICTS_FILE')
         districts = DistrictRegistry(district_path) if district_path else None
-        with self.repository.connection() as connection:
-            connection.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
+        shared_connection = connection is not None
+        with (nullcontext(connection) if shared_connection else self.repository.connection()) as connection:
+            if not shared_connection:
+                connection.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
             connection.execute("SET LOCAL statement_timeout = '5s'")
             coverage.check(connection, query)
             records, dataset_version = self.repository.candidates(connection, query, now)
+            if subject is not None:
+                # Internal worker input, never a public request field. Exclude the subject
+                # and its entire authoritative duplicate group before cohort selection.
+                records = [r for r in records if r.id != subject.id and
+                           (not subject.dedup_group_id or r.dedup_group_id != subject.dedup_group_id)]
             # Source grouping is authoritative. Without grouping, each listing counts once.
             # PostGIS supplies an indexed superset; use B03's exact spherical
             # distance for both public statistics and the prediction cohort.
@@ -117,6 +125,9 @@ class ValuationService:
                 inference_provenance['rules_version'] = ontology_rules.RULES_VERSION
                 inference_provenance['ontology'] = ontology
                 inference_provenance['observed_dataset_version'] = dataset_version
+                if subject is not None:
+                    inference_provenance['subject_listing_id'] = str(subject.id)
+                    inference_provenance['excluded_duplicate_group'] = subject.dedup_group_id
                 interval = prediction.get('ml_prediction_interval')
                 if insufficient or area_reference or interval is None:
                     interval = dict(lower_bound_usd=None, upper_bound_usd=None, confidence_level=None,

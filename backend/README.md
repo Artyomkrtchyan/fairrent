@@ -1,6 +1,6 @@
 # Backend
 
-API, business rules, model integration, and review queue. Start with the API contract and a valuation stub.
+API, versioned C04/B07 valuations, B06 rules, and the protected C05 review queue.
 
 C01: [OpenAPI, synthetic examples and validation](../contracts/README.md). Final owner agreement for the business API is pending. C02 provides the implemented local environment and health/readiness endpoints.
 
@@ -20,8 +20,12 @@ mapping, date coverage and integration tests.
 ## Local development with Docker Compose
 
 C05 adds the protected reviewer queue, versioned decisions and revocable bearer
-sessions. See [C05 setup and remaining integration work](../docs/C05-review-workflow.md).
-Production signal generation awaits C04/B06; this foundation does not close C05.
+sessions. See [C05 setup and calibrated signal generation](../docs/C05-review-workflow.md).
+B06 consistency rules now feed the queue through a one-shot producer:
+`docker compose --profile signals run --build --rm signals` after publication.
+Apply `docker compose exec api python -m reviewer_auth migrate` before serving
+the new listing-detail code. Configure a verified B07 package to enable calibrated
+price anomalies; without one, the producer runs consistency checks only.
 
 Run these commands from the repository root. Docker Engine and Docker Compose are required.
 
@@ -110,3 +114,11 @@ B03 is used when `FAIRRENT_MODEL_PACKAGE` is empty; configure a B07 directory to
 serve calibrated estimates and learned factors with B06 explanations. Missing or
 corrupt configured packages abstain and never silently use B03. See
 [the C04 deployment and validation guide](../docs/C04-valuation-integration.md).
+
+
+C05 calibrated signal generation reuses C04 with an explicit trusted listing
+identity, excluding that listing and its duplicate group. With a verified B07
+package configured, `docker compose --profile signals run --build --rm signals`
+produces separate `price_anomaly` and `risk_evidence` findings and persists the
+valuation audit, signals and reviewer queue atomically. Without a package, price
+checks are withheld. See [C05 setup and evidence lifecycle](../docs/C05-review-workflow.md).

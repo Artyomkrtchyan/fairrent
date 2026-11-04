@@ -93,7 +93,8 @@ class BaselineGateway:
 class PackagedGateway:
     """B07 adapter. A configured but unavailable package never silently uses B03."""
 
-    def __init__(self, snapshot, *, dataset_version):
+    def __init__(self, snapshot, *, dataset_version, package=None):
+        self.package = package
         self.snapshot = snapshot
         self.dataset_version = dataset_version
 
@@ -110,7 +111,7 @@ class PackagedGateway:
         # Only the backend's already selected/deduplicated cohort reaches B07.
         comparables = self.snapshot[['price_usd', 'area_sqm']].to_dict('records')
         try:
-            result = inference.assess(model_input, comparables=comparables, now=as_of)
+            result = inference.assess(model_input, comparables=comparables, package=self.package, now=as_of)
         except inference.OutsideCoverageError as exc:
             raise OutsideCoverage(str(exc)) from exc
         result['selection_explanation'] = result['explanation']

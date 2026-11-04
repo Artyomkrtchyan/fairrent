@@ -36,7 +36,7 @@ def listings(query: Annotated[ListingQuery, Query()], repo=Depends(repository)):
 def listing_detail(id: UUID, request: Request, repo=Depends(repository)):
     if request.query_params:
         raise HTTPException(422, "This endpoint accepts no query parameters")
-    record = repo.get(id)
+    record, signals = repo.detail(id)
     if record is None:
         raise HTTPException(404, "Listing not found")
-    return ListingDetail(listing=public_listing(record))
+    return ListingDetail(listing=public_listing(record), signals=[s.model_dump(mode="json") for s in signals])

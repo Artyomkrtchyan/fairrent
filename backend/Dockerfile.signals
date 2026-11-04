@@ -1,0 +1,11 @@
+FROM python:3.10-slim
+WORKDIR /app
+COPY backend/requirements.txt backend/requirements-signals.txt ./backend/
+COPY ml/requirements.txt ml/requirements-inference.txt ./ml/
+RUN pip install --no-cache-dir -r backend/requirements-signals.txt
+COPY backend/*.py ./backend/
+COPY backend/sql/ ./backend/sql/
+COPY ml/inference.py ml/ontology_rules.py ml/intervals.py ml/attributions.py ml/train_compare.py ml/baseline.py ./ml/
+COPY data_pipeline/__init__.py data_pipeline/geography.py ./data_pipeline/
+COPY contracts/openapi.json ./contracts/openapi.json
+CMD ["python", "-m", "backend.generate_signals"]

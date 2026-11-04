@@ -69,7 +69,8 @@ def main():
     args = parser.parse_args()
     with psycopg.connect(connect_timeout=3) as connection:
         if args.command == "migrate":
-            connection.execute((Path(__file__).parent / "sql/003_review_workflow.sql").read_text(encoding="utf-8"))
+            for name in ("003_review_workflow.sql", "004_listing_signals.sql"):
+                connection.execute((Path(__file__).parent / "sql" / name).read_text(encoding="utf-8"))
         elif args.command == "issue":
             session_id, token = issue_session(connection, args.actor_id, hours=args.hours)
         else:

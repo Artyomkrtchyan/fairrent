@@ -94,3 +94,21 @@ class ListingRepository:
                 "SELECT document FROM api_listing_projection WHERE id = %s", (listing_id,)
             ).fetchone()
         return ListingData.model_validate(row[0]) if row else None
+
+    def detail(self, listing_id):
+        """Read current listing and published signals from one database snapshot."""
+        try:
+            from .review_models import RiskSignal
+        except ImportError:
+            from review_models import RiskSignal
+        with psycopg.connect(connect_timeout=3) as connection:
+            connection.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+            connection.execute("SET LOCAL statement_timeout = '5s'")
+            row = connection.execute("SELECT document FROM api_listing_projection WHERE id=%s", (listing_id,)).fetchone()
+            if row is None:
+                return None, []
+            signals = connection.execute(
+                "SELECT document FROM api_listing_signals WHERE listing_id=%s AND active ORDER BY id",
+                (listing_id,),
+            ).fetchall()
+        return ListingData.model_validate(row[0]), [RiskSignal.model_validate(s[0]) for s in signals]
