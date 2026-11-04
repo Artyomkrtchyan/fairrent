@@ -1,0 +1,4 @@
+-r ../backend/requirements-dev.txt
+# Browser runtime is isolated from the API image and component CI.
+-r ../ml/requirements-inference.txt
+cloakbrowser==0.7.0
