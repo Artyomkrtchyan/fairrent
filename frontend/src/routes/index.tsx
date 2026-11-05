@@ -13,7 +13,7 @@ import { useState } from "react";
 
 import { Money, RateNote } from "@/components/ui-bits";
 
-import { ListingPhoto } from "@/components/ListingPhoto";
+import { PropertyPhoto } from "@/components/PropertyPhoto";
 import { getListings } from "@/api/listings";
 import { apiMode } from "@/api/client";
 import type { components } from "@/api/schema";
@@ -416,7 +416,7 @@ function ListingCard({ listing }: { listing: Listing }) {
         state={{ fromCatalogue: true }}
         className="card-surface block overflow-hidden transition hover:border-primary"
       >
-        <ListingPhoto photoKey={null} title={title} size="card" />
+        <PropertyPhoto url={listing.thumbnail_url} title={title} card />
 
         <div className="p-4">
           <h3 className="font-sans text-base font-bold">{title}</h3>

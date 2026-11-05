@@ -27,8 +27,12 @@ def publish_listing(connection, record: ListingData):
     Public UUIDs must remain stable across updates and ingestion schema changes.
     """
     record = ListingData.model_validate(
-        record.model_dump() if isinstance(record, ListingData) else record
+        dict(record.model_dump(), image_urls=record.image_urls)
+        if isinstance(record, ListingData) else record
     )
+    document = record.model_dump(mode="json")
+    if record.image_urls:
+        document["image_urls"] = [str(url) for url in record.image_urls]
     result = connection.execute("""
         INSERT INTO api_listing_projection
             (id, source, external_id, status, district_id, price, area, rooms,
@@ -46,7 +50,7 @@ def publish_listing(connection, record: ListingData):
           record.district_id, record.price_monthly_normalized, record.area_sqm,
           record.rooms, record.latitude, record.longitude,
           record.published_at or record.first_seen_at,
-          Jsonb(record.model_dump(mode="json")))).fetchone()
+          Jsonb(document))).fetchone()
     if result is None:
         raise ValueError("Public UUID already belongs to another source listing")
 

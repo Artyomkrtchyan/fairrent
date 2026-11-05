@@ -4,6 +4,8 @@ from datetime import timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, localcontext
 from uuid import UUID, uuid5
 
+from pydantic import HttpUrl, ValidationError
+
 try:
     from .listing_models import ListingData
     from .geographic_features import DISTRICTS, normalize_district
@@ -36,6 +38,23 @@ def text(value):
     return value if value and value.lower() != "unknown" else None
 
 
+def photo_urls(value):
+    if not isinstance(value, list):
+        return []
+    photos = []
+    for candidate in value:
+        if not isinstance(candidate, str):
+            continue
+        try:
+            url = HttpUrl(candidate)
+        except ValidationError:
+            continue
+        if (url.scheme == "https" and url.host == "img.list.am"
+                and url.username is None and url.password is None and url not in photos):
+            photos.append(url)
+    return photos
+
+
 def positive(value):
     try:
         result = Decimal(str(value))
@@ -64,6 +83,7 @@ def utc(value):
 
 def adapt_source(row) -> ListingData:
     raw = row.get("raw_data") or {}
+    photos = photo_urls(raw.get("images"))
     if not isinstance(raw, dict):
         raw = {}
     if row["source"] != "list.am":
@@ -136,5 +156,5 @@ def adapt_source(row) -> ListingData:
         published_at=None, first_seen_at=first_seen, last_seen_at=last_seen,
         status="active" if row["is_active"] else "inactive", dedup_group_id=None,
         renovation=None, building_type=building if building in {"monolith", "stone", "panel"} else None,
-        building_type_raw=building, thumbnail_url=None,
+        building_type_raw=building, thumbnail_url=next(iter(photos), None), image_urls=photos,
     )

@@ -39,4 +39,5 @@ def listing_detail(id: UUID, request: Request, repo=Depends(repository)):
     record, signals = repo.detail(id)
     if record is None:
         raise HTTPException(404, "Listing not found")
-    return ListingDetail(listing=public_listing(record), signals=[s.model_dump(mode="json") for s in signals])
+    return ListingDetail(listing=public_listing(record),
+                         signals=[s.model_dump(mode="json") for s in signals], image_urls=record.image_urls)
