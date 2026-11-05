@@ -1,7 +1,9 @@
+import { useMutation } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { Money, PageHeader, RateNote } from "@/components/ui-bits";
-import { assessLocation, YEREVAN_BOUNDS, type AreaAssessment } from "@/lib/data";
+import { requestValuation } from "@/api/valuations";
+import { MarketAssessment } from "@/components/MarketAssessment";
+import { Money, PageHeader } from "@/components/ui-bits";
 
 export const Route = createFileRoute("/valuation")({
   head: () => ({
@@ -10,12 +12,12 @@ export const Route = createFileRoute("/valuation")({
       {
         name: "description",
         content:
-          "Get an area rent reference for Yerevan coordinates, optionally refined with apartment details. Synthetic demo.",
+          "Get an area rent reference for Yerevan coordinates, optionally refined with apartment details.",
       },
       { property: "og:title", content: "Location rent assessment — FairRent" },
       {
         property: "og:description",
-        content: "Area reference rents for a Yerevan location. Synthetic demo data.",
+        content: "Area reference rents for a Yerevan location.",
       },
     ],
   }),
@@ -24,47 +26,54 @@ export const Route = createFileRoute("/valuation")({
 
 const field = "mt-1 w-full rounded-md border bg-card px-3 py-2 text-sm";
 
-function Valuation() {
+export function Valuation() {
   const [lat, setLat] = useState("40.1872");
   const [lng, setLng] = useState("44.5152");
   const [rooms, setRooms] = useState("");
   const [area, setArea] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [res, setRes] = useState<(AreaAssessment & { withArea: boolean }) | null>(null);
+  const valuation = useMutation({ mutationFn: requestValuation, retry: false });
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const la = Number(lat),
-      ln = Number(lng),
-      b = YEREVAN_BOUNDS;
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (valuation.isPending) return;
+
+    valuation.reset();
+    const latitude = Number(lat);
+    const longitude = Number(lng);
+    const areaSqm = area === "" ? undefined : Number(area);
     if (
-      !lat ||
-      !lng ||
-      Number.isNaN(la) ||
-      Number.isNaN(ln) ||
-      la < b.latMin ||
-      la > b.latMax ||
-      ln < b.lngMin ||
-      ln > b.lngMax
+      !lat.trim() ||
+      !lng.trim() ||
+      !Number.isFinite(latitude) ||
+      !Number.isFinite(longitude) ||
+      Math.abs(latitude) > 90 ||
+      Math.abs(longitude) > 180
     ) {
-      setError(
-        `Enter coordinates inside Yerevan (latitude ${b.latMin}–${b.latMax}, longitude ${b.lngMin}–${b.lngMax}).`,
-      );
-      setRes(null);
+      setError("Enter a valid latitude and longitude.");
+      return;
+    }
+    if (areaSqm !== undefined && (!Number.isFinite(areaSqm) || areaSqm <= 0)) {
+      setError("Floor area must be greater than zero.");
       return;
     }
     setError(null);
-    setRes({
-      ...assessLocation(la, ln, area ? +area : undefined, rooms ? +rooms : undefined),
-      withArea: !!area,
+    valuation.mutate({
+      latitude,
+      longitude,
+      radius_m: 1000,
+      window_days: 30,
+      ...(areaSqm !== undefined ? { area_sqm: areaSqm } : {}),
+      ...(rooms ? { rooms: Number(rooms) } : {}),
     });
   };
 
+  const statistics = valuation.data?.observed_market_statistics;
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <PageHeader
         title="Location assessment"
-        intro="Coordinates alone give an area reference — typical rents nearby — not a valuation of a specific apartment. Add floor area for a property-specific indicative range."
+        intro="Use coordinates for an area reference. Add floor area and room count for a property assessment."
       />
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <form onSubmit={submit} className="card-surface space-y-3 p-5" noValidate>
@@ -108,95 +117,64 @@ function Valuation() {
               <input
                 className={field}
                 type="number"
-                min={10}
-                max={500}
+                min={0}
+                step="any"
                 value={area}
                 onChange={(e) => setArea(e.target.value)}
               />
             </label>
           </fieldset>
-          {error && (
+          {(error || valuation.error) && (
             <p role="alert" className="text-sm font-semibold text-destructive">
-              {error}
+              {error ?? valuation.error?.message}
             </p>
           )}
-          <button className="w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-            Assess location
+          <button
+            type="submit"
+            disabled={valuation.isPending}
+            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+          >
+            {valuation.isPending ? "Assessing location…" : "Assess location"}
           </button>
         </form>
 
         <section aria-live="polite" className="space-y-4">
-          {!res && (
+          {valuation.isPending && <p role="status">Loading market evidence…</p>}
+          {!valuation.data && !valuation.isPending && !valuation.error && !error && (
             <div className="card-surface p-6 text-sm text-muted-foreground">
               Results will appear here.
             </div>
           )}
-          {res && (
+          {valuation.data && statistics && (
             <>
-              <div className="card-surface p-5">
-                <p className="text-xs font-bold uppercase text-muted-foreground">
-                  Area reference · not a valuation
-                </p>
-                <h2 className="mt-1 text-xl font-semibold">
-                  Typical rents within {res.radiusKm} km
+              <MarketAssessment estimate={valuation.data} />
+              <section className="card-surface p-5" aria-labelledby="observed-rents-title">
+                <h2 id="observed-rents-title" className="text-lg font-semibold">
+                  Observed rents
                 </h2>
-                {res.sampleSize === 0 ? (
-                  <p className="mt-2 text-sm">
-                    No synthetic listings near this point — no reference available.
-                  </p>
-                ) : (
-                  <dl className="mt-3 grid grid-cols-3 gap-3 text-sm">
-                    <div>
-                      <dt className="text-xs text-muted-foreground">Sample size</dt>
-                      <dd className="text-xl font-bold text-heading">{res.sampleSize}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-muted-foreground">Median rent</dt>
-                      <dd className="font-bold">
-                        {res.medianRentUsd && <Money usd={res.medianRentUsd} />}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-muted-foreground">Median per m²</dt>
-                      <dd className="font-bold">
-                        {res.medianPerM2Usd && <Money usd={res.medianPerM2Usd} suffix="/m²" />}
-                      </dd>
-                    </div>
-                  </dl>
-                )}
-                {res.sampleSize > 0 && res.sampleSize < 5 && (
-                  <p className="mt-2 text-xs font-semibold text-above">
-                    Small sample — treat with caution.
-                  </p>
-                )}
-              </div>
-              <div className="card-surface p-5">
-                <p className="text-xs font-bold uppercase text-muted-foreground">
-                  Property-specific assessment
-                </p>
-                {res.property ? (
-                  <>
-                    <p className="mt-1 text-2xl font-bold text-heading">
-                      <Money usd={res.property.interval[0]} suffix="" /> –{" "}
-                      <Money usd={res.property.interval[1]} />
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Indicative range from area median per m² × your floor area. Condition, floor
-                      and building quality are not accounted for.
-                    </p>
-                  </>
-                ) : (
-                  <p className="mt-1 text-sm">
-                    {res.withArea
-                      ? "Too few comparable listings nearby for a property-specific range."
-                      : "Add floor area to get an indicative range for a specific apartment. Coordinates alone cannot value a property."}
-                  </p>
-                )}
-              </div>
-              <RateNote />
-              <p className="text-xs text-muted-foreground">
-                Computed from synthetic demo listings only.
-              </p>
+                <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <dt>Mean monthly rent</dt>
+                    <dd>
+                      {statistics.cluster_mean_price_usd === null ? (
+                        "Not available"
+                      ) : (
+                        <Money usd={statistics.cluster_mean_price_usd} suffix="/ month" />
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Monthly rent standard deviation</dt>
+                    <dd>
+                      {statistics.observed_price_std_dev_usd === null ? (
+                        "Not available"
+                      ) : (
+                        <Money usd={statistics.observed_price_std_dev_usd} suffix="/ month" />
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+              </section>
             </>
           )}
         </section>
