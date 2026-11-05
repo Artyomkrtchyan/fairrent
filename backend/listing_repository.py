@@ -30,7 +30,9 @@ def publish_listing(connection, record: ListingData):
         dict(record.model_dump(), image_urls=record.image_urls)
         if isinstance(record, ListingData) else record
     )
-    document = dict(record.model_dump(mode="json"), image_urls=[str(url) for url in record.image_urls])
+    document = record.model_dump(mode="json")
+    if record.image_urls:
+        document["image_urls"] = [str(url) for url in record.image_urls]
     result = connection.execute("""
         INSERT INTO api_listing_projection
             (id, source, external_id, status, district_id, price, area, rooms,
