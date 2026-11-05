@@ -111,6 +111,7 @@ def align(schemas, paths, fixtures):
     schemas['RiskSignal']['required'].append('explanation')
     schemas['ListingDetail']['properties']['estimate'] = null(ref('Estimate'))
     schemas['ListingDetail']['required'].append('estimate')
+    schemas['ListingDetail']['properties']['image_urls'] = {'type': 'array', 'items': uri}
     schemas['Review']['properties'].update(listing=ref('Listing'), signals={'type':'array','items':ref('RiskSignal')})
     schemas['Review']['required'] += ['listing','signals']
     schemas['MarketIndex']['properties']['freshness'] = ref('Freshness')

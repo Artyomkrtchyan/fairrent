@@ -288,6 +288,7 @@ export interface components {
             listing: components["schemas"]["Listing"];
             signals: components["schemas"]["RiskSignal"][];
             estimate: components["schemas"]["Estimate"] | null;
+            image_urls?: string[];
         };
         ReviewEvent: {
             /** @enum {string} */

@@ -140,7 +140,7 @@ def extract_address(soup: BeautifulSoup) -> Optional[str]:
 
 
 def extract_images(soup: BeautifulSoup) -> list[str]:
-    """Collect explicit listing image URLs, preferring the page's OpenGraph image."""
+    """Collect the listing cover and photos from its gallery, in display order."""
     urls = []
     for meta in soup.find_all("meta", attrs={"property": re.compile(r"^og:image$", re.I)}):
         value = meta.get("content")
@@ -150,6 +150,20 @@ def extract_images(soup: BeautifulSoup) -> list[str]:
         value = meta.get("content")
         if value and value.strip() and value.strip() not in urls:
             urls.append(value.strip())
+    gallery = soup.select(
+        '#gallery img, #photos img, .gallery img, .item-photos img, [itemprop="image"], '
+        '#gallery a[href], #photos a[href], .gallery a[href], .item-photos a[href]'
+    )
+    for element in gallery:
+        for attr in ("href", "data-src", "src", "content"):
+            value = element.get(attr)
+            if isinstance(value, str):
+                value = value.strip()
+                if value.startswith("//img.list.am/"):
+                    value = "https:" + value
+                if value.startswith("https://img.list.am/f/") and value not in urls:
+                    urls.append(value)
+                    break
     return urls
 
 

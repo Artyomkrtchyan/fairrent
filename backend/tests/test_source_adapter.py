@@ -105,3 +105,20 @@ def test_long_term_quotes_remain_eligible(source_row, period):
     source_row.update(original_period=period)
     expected = 50 if period in {"year", "yearly", "annual"} else 600
     assert adapt_source(source_row).price_monthly_normalized == expected
+
+
+def test_source_gallery_survives_publication_without_expanding_catalogue(source_row):
+    from unittest.mock import Mock
+
+    from backend.listing_models import ListingData, public_listing
+    from backend.listing_repository import publish_listing
+
+    photos = ["https://img.list.am/f/1/1.webp", "https://img.list.am/f/2/2.webp"]
+    source_row["raw_data"]["images"] = [photos[0], "https://example.com/photo", *photos]
+    record = adapt_source(source_row)
+    connection = Mock()
+    publish_listing(connection, record)
+    stored = connection.execute.call_args.args[1][-1].obj
+    assert stored["image_urls"] == photos
+    assert stored["thumbnail_url"] == photos[0]
+    assert "image_urls" not in public_listing(ListingData.model_validate(stored)).model_dump()

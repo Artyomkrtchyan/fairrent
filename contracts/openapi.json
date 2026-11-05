@@ -2110,6 +2110,13 @@
                 "type": "null"
               }
             ]
+          },
+          "image_urls": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            }
           }
         }
       },

@@ -75,3 +75,14 @@ def test_parser_does_not_truncate_fractional_rooms():
     assert r["rooms_count"] == 2.5 and r["floor"] == 3.5     # validation then marks them unknown
     r = parse_listing_html('<div class="pattr">Rooms: 2</div>', "9")
     assert r["rooms_count"] == 2 and isinstance(r["rooms_count"], int)
+
+
+def test_gallery_excludes_images_outside_listing_gallery():
+    parsed = parse_listing_html(
+        '<meta property="og:image" content="https://img.list.am/f/1/1.webp">'
+        '<div id="gallery"><img src="https://img.list.am/f/1/1.webp">'
+        '<a href="https://img.list.am/f/2/2.webp"><img src="https://img.list.am/t/2/2.webp"></a>'
+        '</div><img src="https://img.list.am/f/3/3.webp">',
+        "123",
+    )
+    assert parsed["images"] == ["https://img.list.am/f/1/1.webp", "https://img.list.am/f/2/2.webp"]

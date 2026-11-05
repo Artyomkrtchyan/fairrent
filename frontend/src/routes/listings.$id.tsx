@@ -41,7 +41,7 @@ function ListingPage() {
     select: (state) => state.location.state.fromCatalogue === true,
   });
 
-  const { listing, signals, estimate } = Route.useLoaderData();
+  const { listing, signals, estimate, image_urls } = Route.useLoaderData();
 
   const title = listing.title || "Apartment in Yerevan";
 
@@ -74,7 +74,12 @@ function ListingPage() {
       <h1 className="mt-4 text-3xl font-semibold sm:text-4xl">{title}</h1>
 
       <p className="mt-2 text-muted-foreground">{listing.address ?? "Address unavailable"}</p>
-      <PropertyPhoto key={listing.id} url={listing.thumbnail_url} title={title} />
+      <PropertyPhoto
+        key={listing.id}
+        url={listing.thumbnail_url}
+        gallery={image_urls ?? []}
+        title={title}
+      />
 
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-2">
         <section className="card-surface p-5" aria-labelledby="property-information-title">
