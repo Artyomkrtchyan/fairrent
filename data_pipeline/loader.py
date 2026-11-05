@@ -141,6 +141,9 @@ def process_scraped_item(session: Session, data: dict, normalized: dict,
             if data.get(field) is not None:
                 setattr(listing, field, data[field])
 
+    previous_photos = (listing.raw_data or {}).get("images")
+    if previous_photos and not data.get("images"):
+        data = {**data, "images": previous_photos}
     listing.raw_data = data
     listing.last_seen_at = now
     listing.last_seen_run_id = run_id

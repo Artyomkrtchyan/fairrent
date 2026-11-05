@@ -48,6 +48,7 @@ class ListingData(ContractModel):
     building_type: Literal["monolith", "stone", "panel"] | None
     building_type_raw: str | None = Field(min_length=1)
     thumbnail_url: HttpUrl | None
+    image_urls: list[HttpUrl] = Field(default_factory=list, exclude=True)
 
     @model_validator(mode="after")
     def check_evidence(self):
@@ -101,6 +102,7 @@ class ListingDetail(ContractModel):
     listing: ListingResponse
     signals: list[dict] = Field(default_factory=list)
     estimate: None = None
+    image_urls: list[HttpUrl] = Field(default_factory=list)
 
 
 class ListingQuery(ContractModel):
