@@ -1,0 +1,577 @@
+{
+  "evidence_version": "b08-v1",
+  "limitations": [
+    "The split is not chronological (one-date scrape): metrics are in-time estimates, optimistic for future listings, and real interval coverage can be lower after the market shifts.",
+    "Intervals are wide (median width 0.93 of the price versus the provisional target 0.22); they reflect how noisy asking rents are given the available features.",
+    "Asking prices only; no signed rents. Renovation is always null in the A06 export, so it carries no signal.",
+    "Coverage is a marginal average, not a guarantee per listing, district or price level.",
+    "Listings from the same building can sit in both calibration and test, which makes coverage slightly optimistic.",
+    "The price-anomaly rule flags only large deviations: raising an asking price to 1.5x its actual value is flagged for 57% of listings, and 2x for 94%.",
+    "Rule validation uses injected synthetic defects, and near-perfect detection of them is expected by construction: it shows the rules fire as designed, not that real errors look like these. No fraud labels exist, so fraud precision, recall and false positive rate on real listings are unmeasured and must not be inferred from this card.",
+    "Description-consistency rules cannot be evaluated on real text: the scrape parses fields from the title.",
+    "The district check compares labels with where other listings carry that label (no district polygons); it cannot tell whether the label or the pin is wrong.",
+    "Proximity price differences are descriptive and confounded by district, area and building quality.",
+    "Thresholds (3 comparables, 60 days, coverage box, rule parameters) are provisional and await owner confirmation."
+  ],
+  "price_anomaly": {
+    "counts": {
+      "above_range": 119,
+      "below_range": 8,
+      "within_range": 2266
+    },
+    "interpretation": "Share of ordinary held-out listings whose asking price falls outside the calibrated interval. It is about 1 - coverage by construction and is NOT a fraud rate.",
+    "outside_rate": 0.0531,
+    "served_rows": 2393,
+    "withheld_rows": 31
+  },
+  "price_error": {
+    "abstention": {
+      "coverage_if_served_anyway": {
+        "coverage": 0.7419,
+        "mean_width_ratio": 0.925,
+        "mean_width_usd": 2389.62,
+        "median_width_ratio": 0.925,
+        "median_width_usd": 3261.18,
+        "n": 31
+      },
+      "n": 31,
+      "note": "These rows return null interval fields and price_status=insufficient_data.",
+      "reason_counts": {
+        "area_outside_training_range": 23,
+        "rows_withheld": 31,
+        "sparse_local_training_data": 8
+      },
+      "share": 0.0128
+    },
+    "b04_limitations": [
+      "Split is NOT chronological: the snapshot has too few observation dates. Train, validation and test are random duplicate-group-isolated samples of the same period.",
+      "Metrics estimate in-time accuracy and are optimistic compared with pricing future listings; do not present them as forward-looking performance.",
+      "The serving decision is provisional until the A and B owners agree this fallback (docs/contract-semantics.md) and a temporal holdout is possible."
+    ],
+    "b05_limitations": [
+      "The split is NOT chronological (one-date scrape), so coverage is measured on a random duplicate-group-isolated sample of the same period. Future listings will be drawn from a shifted market and real coverage can be lower. Re-calibrate on a chronological split.",
+      "Intervals describe the ASKING price of listings, not what tenants finally pay.",
+      "Coverage is a marginal average over served rows under exchangeability of calibration and serving rows. It is not a guarantee for any single listing, district or price level; see conditional_coverage for the observed spread.",
+      "Calibration reuses the validation split that B04 used for CatBoost early stopping, so validation residuals can be slightly optimistic; compare test_to_validation_median_ae_ratio.",
+      "Reposts and identical units in one building were merged for splitting, but listings from the same tower can still sit in calibration and test, which makes in-sample coverage optimistic.",
+      "Intervals are withheld for coordinate-only requests, areas outside the training range and sparse locations; they are not calibrated for those cases and must not be replaced by an observed standard deviation.",
+      "Blanking optional inputs keeps the same quantile, but the true error grows; see scenarios.missing_features for the coverage drop before relying on sparse requests.",
+      "Width is large relative to price because rents are noisy given the available features (no renovation or building-type data); the provisional width target is reported, not met by tuning."
+    ],
+    "baseline_coverage": {
+      "abstained": 3,
+      "answered": 2421,
+      "note": "abstentions = fewer than 3 train comparables within 3 km"
+    },
+    "conditional_coverage_by_area_bin": [
+      {
+        "coverage": 0.9653,
+        "group": "Q1",
+        "mean_width_ratio": 0.925,
+        "mean_width_usd": 885.81,
+        "median_width_ratio": 0.925,
+        "median_width_usd": 848.64,
+        "n": 605,
+        "small_sample_warning": false
+      },
+      {
+        "coverage": 0.9627,
+        "group": "Q2",
+        "mean_width_ratio": 0.925,
+        "mean_width_usd": 987.87,
+        "median_width_ratio": 0.925,
+        "median_width_usd": 961.32,
+        "n": 456,
+        "small_sample_warning": false
+      },
+      {
+        "coverage": 0.9437,
+        "group": "Q3",
+        "mean_width_ratio": 0.925,
+        "mean_width_usd": 1127.56,
+        "median_width_ratio": 0.925,
+        "median_width_usd": 1078.73,
+        "n": 764,
+        "small_sample_warning": false
+      },
+      {
+        "coverage": 0.9116,
+        "group": "Q4",
+        "mean_width_ratio": 0.925,
+        "mean_width_usd": 1513.83,
+        "median_width_ratio": 0.925,
+        "median_width_usd": 1428.42,
+        "n": 430,
+        "small_sample_warning": false
+      },
+      {
+        "coverage": 0.942,
+        "group": "top5pct",
+        "mean_width_ratio": 0.925,
+        "mean_width_usd": 2413.58,
+        "median_width_ratio": 0.925,
+        "median_width_usd": 2287.73,
+        "n": 138,
+        "small_sample_warning": false
+      }
+    ],
+    "decision": "ml",
+    "decision_rule": "ML only if MAE < baseline MAE and median AE <= baseline median AE on commonly answered test rows",
+    "evidence_level": "non-temporal grouped-random split: in-time estimate, optimistic, not forward-looking; provisional until A/B owners agree the fallback",
+    "feature_importance": [
+      {
+        "feature": "area_sqm",
+        "importance": 35.77
+      },
+      {
+        "feature": "distance_center_m",
+        "importance": 13.88
+      },
+      {
+        "feature": "total_floors",
+        "importance": 8.45
+      },
+      {
+        "feature": "latitude",
+        "importance": 6.95
+      },
+      {
+        "feature": "distance_university_m",
+        "importance": 6.83
+      },
+      {
+        "feature": "floor",
+        "importance": 6.35
+      },
+      {
+        "feature": "rooms",
+        "importance": 5.74
+      },
+      {
+        "feature": "distance_metro_m",
+        "importance": 5.5
+      },
+      {
+        "feature": "longitude",
+        "importance": 5.39
+      },
+      {
+        "feature": "district",
+        "importance": 3.86
+      },
+      {
+        "feature": "utilities_included",
+        "importance": 1.26
+      },
+      {
+        "feature": "rooms_missing",
+        "importance": 0.02
+      },
+      {
+        "feature": "area_sqm_missing",
+        "importance": 0.0
+      },
+      {
+        "feature": "distance_metro_m_missing",
+        "importance": 0.0
+      },
+      {
+        "feature": "distance_university_m_missing",
+        "importance": 0.0
+      },
+      {
+        "feature": "building_type",
+        "importance": 0.0
+      }
+    ],
+    "intervals": {
+      "0.80": {
+        "coverage": 0.794,
+        "median_width_ratio": 0.5151,
+        "median_width_usd": 583.55,
+        "n_served": 2393,
+        "nominal": 0.8
+      },
+      "0.90": {
+        "coverage": 0.8964,
+        "median_width_ratio": 0.7082,
+        "median_width_usd": 802.31,
+        "n_served": 2393,
+        "nominal": 0.9
+      },
+      "0.95": {
+        "coverage": 0.9469,
+        "median_width_ratio": 0.925,
+        "median_width_usd": 1048.02,
+        "n_served": 2393,
+        "nominal": 0.95
+      }
+    },
+    "leakage_passed": true,
+    "neighborhoods": [
+      {
+        "baseline": {
+          "mae": 434.85,
+          "mape_pct": 26.45,
+          "median_ae": 296.11,
+          "n": 1051,
+          "r2": 0.3904,
+          "rmse": 664.83
+        },
+        "catboost": {
+          "mae": 326.18,
+          "mape_pct": 19.72,
+          "median_ae": 218.89,
+          "n": 1051,
+          "r2": 0.6946,
+          "rmse": 470.57
+        },
+        "district": "Kentron",
+        "n_test": 1051,
+        "small_sample_warning": false
+      },
+      {
+        "baseline": {
+          "mae": 306.32,
+          "mape_pct": 24.33,
+          "median_ae": 202.6,
+          "n": 615,
+          "r2": -3.6579,
+          "rmse": 1061.33
+        },
+        "catboost": {
+          "mae": 213.15,
+          "mape_pct": 15.92,
+          "median_ae": 131.16,
+          "n": 615,
+          "r2": 0.4263,
+          "rmse": 372.47
+        },
+        "district": "Arabkir",
+        "n_test": 615,
+        "small_sample_warning": false
+      },
+      {
+        "baseline": {
+          "mae": 192.23,
+          "mape_pct": 19.03,
+          "median_ae": 146.91,
+          "n": 156,
+          "r2": 0.755,
+          "rmse": 258.08
+        },
+        "catboost": {
+          "mae": 167.24,
+          "mape_pct": 14.35,
+          "median_ae": 99.18,
+          "n": 156,
+          "r2": 0.4281,
+          "rmse": 394.26
+        },
+        "district": "Ajapnyak",
+        "n_test": 156,
+        "small_sample_warning": false
+      },
+      {
+        "baseline": {
+          "mae": 189.98,
+          "mape_pct": 18.49,
+          "median_ae": 177.5,
+          "n": 140,
+          "r2": 0.4593,
+          "rmse": 232.48
+        },
+        "catboost": {
+          "mae": 136.43,
+          "mape_pct": 12.25,
+          "median_ae": 112.25,
+          "n": 140,
+          "r2": 0.6073,
+          "rmse": 198.14
+        },
+        "district": "Davtashen",
+        "n_test": 140,
+        "small_sample_warning": false
+      },
+      {
+        "baseline": {
+          "mae": 222.85,
+          "mape_pct": 19.97,
+          "median_ae": 172.25,
+          "n": 108,
+          "r2": 0.4172,
+          "rmse": 288.59
+        },
+        "catboost": {
+          "mae": 167.57,
+          "mape_pct": 14.85,
+          "median_ae": 120.72,
+          "n": 108,
+          "r2": 0.5307,
+          "rmse": 258.97
+        },
+        "district": "Kanaker-Zeytun",
+        "n_test": 108,
+        "small_sample_warning": false
+      },
+      {
+        "baseline": {
+          "mae": 191.9,
+          "mape_pct": 23.2,
+          "median_ae": 143.02,
+          "n": 94,
+          "r2": -0.2196,
+          "rmse": 243.86
+        },
+        "catboost": {
+          "mae": 114.7,
+          "mape_pct": 13.05,
+          "median_ae": 87.42,
+          "n": 94,
+          "r2": 0.4937,
+          "rmse": 157.12
+        },
+        "district": "Nor Nork",
+        "n_test": 94,
+        "small_sample_warning": false
+      },
+      {
+        "baseline": {
+          "mae": 200.19,
+          "mape_pct": 22.48,
+          "median_ae": 146.82,
+          "n": 84,
+          "r2": -0.9462,
+          "rmse": 257.29
+        },
+        "catboost": {
+          "mae": 126.01,
+          "mape_pct": 13.6,
+          "median_ae": 108.97,
+          "n": 84,
+          "r2": 0.3002,
+          "rmse": 154.28
+        },
+        "district": "Shengavit",
+        "n_test": 84,
+        "small_sample_warning": false
+      },
+      {
+        "baseline": {
+          "mae": 211.84,
+          "mape_pct": 20.63,
+          "median_ae": 189.33,
+          "n": 74,
+          "r2": 0.1807,
+          "rmse": 257.22
+        },
+        "catboost": {
+          "mae": 114.9,
+          "mape_pct": 11.19,
+          "median_ae": 98.84,
+          "n": 74,
+          "r2": 0.7481,
+          "rmse": 142.62
+        },
+        "district": "Malatia-Sebastia",
+        "n_test": 74,
+        "small_sample_warning": false
+      },
+      {
+        "baseline": {
+          "mae": 235.42,
+          "mape_pct": 23.97,
+          "median_ae": 213.1,
+          "n": 48,
+          "r2": -0.5931,
+          "rmse": 292.89
+        },
+        "catboost": {
+          "mae": 176.99,
+          "mape_pct": 19.04,
+          "median_ae": 116.97,
+          "n": 48,
+          "r2": -0.1331,
+          "rmse": 247.01
+        },
+        "district": "Avan",
+        "n_test": 48,
+        "small_sample_warning": false
+      },
+      {
+        "baseline": {
+          "mae": 244.43,
+          "mape_pct": 34.33,
+          "median_ae": 177.34,
+          "n": 29,
+          "r2": -4.0789,
+          "rmse": 336.24
+        },
+        "catboost": {
+          "mae": 90.76,
+          "mape_pct": 13.15,
+          "median_ae": 56.23,
+          "n": 29,
+          "r2": 0.0526,
+          "rmse": 145.22
+        },
+        "district": "Erebuni",
+        "n_test": 29,
+        "small_sample_warning": true
+      },
+      {
+        "baseline": {
+          "mae": 431.02,
+          "mape_pct": 20.33,
+          "median_ae": 172.43,
+          "n": 13,
+          "r2": 0.2213,
+          "rmse": 965.49
+        },
+        "catboost": {
+          "mae": 379.6,
+          "mape_pct": 17.71,
+          "median_ae": 143.95,
+          "n": 13,
+          "r2": 0.3631,
+          "rmse": 873.16
+        },
+        "district": "Nork-Marash",
+        "n_test": 13,
+        "small_sample_warning": true
+      },
+      {
+        "baseline": {
+          "mae": 165.37,
+          "mape_pct": 29.28,
+          "median_ae": 98.7,
+          "n": 9,
+          "r2": -2.0533,
+          "rmse": 219.4
+        },
+        "catboost": {
+          "mae": 102.62,
+          "mape_pct": 17.38,
+          "median_ae": 47.2,
+          "n": 9,
+          "r2": -0.1612,
+          "rmse": 135.3
+        },
+        "district": "unresolved",
+        "n_test": 12,
+        "small_sample_warning": true
+      }
+    ],
+    "source": "B04 report.json and B05 b05_report.json (not recomputed)",
+    "split_rows": {
+      "test": 2424,
+      "train": 11186,
+      "validation": 2427
+    },
+    "targets": {
+      "coverage_target": {
+        "applies_to_nominal": 0.95,
+        "met": true,
+        "observed_at_nominal_0.95": 0.9469,
+        "value": 0.92
+      },
+      "note": "Provisional targets from ml/CONTRACT.md 4.C; reported against, not used to tune anything.",
+      "width_ratio_target": {
+        "met": false,
+        "observed_median_width_ratio_at_0.95": 0.925,
+        "value": 0.22
+      }
+    },
+    "temporal_split": false,
+    "test_all_rows": {
+      "catboost": {
+        "mae": 241.24,
+        "mape_pct": 16.99,
+        "median_ae": 147.1,
+        "n": 2424,
+        "r2": 0.6947,
+        "rmse": 393.14
+      },
+      "naive_district_median_ppsqm": {
+        "mae": 333.56,
+        "mape_pct": 24.85,
+        "median_ae": 216.12,
+        "n": 2424,
+        "r2": 0.0019,
+        "rmse": 710.88
+      }
+    },
+    "test_common_rows": {
+      "baseline_b03_comparable_median": {
+        "mae": 331.3,
+        "mape_pct": 24.27,
+        "median_ae": 216.45,
+        "n": 2421,
+        "r2": 0.0033,
+        "rmse": 709.94
+      },
+      "catboost": {
+        "mae": 241.24,
+        "mape_pct": 16.92,
+        "median_ae": 146.14,
+        "n": 2421,
+        "r2": 0.6941,
+        "rmse": 393.29
+      },
+      "n": 2421,
+      "naive_district_median_ppsqm": {
+        "mae": 332.87,
+        "mape_pct": 24.52,
+        "median_ae": 215.78,
+        "n": 2421,
+        "r2": 0.0014,
+        "rmse": 710.6
+      }
+    }
+  },
+  "proximity_price_effect": {
+    "available": true,
+    "buckets": {
+      "between": {
+        "median_price_per_sqm_usd": 18.01,
+        "n": 825
+      },
+      "far": {
+        "median_price_per_sqm_usd": 14.99,
+        "n": 1189
+      },
+      "near": {
+        "median_price_per_sqm_usd": 18.67,
+        "n": 410
+      }
+    },
+    "far_m": 1000.0,
+    "interpretation": "Ratio of median price per m2, near / far. Descriptive only: not controlled for area, floor or building quality, and not causal. The model's own use of distance features is reported separately as feature importance.",
+    "near_m": 500.0,
+    "near_vs_far_overall": {
+      "ci95_high": 1.3015918946770009,
+      "ci95_low": 1.1896822950483001,
+      "ratio": 1.24599354910466
+    },
+    "near_vs_far_within_district": [
+      {
+        "ci95_high": 1.2071357071357072,
+        "ci95_low": 0.9599692570062941,
+        "district": "Arabkir",
+        "n_far": 435,
+        "n_near": 75,
+        "ratio": 1.0763658763658763
+      },
+      {
+        "ci95_high": 1.3242942121681973,
+        "ci95_low": 1.1290071849521905,
+        "district": "Kentron",
+        "n_far": 76,
+        "n_near": 309,
+        "ratio": 1.20086950251843
+      }
+    ],
+    "rows": 2424
+  },
+  "seed": 20261104
+}

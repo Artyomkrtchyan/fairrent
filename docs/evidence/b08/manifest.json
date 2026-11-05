@@ -1,0 +1,43 @@
+{
+  "calibration": {
+    "method": "relative",
+    "primary_level": 0.95
+  },
+  "command": "python -m ml.evaluation_evidence --b04 artifacts/b04/b04-v1.0.0-grouped-merged --b05 artifacts/b05/b05-v1.0.0 --package artifacts/b07/v1.0.0-b07 --snapshot data/processed/v1.0.0-grouped-merged --output docs/evidence/b08",
+  "evidence_version": "b08-v1",
+  "files": [
+    "evaluation_summary.json",
+    "interval_calibration.png",
+    "model_card.md",
+    "ontology_evaluation.json",
+    "predicted_vs_actual.png",
+    "price_anomaly_sensitivity.png",
+    "price_error_by_district.png",
+    "price_model_comparison.png",
+    "risk_rule_validation.json",
+    "rule_validation.png"
+  ],
+  "inputs": {
+    "files_sha256": {
+      "SHA256SUMS.json": "e36b431540481c296c536b781330d8afc2b7b729a8d401da1abe47d80f109575",
+      "b05_report.json": "21854c1c7570b35c4ae0f1a5ff851ea6a2acab0f9dd859b46f337009dca816a4",
+      "interval_calibration.json": "d4f480718bef2c028e5d57cab847673ca04d94a3398208d0904047082dcc5281",
+      "metadata.json": "e3338fdc205d3033120f4d3be44049636c7f40223117f75d84672052987bc27b",
+      "model.cbm": "2836201bb82a315d6ec353e49b644c1f0d5ac2685acbe07a4a3f4c2ba0fbb4af",
+      "package.json": "e47b702e09b80b1c38d7b9fcc2114bfcdf630dad7b5f08457b9301edb999c42c",
+      "report.json": "d32c4fee941fc3fdc4dcdabba97600aff3a95a045abebc5fe67c9d40c99f5baa"
+    },
+    "model_sha256": "2836201bb82a315d6ec353e49b644c1f0d5ac2685acbe07a4a3f4c2ba0fbb4af",
+    "snapshot_sha256": "5b09c0999cfebdbdced0e76521de8b31726f49b5572418e182be7ff5435aff9d"
+  },
+  "versions": {
+    "calibration_version": "b05-v1.0.0-relative",
+    "data_as_of": "2026-10-31T10:10:10Z",
+    "dataset_version": "v1.0.0-grouped-merged",
+    "geography_version": "yerevan-geo-v1",
+    "interface_version": "b07-v1",
+    "model_version": "b04-v1.0.0-grouped-merged-catboost",
+    "package_version": "v1.0.0-b07",
+    "rules_version": "b06-rules-v1.0.0"
+  }
+}

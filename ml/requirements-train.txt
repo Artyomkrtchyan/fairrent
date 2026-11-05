@@ -4,3 +4,4 @@ catboost>=1.2.5
 scikit-learn>=1.5
 rdflib>=7.0
 jsonschema>=4.20
+matplotlib>=3.8
