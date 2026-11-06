@@ -61,6 +61,11 @@ def check_coverage(latitude: float, longitude: float) -> None:
         raise OutsideCoverage("Coordinates are outside the supported coverage area")
 
 
+def _timestamps(values: pd.Series) -> pd.Series:
+    """ISO-8601 with mixed precision (whole seconds, milliseconds, offsets) in one column."""
+    return pd.to_datetime(values, utc=True, errors="coerce", format="ISO8601")
+
+
 def _prepare(listings: pd.DataFrame) -> pd.DataFrame:
     missing = [c for c in REQUIRED if c not in listings.columns]
     if missing:
@@ -70,7 +75,7 @@ def _prepare(listings: pd.DataFrame) -> pd.DataFrame:
     for c in ("price_usd", "latitude", "longitude"):
         f[c] = pd.to_numeric(f[c], errors="coerce")
     f["area_sqm"] = pd.to_numeric(f["area_sqm"], errors="coerce") if "area_sqm" in f else np.nan
-    f["last_seen_at"] = pd.to_datetime(f["last_seen_at"], utc=True, errors="coerce")
+    f["last_seen_at"] = _timestamps(f["last_seen_at"])
     if "dedup_group_id" not in f:
         f["dedup_group_id"] = None
     # Ungrouped (None/NaN/empty) listings count once, keyed by listing id.
@@ -98,7 +103,11 @@ def select_cohort(listings: pd.DataFrame, latitude: float, longitude: float, *, 
         if col is not None and col != "" and name not in listings.columns:
             raise ValueError(f"{name} filter requested but listings has no '{name}' column")
     if "ended_at" in listings.columns:
-        ended = pd.to_datetime(listings["ended_at"], utc=True, errors="coerce")
+        raw = listings["ended_at"]
+        ended = _timestamps(raw)
+        bad = raw.notna() & raw.astype(str).str.strip().ne("") & ended.isna()
+        if bad.any():  # fail closed: never keep a listing because its end time is unreadable
+            raise ValueError(f"ended_at has {int(bad.sum())} unparseable value(s)")
         f = f.loc[~(ended.reindex(f.index).le(pd.Timestamp(as_of)).fillna(False))]
     counts = {"input": int(len(listings)), "valid": int(len(f))}
     f = f.loc[f["_active"]]

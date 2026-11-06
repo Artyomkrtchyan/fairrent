@@ -160,3 +160,27 @@ def test_missing_filter_columns_are_input_errors():
         assess_market(KNOWN.drop(columns=["rooms"]), LAT, LON, as_of=NOW, area_sqm=50, rooms=2)
     # Unfiltered queries do not need the optional columns.
     assert assess_market(KNOWN.drop(columns=["rooms", "district"]), LAT, LON, as_of=NOW)
+
+
+def test_mixed_timestamp_precision_does_not_keep_ended_listings():
+    f = df(row("a", 400), row("b", 500), row("c", 600))
+    f["ended_at"] = [None, "2026-10-31T00:00:00Z", "2026-10-31T00:00:00.123Z"]
+    f2 = f.copy()
+    f2["ended_at"] = ["2026-10-31T00:00:00Z", None, "2026-10-31T00:00:00.123Z"]
+    for frame in (f, f2):
+        r = assess_market(frame, LAT, LON, as_of=NOW)
+        assert r["observed_market_statistics"]["comparables_count"] == 1
+        assert r["assessment"]["status"] == "INSUFFICIENT_DATA_ABSTAIN"
+
+
+def test_mixed_precision_last_seen_at():
+    f = df(row("a", 1, seen="2026-10-30T10:00:00Z"), row("b", 2, seen="2026-10-30T10:00:00.250Z"),
+           row("c", 3, seen="2026-10-30T10:00:00+04:00"))
+    assert len(select_cohort(f, LAT, LON, as_of=NOW)[0]) == 3
+
+
+def test_unparseable_ended_at_fails_closed():
+    f = df(row("a", 1), row("b", 2), row("c", 3))
+    f["ended_at"] = [None, "not-a-date", None]
+    with pytest.raises(ValueError, match="ended_at"):
+        select_cohort(f, LAT, LON, as_of=NOW)
