@@ -173,6 +173,26 @@ export function Valuation() {
                       )}
                     </dd>
                   </div>
+                  <div>
+                    <dt>Mean rent per m²</dt>
+                    <dd>
+                      {statistics.cluster_mean_price_per_sqm_usd === null ? (
+                        "Not available"
+                      ) : (
+                        <Money usd={statistics.cluster_mean_price_per_sqm_usd} suffix="/ month/m²" />
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Rent standard deviation per m²</dt>
+                    <dd>
+                      {statistics.observed_price_std_dev_per_sqm_usd === null ? (
+                        "Not available"
+                      ) : (
+                        <Money usd={statistics.observed_price_std_dev_per_sqm_usd} suffix="/ month/m²" />
+                      )}
+                    </dd>
+                  </div>
                 </dl>
               </section>
             </>

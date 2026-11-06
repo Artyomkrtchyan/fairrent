@@ -177,6 +177,41 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+  d08-browser-smoke:
+    name: D08 Chromium browser smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Install isolated Playwright dependencies
+        working-directory: frontend/e2e
+        run: npm install --no-package-lock --ignore-scripts
+      - name: Install Chromium
+        working-directory: frontend/e2e
+        run: npx playwright install chromium
+      - name: Run browser integration tests with API fixtures
+        working-directory: frontend/e2e
+        run: npm test
+      - name: Attach browser traces and screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d08-browser-debug
+          if-no-files-found: ignore
+          path: |
+            frontend/e2e/test-results
+            frontend/e2e/playwright-report
+
   deploy:
     name: Deploy main to AWS
     needs: [backend-tests, docker-build, contract-validation, frontend-checks, infra-checks]
