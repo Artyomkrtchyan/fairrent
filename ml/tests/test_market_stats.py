@@ -184,3 +184,17 @@ def test_unparseable_ended_at_fails_closed():
     f["ended_at"] = [None, "not-a-date", None]
     with pytest.raises(ValueError, match="ended_at"):
         select_cohort(f, LAT, LON, as_of=NOW)
+
+
+def test_duplicate_index_labels_with_ended_at():
+    f = df(row("bad", -5), row("ok", 400), row("ok2", 500), row("ok3", 600))
+    f["ended_at"] = [None, None, None, "2026-10-31T00:00:00Z"]
+    f.index = [0, 0, 1, 1]  # repeated caller labels; first row invalid (negative price)
+    cohort, meta = select_cohort(f, LAT, LON, as_of=NOW)
+    assert sorted(cohort.listing_id) == ["ok", "ok2"]  # invalid row dropped, ended row excluded
+    assert meta["counts"]["valid"] == 3
+    r = assess_market(f, LAT, LON, as_of=NOW)
+    assert r["observed_market_statistics"]["comparables_count"] == 2
+    assert r["assessment"]["status"] == "INSUFFICIENT_DATA_ABSTAIN"
+    # the caller's frame is not mutated
+    assert list(f.index) == [0, 0, 1, 1]

@@ -98,10 +98,13 @@ def select_cohort(listings: pd.DataFrame, latitude: float, longitude: float, *, 
     rules.validate()
     if as_of.tzinfo is None:
         raise ValueError("as_of must have a timezone")
+    # Caller index labels are meaningless (may repeat); positional labels keep every filter aligned.
+    listings = listings.reset_index(drop=True)
     f = _prepare(listings)
     for name, col in (("rooms", rooms), ("district", district)):
         if col is not None and col != "" and name not in listings.columns:
             raise ValueError(f"{name} filter requested but listings has no '{name}' column")
+    counts = {"input": int(len(listings)), "valid": int(len(f))}
     if "ended_at" in listings.columns:
         raw = listings["ended_at"]
         ended = _timestamps(raw)
@@ -109,7 +112,6 @@ def select_cohort(listings: pd.DataFrame, latitude: float, longitude: float, *, 
         if bad.any():  # fail closed: never keep a listing because its end time is unreadable
             raise ValueError(f"ended_at has {int(bad.sum())} unparseable value(s)")
         f = f.loc[~(ended.reindex(f.index).le(pd.Timestamp(as_of)).fillna(False))]
-    counts = {"input": int(len(listings)), "valid": int(len(f))}
     f = f.loc[f["_active"]]
     counts["active"] = int(len(f))
     end = as_of.astimezone(LOCAL_TZ).date()
