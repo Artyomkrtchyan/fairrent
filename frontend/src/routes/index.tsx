@@ -9,7 +9,7 @@ import { createFileRoute, Link, type SearchSchemaInput } from "@tanstack/react-r
 import { parseCatalogueSearch, type CatalogueSearch } from "@/lib/catalogue-search";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Money, RateNote } from "@/components/ui-bits";
 
@@ -96,6 +96,7 @@ function Browse() {
   const navigate = Route.useNavigate();
 
   const [filterRevision, setFilterRevision] = useState(0);
+  const pendingScrollPage = useRef<number | null>(null);
   function scrollToMap() {
     const mapSection = document.getElementById("map-explore");
     if (!mapSection) return;
@@ -118,19 +119,10 @@ function Browse() {
   }
 
   function goToPage(nextPage: number) {
+    pendingScrollPage.current = nextPage;
     void navigate({
       search: { ...search, page: nextPage },
       resetScroll: false,
-    }).then(() => {
-      // The map and filter panel stay above the page; return to the rental results.
-      const results = document.getElementById("rental-results");
-      results?.focus({ preventScroll: true });
-      results?.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-          ? "instant"
-          : "smooth",
-        block: "start",
-      });
     });
   }
 
@@ -139,6 +131,24 @@ function Browse() {
     queryFn: ({ signal }) => getListings(signal, search),
     retry: false,
   });
+  useEffect(() => {
+    if (pendingScrollPage.current !== search.page || isFetching) return;
+
+    // Navigate first, then move the viewport after the new results render.
+    const frame = window.requestAnimationFrame(() => {
+      const results = document.getElementById("rental-results");
+      results?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+        block: "start",
+      });
+      results?.focus({ preventScroll: true });
+      pendingScrollPage.current = null;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [search.page, isFetching]);
+
   const { page: _page, page_size: _pageSize, sort: _sort, ...mapFilters } = search;
   const map = useQuery({
     queryKey: ["listing-map", apiMode, mapFilters],
