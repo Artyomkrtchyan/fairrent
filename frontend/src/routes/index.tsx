@@ -9,7 +9,7 @@ import { createFileRoute, Link, type SearchSchemaInput } from "@tanstack/react-r
 import { parseCatalogueSearch, type CatalogueSearch } from "@/lib/catalogue-search";
 
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { Money, RateNote } from "@/components/ui-bits";
 
@@ -96,22 +96,6 @@ function Browse() {
   const navigate = Route.useNavigate();
 
   const [filterRevision, setFilterRevision] = useState(0);
-  const backToMapAnchor = useRef<HTMLSpanElement>(null);
-  const [backToMapStuck, setBackToMapStuck] = useState(false);
-
-  useEffect(() => {
-    const anchor = backToMapAnchor.current;
-    if (!anchor) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry) setBackToMapStuck(entry.boundingClientRect.top < 100);
-      },
-      { rootMargin: "-100px 0px 0px 0px" },
-    );
-    observer.observe(anchor);
-    return () => observer.disconnect();
-  }, []);
-
   function scrollToMap() {
     const mapSection = document.getElementById("map-explore");
     if (!mapSection) return;
@@ -221,7 +205,20 @@ function Browse() {
           <RateNote />
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        {/* The return link begins beside sorting and sticks below the navigation bar. */}
+        <div className="sticky top-28 z-40 mt-6 h-0 sm:top-24">
+          <a
+            href="#map-explore"
+            className="absolute right-0 top-0 inline-flex min-h-[46px] items-center justify-center rounded-xl border border-[#b4c8ff66] bg-gradient-to-r from-[#193a90] via-[#172e68] to-[#152547] px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            onClick={(event) => {
+              event.preventDefault();
+              scrollToMap();
+            }}
+          >
+            Back to map ↑
+          </a>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 pr-40 sm:pr-44">
           <p className="text-sm" aria-live="polite">
             {isPending
               ? "Loading listings…"
@@ -271,18 +268,7 @@ function Browse() {
             </select>
           </label>
 
-          <span ref={backToMapAnchor} className="inline-flex min-h-[46px] shrink-0">
-            <a
-              href="#map-explore"
-              className={`inline-flex min-h-[46px] items-center justify-center rounded-xl border border-[#b4c8ff66] bg-gradient-to-r from-[#193a90] via-[#172e68] to-[#152547] px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${backToMapStuck ? "fixed right-5 top-24 z-40 sm:right-8" : ""}`}
-              onClick={(event) => {
-                event.preventDefault();
-                scrollToMap();
-              }}
-            >
-              Back to map ↑
-            </a>
-          </span>
+
         </div>
 
         {isPending && (
