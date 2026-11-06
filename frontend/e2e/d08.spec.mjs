@@ -8,6 +8,10 @@ test.beforeEach(async ({ page }) => {
     const req = route.request();
     const url = new URL(req.url());
     const path = url.pathname;
+    if (path === "/api/v1/listings/map") {
+      // Map API returns a point array, not a listing-detail object.
+      return route.fulfill({ status: 200, contentType: "application/json", body: "[]" });
+    }
     let key = "";
     if (path === "/api/v1/listings") {
       // Model server-side filtering. An incorrect/missing district query must not pass.
