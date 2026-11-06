@@ -6,8 +6,8 @@ from geoalchemy2.elements import WKTElement
 
 from database.models import GeographicReferencePoint, Property
 from .config import get_database_url
-from .geography import (GEOGRAPHY_VERSION, normalize_district, proximity_features,
-                        reference_points)
+from .geography import (PROXIMITY_VERSION, REFERENCE_REGISTRY_VERSION,
+                        normalize_district, proximity_features, reference_points)
 
 
 def enrich_all(session: Session) -> dict:
@@ -20,7 +20,7 @@ def enrich_all(session: Session) -> dict:
             source_url=point["source_url"], geography_version=point["geography_version"],
         ))
     session.query(GeographicReferencePoint).filter(
-        GeographicReferencePoint.geography_version != GEOGRAPHY_VERSION
+        GeographicReferencePoint.geography_version != REFERENCE_REGISTRY_VERSION
     ).delete(synchronize_session=False)
     updated = resolved = unresolved = 0
     rows = session.query(Property, func.ST_Y(Property.geom), func.ST_X(Property.geom)).yield_per(500)
@@ -38,7 +38,8 @@ def enrich_all(session: Session) -> dict:
         updated += 1
     session.commit()
     return {"updated": updated, "resolved": resolved, "unresolved": unresolved,
-            "geography_version": GEOGRAPHY_VERSION}
+            "geography_version": PROXIMITY_VERSION,
+            "reference_registry_version": REFERENCE_REGISTRY_VERSION}
 
 
 def main() -> None:

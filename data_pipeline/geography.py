@@ -3,7 +3,10 @@ import math
 import re
 import unicodedata
 
-GEOGRAPHY_VERSION = "yerevan-geo-v1"
+PROXIMITY_VERSION = "yerevan-geo-v1"
+REFERENCE_REGISTRY_VERSION = "yerevan-reference-v2"
+# Kept as the property-feature version for existing callers and the DB column.
+GEOGRAPHY_VERSION = PROXIMITY_VERSION
 EARTH_RADIUS_M = 6_371_008.8
 
 DISTRICTS = {
@@ -124,21 +127,21 @@ def reference_points() -> tuple[dict, ...]:
         {"id": point[0], "name": point[1], "kind": "metro", "latitude": point[2],
          "longitude": point[3], "coordinate_source": "citylines-station-point",
          "coordinate_confidence": "approximate", "source_url": point[4],
-         "geography_version": GEOGRAPHY_VERSION}
+         "geography_version": REFERENCE_REGISTRY_VERSION}
         for point in METRO_STATIONS
     ]
     records.extend(
         {"id": point[0], "name": point[1], "kind": "university", "latitude": point[2],
          "longitude": point[3], "coordinate_source": "campus-place-marker",
          "coordinate_confidence": "approximate", "source_url": point[4],
-         "geography_version": GEOGRAPHY_VERSION}
+         "geography_version": REFERENCE_REGISTRY_VERSION}
         for point in UNIVERSITIES
     )
     records.append({"id": CITY_CENTER[2], "name": "Republic Square", "kind": "city_center",
                     "latitude": CITY_CENTER[0], "longitude": CITY_CENTER[1],
                     "coordinate_source": "citylines-republic-square-point",
                     "coordinate_confidence": "approximate", "source_url": CITY_CENTER[3],
-                    "geography_version": GEOGRAPHY_VERSION})
+                    "geography_version": REFERENCE_REGISTRY_VERSION})
     return tuple(records)
 
 
@@ -155,7 +158,7 @@ def proximity_features(latitude: float | None, longitude: float | None) -> dict:
     result = {
         "distance_metro_m": None, "nearest_metro_id": None,
         "distance_university_m": None, "nearest_university_id": None,
-        "distance_center_m": None, "geography_version": GEOGRAPHY_VERSION,
+        "distance_center_m": None, "geography_version": PROXIMITY_VERSION,
         "geo_status": "unresolved",
     }
     if latitude is None or longitude is None:
