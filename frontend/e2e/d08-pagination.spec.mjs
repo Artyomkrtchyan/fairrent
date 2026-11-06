@@ -44,10 +44,10 @@ test("Next and Previous return to rentals, not the map or page top", async ({ pa
   });
 
   await page.goto("/");
-  await expect(page.getByText("Rental on page 1 unit 1")).toBeVisible();
+  await expect(page.getByText("Rental on page 1 unit 1", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page).toHaveURL(/page=2/);
-  await expect(page.getByText("Rental on page 2 unit 1")).toBeVisible();
+  await expect(page.getByText("Rental on page 2 unit 1", { exact: true })).toBeVisible();
 
   async function expectAtRentals() {
     await expect.poll(async () => page.evaluate(() => {
@@ -61,7 +61,7 @@ test("Next and Previous return to rentals, not the map or page top", async ({ pa
   await expectAtRentals();
   await page.getByRole("button", { name: "Previous", exact: true }).click();
   await expect(page).toHaveURL(/page=1/);
-  await expect(page.getByText("Rental on page 1 unit 1")).toBeVisible();
+  await expect(page.getByText("Rental on page 1 unit 1", { exact: true })).toBeVisible();
   await expectAtRentals();
   expect(seenPages).toContain(2);
   expect(seenPages).toContain(1);
