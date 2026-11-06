@@ -3,6 +3,7 @@
 Run with the C02 PG* environment: python -m backend.sync_listings.
 No source tables are written. A failure rolls back the entire publication.
 """
+import argparse
 import json
 import sys
 from collections import Counter
@@ -65,7 +66,11 @@ def sync_projection(connection):
             "excluded_reasons": dict(reasons), "removed_from_projection": removed}
 
 
-def main():
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--with-signals", action="store_true",
+                        help="Publish B06 signals after the listing snapshot commits")
+    args = parser.parse_args(argv)
     # Lock before beginning the snapshot, so a waiting publication cannot overwrite
     # a newer snapshot. Disconnect also releases this session lock on any failure.
     try:
@@ -76,6 +81,12 @@ def main():
                 connection.execute("SET LOCAL statement_timeout = '30s'")
                 summary = sync_projection(connection)
         print(json.dumps(summary))
+        if args.with_signals:
+            if __package__:
+                from .generate_signals import main as generate_signals
+            else:
+                from generate_signals import main as generate_signals
+            return generate_signals([])
         return 0
     except PublicationBusy as error:
         print(str(error), file=sys.stderr)
