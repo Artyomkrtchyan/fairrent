@@ -96,6 +96,17 @@ function Browse() {
   const navigate = Route.useNavigate();
 
   const [filterRevision, setFilterRevision] = useState(0);
+  function scrollToMap() {
+    const mapSection = document.getElementById("map-explore");
+    if (!mapSection) return;
+    mapSection.focus({ preventScroll: true });
+    mapSection.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+      block: "start",
+    });
+  }
 
   function applyFilters(next: CatalogueSearch) {
     setFilterRevision((value) => value + 1);
@@ -194,7 +205,20 @@ function Browse() {
           <RateNote />
         </div>
 
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        {/* The return link begins beside sorting and sticks below the navigation bar. */}
+        <div className="sticky top-28 z-40 mt-6 h-0 sm:top-24">
+          <a
+            href="#map-explore"
+            className="absolute right-0 top-0 inline-flex h-11 w-48 items-center justify-center whitespace-nowrap rounded-md border bg-card px-3 py-2 text-sm font-normal text-foreground transition hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            onClick={(event) => {
+              event.preventDefault();
+              scrollToMap();
+            }}
+          >
+            Back to map ↑
+          </a>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3 pr-52">
           <p className="text-sm" aria-live="polite">
             {isPending
               ? "Loading listings…"
@@ -234,7 +258,7 @@ function Browse() {
                   });
                 }
               }}
-              className="rounded-md border bg-card px-3 py-2"
+              className="h-11 w-48 rounded-md border bg-card px-3 py-2"
             >
               <option value="newest">Newest first</option>
               <option value="price_asc">Rent: low to high</option>
@@ -244,23 +268,7 @@ function Browse() {
             </select>
           </label>
 
-          <a
-            href="#map-explore"
-            className="text-sm font-semibold text-primary"
-            onClick={(event) => {
-              event.preventDefault();
-              const map = document.getElementById("map-explore");
-              map?.focus({ preventScroll: true });
-              map?.scrollIntoView({
-                behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-                  ? "instant"
-                  : "smooth",
-                block: "start",
-              });
-            }}
-          >
-            Back to map ↑
-          </a>
+
         </div>
 
         {isPending && (
