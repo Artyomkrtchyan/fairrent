@@ -5,6 +5,8 @@ import { PropertyPhoto } from "@/components/PropertyPhoto";
 import { RiskEvidence } from "@/components/RiskEvidence";
 
 import { MarketAssessment } from "@/components/MarketAssessment";
+import { usePrefs } from "@/lib/prefs";
+import { resolveListingRent } from "@/lib/listing-rent";
 
 import { createFileRoute, Link, notFound, useRouter, useRouterState } from "@tanstack/react-router";
 
@@ -37,6 +39,7 @@ export const Route = createFileRoute("/listings/$id")({
 
 function ListingPage() {
   const router = useRouter();
+  const { currency, amdPerUsd } = usePrefs();
 
   const fromCatalogue = useRouterState({
     select: (state) => state.location.state.fromCatalogue === true,
@@ -58,6 +61,7 @@ function ListingPage() {
   });
 
   const title = listing.title || "Apartment in Yerevan";
+  const askingUsd = resolveListingRent(listing, currency, amdPerUsd)?.askingUsd ?? null;
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
@@ -173,7 +177,8 @@ function ListingPage() {
             </section>
           ) : (
             <MarketAssessment
-              askingUsd={listing.price_monthly_normalized}
+              askingUsd={askingUsd}
+              listingPrice={listing}
               estimate={assessment.data ?? estimate}
             />
           )}
