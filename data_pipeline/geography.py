@@ -3,7 +3,7 @@ import math
 import re
 import unicodedata
 
-GEOGRAPHY_VERSION = "yerevan-geo-v2"
+GEOGRAPHY_VERSION = "yerevan-geo-v1"
 EARTH_RADIUS_M = 6_371_008.8
 
 DISTRICTS = {
@@ -112,6 +112,9 @@ UNIVERSITIES = (
      "https://register.anqa.am/Accreditations"),
 )
 
+
+PROXIMITY_UNIVERSITIES = UNIVERSITIES[:4]
+
 CITY_CENTER = (40.17767, 44.51562, "republic-square",
                "https://cdn.citylines.co/api/yerevan/raw_source/stations")
 
@@ -161,7 +164,7 @@ def proximity_features(latitude: float | None, longitude: float | None) -> dict:
         return result
     nearest_metro = min(METRO_STATIONS,
                         key=lambda p: haversine_m(latitude, longitude, p[2], p[3]))
-    nearest_university = min(UNIVERSITIES,
+    nearest_university = min(PROXIMITY_UNIVERSITIES,
                              key=lambda p: haversine_m(latitude, longitude, p[2], p[3]))
     result.update(
         distance_metro_m=round(haversine_m(latitude, longitude, nearest_metro[2], nearest_metro[3]), 1),

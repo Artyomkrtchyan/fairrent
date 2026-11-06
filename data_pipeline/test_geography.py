@@ -13,7 +13,7 @@ def test_registry_covers_yerevan_districts_metro_and_university_campuses():
     assert len(UNIVERSITIES) >= 4
     assert GEOGRAPHY_VERSION == "yerevan-geo-v1"
     points = reference_points()
-    assert len(points) == 15
+    assert len(points) == len(METRO_STATIONS) + len(UNIVERSITIES) + 1
     assert all(point["source_url"] and point["coordinate_confidence"] == "approximate"
                for point in points)
 
