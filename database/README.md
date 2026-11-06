@@ -10,7 +10,7 @@ See the [data-pipeline A07 contract](../data_pipeline/docs/neighborhood-price-in
 
 ## Frontend geographic read views
 
-The `frontend_geography_views_20261106` migration exposes `metro_stations` and `universities` as read-only views over
+The `frontend_geo_views_20261106` migration exposes `metro_stations` and `universities` as read-only views over
 `geographic_reference_points`. Each view returns an ID, name, latitude, longitude,
 coordinate provenance, confidence, source URL, and reference-registry version. The canonical
 points are seeded or refreshed with `python -m data_pipeline.enrich_geography`; the
