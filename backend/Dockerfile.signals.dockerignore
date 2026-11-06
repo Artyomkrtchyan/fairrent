@@ -12,6 +12,7 @@
 !ml/attributions.py
 !ml/train_compare.py
 !ml/baseline.py
+!ml/market_stats.py
 !ml/requirements.txt
 !ml/requirements-inference.txt
 !data_pipeline/
