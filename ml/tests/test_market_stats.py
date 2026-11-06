@@ -10,9 +10,9 @@ LAT, LON = 40.18, 44.51
 NOW = datetime(2026, 11, 1, 12, 0, tzinfo=timezone.utc)
 
 
-def row(i, price, area=50.0, dlat=0.0, seen="2026-10-30T10:00:00Z", group=None, rooms=2, district="Kentron"):
+def row(i, price, area=50.0, dlat=0.0, seen="2026-10-30T10:00:00Z", group=None, rooms=2, district="Kentron", status="active"):
     return dict(listing_id=i, price_usd=price, area_sqm=area, latitude=LAT + dlat, longitude=LON,
-                last_seen_at=seen, dedup_group_id=group, rooms=rooms, district=district)
+                last_seen_at=seen, dedup_group_id=group, rooms=rooms, district=district, status=status)
 
 
 def df(*rows):
@@ -129,3 +129,34 @@ def test_invalid_rows_dropped_and_rules_validated():
         select_cohort(KNOWN, LAT, LON, as_of=datetime(2026, 11, 1))
     with pytest.raises(ValueError):
         assess_market(KNOWN, LAT, LON, as_of=NOW, area_sqm=-1, rooms=2)
+
+
+def test_inactive_listings_excluded_before_minimum_sample():
+    f = df(row("a", 400), row("b", 500), row("c", 600, status="inactive"))
+    r = assess_market(f, LAT, LON, as_of=NOW)
+    assert r["observed_market_statistics"]["comparables_count"] == 2
+    assert r["assessment"]["status"] == "INSUFFICIENT_DATA_ABSTAIN"
+    assert r["assessment"]["estimated_price_usd"] is None
+    assert r["cohort"]["counts"]["active"] == 2
+
+
+def test_ended_at_before_as_of_is_inactive():
+    f = df(row("a", 400), row("b", 500), row("c", 600), row("d", 700))
+    f["ended_at"] = [None, None, "2026-10-31T00:00:00Z", "2026-11-02T00:00:00Z"]
+    assert sorted(select_cohort(f, LAT, LON, as_of=NOW)[0].listing_id) == ["a", "b", "d"]
+
+
+def test_status_column_required():
+    with pytest.raises(ValueError, match="status"):
+        select_cohort(KNOWN.drop(columns=["status"]), LAT, LON, as_of=NOW)
+
+
+def test_missing_filter_columns_are_input_errors():
+    with pytest.raises(ValueError, match="rooms"):
+        select_cohort(KNOWN.drop(columns=["rooms"]), LAT, LON, as_of=NOW, rooms=2)
+    with pytest.raises(ValueError, match="district"):
+        select_cohort(KNOWN.drop(columns=["district"]), LAT, LON, as_of=NOW, district="Kentron")
+    with pytest.raises(ValueError, match="rooms"):
+        assess_market(KNOWN.drop(columns=["rooms"]), LAT, LON, as_of=NOW, area_sqm=50, rooms=2)
+    # Unfiltered queries do not need the optional columns.
+    assert assess_market(KNOWN.drop(columns=["rooms", "district"]), LAT, LON, as_of=NOW)

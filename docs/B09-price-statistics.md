@@ -6,10 +6,10 @@ CLI: `python -m ml.market_stats listings.csv --lat 40.18 --lon 44.51 --as-of 202
 ## Rules (`b09-cohort-v1`)
 | Rule | Value |
 |---|---|
-| Inventory | one observation per listing, dated by `last_seen_at` |
+| Inventory | active at `as_of`: `status == "active"` (required column; backend uses the same), optional `ended_at` ≤ `as_of` excludes; dated by `last_seen_at`; applied before the minimum sample |
 | Window | inclusive Asia/Yerevan local dates, `window_days` default 30, cap 60 |
 | Radius | geodesic ≤ `radius_m` (default 1000, max 5000), boundary inclusive |
-| Comparability | exact `rooms` when supplied; optional district; no silent widening |
+| Comparability (`rooms`/`district` columns required only when that filter is requested; else `ValueError`) | exact `rooms` when supplied; optional district; no silent widening |
 | Duplicates | eligibility first, then latest observation per dedup group; tie → listing ID ascending; ungrouped counted once |
 | Minimum sample | 3 (**provisional – data owner must confirm**) |
 

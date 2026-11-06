@@ -31,7 +31,8 @@ LOCAL_TZ = ZoneInfo("Asia/Yerevan")
 MAX_WINDOW_DAYS = 60
 MAX_RADIUS_M = 5000
 COVERAGE_BBOX = {"south": 40.05, "north": 40.30, "west": 44.35, "east": 44.66}  # provisional
-REQUIRED = ("listing_id", "price_usd", "latitude", "longitude", "last_seen_at")
+REQUIRED = ("listing_id", "price_usd", "latitude", "longitude", "last_seen_at", "status")
+ACTIVE_STATUS = "active"
 
 
 class OutsideCoverage(ValueError):
@@ -75,6 +76,9 @@ def _prepare(listings: pd.DataFrame) -> pd.DataFrame:
     # Ungrouped (None/NaN/empty) listings count once, keyed by listing id.
     grouped = f["dedup_group_id"].notna() & f["dedup_group_id"].astype(str).str.strip().ne("")
     f["_key"] = np.where(grouped, "group:" + f["dedup_group_id"].astype(str), "listing:" + f["listing_id"])
+    # Active inventory: status must be 'active'; an optional ended_at <= as_of also excludes.
+    active = f["status"].astype(str).str.strip().str.casefold().eq(ACTIVE_STATUS)
+    f["_active"] = active
     ok = (f.price_usd.gt(0) & np.isfinite(f.price_usd) & f.latitude.between(-90, 90)
           & f.longitude.between(-180, 180) & f.last_seen_at.notna())
     # Unusable area is treated as unknown, not as an error: monthly stats still count it.
@@ -90,7 +94,15 @@ def select_cohort(listings: pd.DataFrame, latitude: float, longitude: float, *, 
     if as_of.tzinfo is None:
         raise ValueError("as_of must have a timezone")
     f = _prepare(listings)
+    for name, col in (("rooms", rooms), ("district", district)):
+        if col is not None and col != "" and name not in listings.columns:
+            raise ValueError(f"{name} filter requested but listings has no '{name}' column")
+    if "ended_at" in listings.columns:
+        ended = pd.to_datetime(listings["ended_at"], utc=True, errors="coerce")
+        f = f.loc[~(ended.reindex(f.index).le(pd.Timestamp(as_of)).fillna(False))]
     counts = {"input": int(len(listings)), "valid": int(len(f))}
+    f = f.loc[f["_active"]]
+    counts["active"] = int(len(f))
     end = as_of.astimezone(LOCAL_TZ).date()
     start = end - timedelta(days=rules.window_days - 1)
     local_date = f["last_seen_at"].dt.tz_convert(LOCAL_TZ).dt.date
@@ -122,7 +134,7 @@ def select_cohort(listings: pd.DataFrame, latitude: float, longitude: float, *, 
                 duplicate_policy="latest_observation_per_duplicate_group",
                 inventory_policy="active_at_data_as_of",
                 rooms_filter=rooms, district_filter=district, counts=counts)
-    return f.drop(columns=["_key"]), meta
+    return f.drop(columns=["_key", "_active"]), meta
 
 
 def _std(values: pd.Series) -> Optional[float]:
@@ -193,9 +205,16 @@ def _cli() -> None:
     p.add_argument("--radius-m", type=int, default=1000); p.add_argument("--window-days", type=int, default=30)
     p.add_argument("--area", type=float); p.add_argument("--rooms", type=int)
     a = p.parse_args()
-    res = assess_market(pd.read_csv(a.csv), a.lat, a.lon, as_of=datetime.fromisoformat(a.as_of),
-                        rules=CohortRules(a.radius_m, a.window_days), area_sqm=a.area, rooms=a.rooms)
+    try:
+        res = _run(a)
+    except (ValueError, OutsideCoverage) as exc:
+        raise SystemExit(f"error: {exc}")
     print(json.dumps(res, indent=2, default=str))
+
+
+def _run(a):
+    return assess_market(pd.read_csv(a.csv), a.lat, a.lon, as_of=datetime.fromisoformat(a.as_of),
+                        rules=CohortRules(a.radius_m, a.window_days), area_sqm=a.area, rooms=a.rooms)
 
 
 if __name__ == "__main__":
