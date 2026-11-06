@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from database.models import Base, IngestionRun, Listing, PriceObservation, Property
 from database.alembic_filters import make_include_hooks
 from . import ingestion, queries
-from .cli import ingest
+from .cli import ingest, load_records
 from .ingestion import finish_run, start_run
 from .scraper import ListingPipeline
 
@@ -192,6 +192,48 @@ def test_run_summary_is_recorded(session):
     assert row.finished_at is not None
 
 
+def test_recovery_demo_initial_repeat_price_change_and_failed_run(session):
+    """Reproduce the runbook's load, retry, failure, and recovery sequence."""
+    initial_path = Path(__file__).with_name("recovery_demo_initial.json")
+    changed_path = Path(__file__).with_name("recovery_demo_price_change.json")
+
+    def import_snapshot(path):
+        records = load_records(str(path))
+        pipeline = ListingPipeline(delay=0)
+        run_row = start_run(session, "recovery-demo", {"file": path.name})
+        saved = ingest(records, pipeline, session, "recovery-demo", run_id=run_row.id)
+        finish_run(session, run_row, crawl_complete=None, stats={
+            "listings_seen": len(records), "listings_saved": saved,
+            "listings_quarantined": len(pipeline.quarantine_log)})
+        pipeline.close()
+        return run_row
+
+    initial = import_snapshot(initial_path)
+    first_seen = listing(session, "RUNBOOK-001", source="recovery-demo").first_seen_at
+    repeated = import_snapshot(initial_path)
+    changed = import_snapshot(changed_path)
+
+    assert [initial.status, repeated.status, changed.status] == ["success"] * 3
+    assert counts(session) == (2, 2, 3)  # one added observation for the price change only
+    row = listing(session, "RUNBOOK-001", source="recovery-demo")
+    assert row.price_usd == 725
+    assert row.first_seen_at == first_seen and row.last_seen_run_id == changed.id
+
+    failed = start_run(session, "recovery-demo", {"demo_failure": "synthetic source outage"})
+    finish_run(session, failed, crawl_complete=True, error="synthetic source outage")
+    assert failed.status == "failed" and failed.listings_deactivated == 0
+    assert session.query(Listing).filter_by(source="recovery-demo", is_active=True).count() == 2
+
+    recovered = import_snapshot(changed_path)
+    assert recovered.status == "success"
+    assert counts(session) == (2, 2, 3)
+    assert listing(session, "RUNBOOK-001", source="recovery-demo").last_seen_run_id == recovered.id
+
+    incomplete = listing(session, "RUNBOOK-002", source="recovery-demo")
+    assert "coordinates" in incomplete.raw_data["missing_fields"]
+    assert session.get(Property, incomplete.property_id).geom is None
+
+
 # ---- duplicate grouping + seed data ----------------------------------------------------
 
 def load_seed():
@@ -329,10 +371,10 @@ def test_shared_property_is_not_moved_when_one_listing_is_corrected(session):
     assert listing(session, "B").property_id == shared
     before = xy(session, shared)
 
-    run(session, [flat("B", lat=40.2500, lon=44.6000)])               # B's coordinates were wrong
+    run(session, [flat("B", lat=40.2500, lon=44.6000)])               
     a, b = listing(session, "A"), listing(session, "B")
-    assert a.property_id == shared and b.property_id != shared        # A stays, B gets its own place
-    assert xy(session, shared) == pytest.approx(before)               # shared property did not move
+    assert a.property_id == shared and b.property_id != shared        
+    assert xy(session, shared) == pytest.approx(before)               
     assert xy(session, b.property_id) == pytest.approx((44.6000, 40.2500))
     assert session.query(Property).count() == 2
 
@@ -341,7 +383,7 @@ def test_small_correction_inside_a_shared_property_keeps_the_association(session
     run(session, [flat("A"), flat("B", lat=40.17924, lon=44.51512)])
     shared = listing(session, "A").property_id
     before = xy(session, shared)
-    run(session, [flat("B", lat=40.17926, lon=44.51514)])             # a few metres
+    run(session, [flat("B", lat=40.17926, lon=44.51514)])             
     assert listing(session, "B").property_id == shared and xy(session, shared) == pytest.approx(before)
 
 
@@ -350,7 +392,7 @@ def test_corrected_coordinates_that_match_another_flat_join_it_without_moving_it
     pa, pb = listing(session, "A").property_id, listing(session, "B").property_id
     assert pa != pb
     before_a = xy(session, pa)
-    run(session, [flat("B", lat=40.17923, lon=44.51511)])             # corrected: it IS flat A
+    run(session, [flat("B", lat=40.17923, lon=44.51511)])             
     assert listing(session, "B").property_id == pa
     assert listing(session, "A").property_id == pa and xy(session, pa) == pytest.approx(before_a)
 
