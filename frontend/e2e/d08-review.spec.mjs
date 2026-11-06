@@ -35,7 +35,7 @@ test("controlled reviewer workflow saves one decision and shows server history",
   await expect(page.getByRole("heading", { name: "Reviewer workspace" })).toBeVisible();
   await page.getByRole("link", { name: /Synthetic apartment/ }).first().click();
   await page.getByLabel("Next status").selectOption("resolved");
-  await page.getByLabel("Decision", { exact: true }).selectOption("dismissed");
+  await page.locator('select:has(option[value="dismissed"])').selectOption("dismissed");
   await page.getByLabel("Required reason").fill("Controlled browser integration test.");
   await page.getByRole("button", { name: "Save decision" }).click();
   await expect(page.getByText(/Decision saved/)).toBeVisible();
