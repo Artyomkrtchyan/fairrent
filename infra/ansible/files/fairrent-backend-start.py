@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 """Start the backend using the EC2 role; keep credentials in temporary /run files."""
+import hashlib
 import json
 import os
 import re
@@ -7,6 +8,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tempfile
 
 AWS = "/usr/local/bin/aws"
 DOCKER = "/usr/bin/docker"
@@ -38,6 +40,32 @@ def log_arguments(config):
     return ["--log-driver", "awslogs", "--log-opt", f"awslogs-region={config['aws_region']}",
             "--log-opt", f"awslogs-group={group}", "--log-opt", "awslogs-create-group=false",
             "--log-opt", "mode=non-blocking", "--log-opt", "max-buffer-size=4m"]
+
+
+def model_arguments(config, runtime, image, environment):
+    model = config.get("b07_package")
+    if model is None:
+        return []
+    version, digest = model["version"], model["checksum_sha256"]
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}", version) or not re.fullmatch(r"[a-f0-9]{64}", digest):
+        raise ValueError("Invalid B07 package version or checksum")
+    account = config["ecr_registry"].split(".", 1)[0]
+    region = config["aws_region"]
+    uri = f"s3://fairrent-artifacts-{account}-{region}/models/b07/{version}/"
+    package = Path(tempfile.mkdtemp(prefix="b07-", dir=runtime))
+    try:
+        command([AWS, "s3", "cp", uri, str(package), "--recursive", "--only-show-errors",
+                 "--region", region], environment, timeout=300)
+        if hashlib.sha256((package / "SHA256SUMS.json").read_bytes()).hexdigest() != digest:
+            raise ValueError("B07 checksum manifest differs from the release configuration")
+        arguments = ["--mount", f"type=bind,src={package},dst=/models/b07,readonly",
+                     "--env", "FAIRRENT_MODEL_PACKAGE=/models/b07"]
+        command([DOCKER, "run", "--rm", *arguments, image, "python", "-c",
+                 "from ml.inference import load_package; load_package()"], environment)
+        return arguments
+    except BaseException:
+        shutil.rmtree(package)
+        raise
 
 
 def prepare(config, runtime):
@@ -84,6 +112,7 @@ def prepare(config, runtime):
         shutil.rmtree(docker_config)
         environment.pop("DOCKER_CONFIG", None)
 
+    model = model_arguments(config, runtime, image, environment)
     temporary = runtime / "pgpass.new"
     descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
@@ -98,7 +127,7 @@ def prepare(config, runtime):
         command([DOCKER, "rm", "--force", NAME], environment)
 
     arguments = [DOCKER, "run", "--rm", "--restart=no", "--name", NAME,
-                 "--publish", f"{bind_address}:8000:8000", *logging,
+                 "--publish", f"{bind_address}:8000:8000", *logging, *model,
                  "--mount", f"type=bind,src={passfile},dst=/run/secrets/pgpass,readonly",
                  "--env", f"PGHOST={config['db_host']}",
                  "--env", f"PGPORT={config['db_port']}",
@@ -117,7 +146,7 @@ def main():
         os.execve(DOCKER, arguments, environment)
     except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.SubprocessError):
         # Exception payloads and malformed JSON may contain a password.
-        print("Backend startup failed. Check IAM role, secret fields, ECR image and network access.", file=sys.stderr)
+        print("Backend startup failed. Check IAM, database secret, ECR image and configured B07 package.", file=sys.stderr)
         return 1
 
 

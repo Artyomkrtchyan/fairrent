@@ -16,24 +16,30 @@ def aws(service, operation, **parameters):
     return json.loads(subprocess.check_output(args, text=True) or "{}")
 
 
-def build_user_data(images, bootstrap_directory=None):
+def build_user_data(images, bootstrap_directory=None, *, b07_package=None):
     # Read each AMI-provided config, preserving its database/secret/region settings.
     # Only public image references change. Credentials still come from the EC2 role.
     bootstrap = """import json, os, subprocess
 from pathlib import Path
 images = IMAGES
+b07_package = B07_PACKAGE
 for name, image in images.items():
     path = Path('/etc/fairrent') / (name + '.json')
     config = json.loads(path.read_text())
     config[name + '_image'] = image
     config['log_group'] = '/fairrent/dev/' + name
+    if name == 'backend':
+        if b07_package is None:
+            config.pop('b07_package', None)
+        else:
+            config['b07_package'] = b07_package
     temporary = path.with_suffix('.json.release')
     temporary.write_text(json.dumps(config) + '\\n')
     temporary.chmod(0o640)
     os.replace(temporary, path)
 subprocess.run(['systemctl', 'restart', 'fairrent-backend.service'], check=True)
 subprocess.run(['systemctl', 'restart', 'fairrent-frontend.service'], check=True)
-""".replace("IMAGES", repr(images))
+""".replace("IMAGES", repr(images)).replace("B07_PACKAGE", repr(b07_package))
     # JSON is valid YAML. This user data deliberately owns only release startup;
     # systemd units, Docker and AWS CLI are already installed in the golden AMI.
     cloud_config = {
@@ -76,7 +82,14 @@ def main():
     if any(item["Status"] not in terminal for item in refreshes):
         raise RuntimeError("Another instance refresh is active; wait for it before deploying")
 
-    user_data = build_user_data(images)
+    model_version = os.environ.get("B07_PACKAGE_VERSION", "")
+    model_checksum = os.environ.get("B07_PACKAGE_SHA256", "")
+    model = None
+    if model_version or model_checksum:
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,99}", model_version) or not re.fullmatch(r"[a-f0-9]{64}", model_checksum):
+            raise ValueError("Set both a valid B07 package version and checksum manifest SHA-256")
+        model = {"version": model_version, "checksum_sha256": model_checksum}
+    user_data = build_user_data(images, b07_package=model)
     version = aws("ec2", "create-launch-template-version",
                   launch_template_id=current["LaunchTemplateId"],
                   source_version=current["Version"],
