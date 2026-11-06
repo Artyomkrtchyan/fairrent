@@ -9,7 +9,7 @@ import { createFileRoute, Link, type SearchSchemaInput } from "@tanstack/react-r
 import { parseCatalogueSearch, type CatalogueSearch } from "@/lib/catalogue-search";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Money, RateNote } from "@/components/ui-bits";
 
@@ -96,6 +96,33 @@ function Browse() {
   const navigate = Route.useNavigate();
 
   const [filterRevision, setFilterRevision] = useState(0);
+  const [showBackToMap, setShowBackToMap] = useState(false);
+
+  useEffect(() => {
+    const mapSection = document.getElementById("map-explore");
+    if (!mapSection) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry) setShowBackToMap(!entry.isIntersecting && entry.boundingClientRect.bottom <= 0);
+      },
+      { threshold: 0 },
+    );
+    observer.observe(mapSection);
+    return () => observer.disconnect();
+  }, []);
+
+  function scrollToMap() {
+    const mapSection = document.getElementById("map-explore");
+    if (!mapSection) return;
+    mapSection.focus({ preventScroll: true });
+    mapSection.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
+      block: "start",
+    });
+  }
 
   function applyFilters(next: CatalogueSearch) {
     setFilterRevision((value) => value + 1);
@@ -244,23 +271,18 @@ function Browse() {
             </select>
           </label>
 
-          <a
-            href="#map-explore"
-            className="text-sm font-semibold text-primary"
-            onClick={(event) => {
-              event.preventDefault();
-              const map = document.getElementById("map-explore");
-              map?.focus({ preventScroll: true });
-              map?.scrollIntoView({
-                behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-                  ? "instant"
-                  : "smooth",
-                block: "start",
-              });
-            }}
-          >
-            Back to map ↑
-          </a>
+          {showBackToMap && (
+            <a
+              href="#map-explore"
+              className="fixed bottom-5 right-5 z-40 rounded-full border border-primary bg-card px-4 py-3 text-sm font-semibold text-primary shadow-lg transition hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:bottom-8 sm:right-8"
+              onClick={(event) => {
+                event.preventDefault();
+                scrollToMap();
+              }}
+            >
+              Back to map ↑
+            </a>
+          )}
         </div>
 
         {isPending && (
