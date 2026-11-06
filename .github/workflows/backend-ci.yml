@@ -233,6 +233,8 @@ jobs:
       - name: Deploy and wait for ASG replacement
         env:
           GH_TOKEN: ${{ github.token }}
+          B07_PACKAGE_VERSION: ${{ vars.B07_PACKAGE_VERSION }}
+          B07_PACKAGE_SHA256: ${{ vars.B07_PACKAGE_SHA256 }}
         run: |
           current_main=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')
           if [ "$current_main" = "$GITHUB_SHA" ]; then
