@@ -98,6 +98,13 @@ class ListingPage(ContractModel):
     has_more: bool
 
 
+class ListingMapPoint(ContractModel):
+    id: UUID
+    latitude: float
+    longitude: float
+    coordinate_confidence: Literal["exact", "approximate"]
+
+
 class ListingDetail(ContractModel):
     listing: ListingResponse
     signals: list[dict] = Field(default_factory=list)
@@ -105,9 +112,7 @@ class ListingDetail(ContractModel):
     image_urls: list[HttpUrl] = Field(default_factory=list)
 
 
-class ListingQuery(ContractModel):
-    page: int = Field(default=1, ge=1)
-    page_size: int = Field(default=20, ge=1, le=100)
+class ListingFilters(ContractModel):
     district_id: str | None = Field(default=None, min_length=1)
     price_min: float | None = Field(default=None, ge=0)
     price_max: float | None = Field(default=None, ge=0)
@@ -116,7 +121,6 @@ class ListingQuery(ContractModel):
     area_max: float | None = Field(default=None, gt=0)
     status: Literal["active", "inactive"] = "active"
     bbox: str | None = Field(default=None, pattern=r"^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$")
-    sort: Literal["newest", "price_asc", "price_desc", "area_asc", "area_desc"] = "newest"
 
     @model_validator(mode="after")
     def check_ranges(self):
@@ -133,3 +137,9 @@ class ListingQuery(ContractModel):
 
     def bounds(self):
         return tuple(float(value) for value in self.bbox.split(","))
+
+
+class ListingQuery(ListingFilters):
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+    sort: Literal["newest", "price_asc", "price_desc", "area_asc", "area_desc"] = "newest"

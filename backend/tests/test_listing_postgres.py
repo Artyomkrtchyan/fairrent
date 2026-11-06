@@ -82,6 +82,24 @@ def ids(response):
     return [UUID(item["id"]).int for item in response.json()["items"]]
 
 
+def test_map_returns_all_matching_geocoded_listings(client, populated):
+    catalogue = client.get("/api/v1/listings?page_size=1")
+    assert len(ids(catalogue)) == 1
+    assert catalogue.json()["total"] == 4
+
+    response = client.get("/api/v1/listings/map")
+    assert response.status_code == 200, response.text
+    points = response.json()
+    assert [UUID(point["id"]).int for point in points] == [1, 3, 5]
+    for point in points:
+        validate_contract(point, "ListingMapPoint")
+
+    response = client.get("/api/v1/listings/map", params={"district_id": "arabkir", "rooms": 3})
+    assert response.status_code == 200, response.text
+    assert [UUID(point["id"]).int for point in response.json()] == [3]
+    assert client.get("/api/v1/listings/map?page=2").status_code == 422
+
+
 def test_real_filters_and_boundaries(client, populated):
     response = client.get("/api/v1/listings", params={
         "district_id": "kentron", "price_min": 600, "price_max": 600,

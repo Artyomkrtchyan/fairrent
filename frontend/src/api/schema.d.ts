@@ -144,6 +144,26 @@ export interface paths {
         patch: operations["patch_reviews_id"];
         trace?: never;
     };
+    "/api/v1/listings/map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get all matching rental map locations
+         * @description Proposed contract; see docs/contract-semantics.md for units, nullability, ordering and runtime validation.
+         */
+        get: operations["get_listing_map"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/infrastructure": {
         parameters: {
             query?: never;
@@ -539,6 +559,14 @@ export interface components {
             /** @enum {string} */
             status: "available" | "stale" | "unavailable";
             freshness: components["schemas"]["Freshness"];
+        };
+        ListingMapPoint: {
+            /** Format: uuid */
+            id: string;
+            latitude: number;
+            longitude: number;
+            /** @enum {string} */
+            coordinate_confidence: "exact" | "approximate";
         };
     };
     responses: never;
@@ -1471,6 +1499,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Invalid input */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Internal error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Dependency unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    get_listing_map: {
+        parameters: {
+            query?: {
+                district_id?: string;
+                price_min?: number;
+                price_max?: number;
+                rooms?: number;
+                area_min?: number;
+                area_max?: number;
+                status?: "active" | "inactive";
+                bbox?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListingMapPoint"][];
                 };
             };
             /** @description Invalid input */

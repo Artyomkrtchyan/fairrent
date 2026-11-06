@@ -18,6 +18,8 @@ import { usePrefs } from "@/lib/prefs";
 import { apiMode } from "@/api/client";
 import { hasMapCoordinates, type MapListing } from "@/lib/map-listings";
 import type { MapCamera } from "@/components/MapCanvas";
+import { useQuery } from "@tanstack/react-query";
+import { getListingDetails, type ListingMapPoint } from "@/api/listings";
 
 const MapCanvas = lazy(() =>
   import("@/components/MapCanvas").then((module) => ({ default: module.MapCanvas })),
@@ -40,6 +42,8 @@ export function MapHero({
   pending = false,
   failed = false,
   hasMore = false,
+  mapLocations,
+  onRetry,
 }: {
   bbox?: string | undefined;
   onSearchArea?: (bbox: string) => void;
@@ -48,6 +52,8 @@ export function MapHero({
   pending?: boolean;
   failed?: boolean;
   hasMore?: boolean;
+  mapLocations?: readonly ListingMapPoint[] | undefined;
+  onRetry?: () => void;
 }) {
   const { format } = usePrefs();
   const [viewMode, setViewMode] = useState<"2d" | "3d">("2d");
@@ -229,16 +235,36 @@ export function MapHero({
     </aside>
   );
   const [selectedId, setSelectedId] = useState<string>();
+  const [overlappingIds, setOverlappingIds] = useState<readonly string[]>([]);
+  const selectedLocation = mapLocations?.find(({ id }) => id === selectedId);
+  const details = useQuery({
+    queryKey: ["map-listing-detail", apiMode, selectedId],
+    queryFn: ({ signal }) => getListingDetails(selectedId!, signal),
+    enabled: selectedLocation !== undefined,
+    retry: false,
+  });
   const selectRental = useCallback((id: string) => {
+    setOverlappingIds([]);
     setSelectedId(id);
     setSelectedPlaceId(undefined);
   }, []);
   const selectPlace = useCallback((id: string) => {
+    setOverlappingIds([]);
     setSelectedPlaceId(id);
     setSelectedId(undefined);
   }, []);
+  const selectOverlap = useCallback((ids: string[]) => {
+    setSelectedId(undefined);
+    setSelectedPlaceId(undefined);
+    setOverlappingIds(ids);
+  }, []);
   const points = useMemo(
     () =>
+      mapLocations?.map((location) => ({
+        ...location,
+        label: "Show rental preview",
+        approximate: location.coordinate_confidence === "approximate",
+      })) ??
       listings.filter(hasMapCoordinates).map((listing) => ({
         id: listing.id,
         longitude: listing.longitude!,
@@ -249,14 +275,16 @@ export function MapHero({
             : format(listing.price_monthly_normalized),
         approximate: listing.coordinate_confidence === "approximate",
       })),
-    [listings, format],
+    [mapLocations, listings, format],
   );
-  const selected = listings.find(
-    (listing) => listing.id === selectedId && hasMapCoordinates(listing),
-  );
+  const selected = mapLocations
+    ? selectedLocation && details.data?.listing
+    : listings.find((listing) => listing.id === selectedId && hasMapCoordinates(listing));
   const markerProps = {
     viewMode,
-    points: bbox ? points : [],
+    points: mapLocations || bbox ? points : [],
+    clustered: mapLocations !== undefined,
+    onOverlap: selectOverlap,
     showDemoSurface,
     places,
     selectedPlaceId,
@@ -268,11 +296,46 @@ export function MapHero({
   const coverage = pending
     ? "Loading rental locations…"
     : failed
-      ? "Rental locations unavailable. Try again in the catalogue below."
-      : !bbox
-        ? "Rental results are also available in the catalogue below."
-        : `${points.length} of ${listings.length} rentals on this results page have usable locations.${hasMore ? " More results are available in the catalogue." : ""}`;
-  const preview = bbox && selected && (
+      ? "Rental locations unavailable."
+      : mapLocations
+        ? `${points.length.toLocaleString()} rentals with usable locations.`
+        : !bbox
+          ? "Rental results are also available in the catalogue below."
+          : `${points.length} of ${listings.length} rentals on this results page have usable locations.${hasMore ? " More results are available in the catalogue." : ""}`;
+  const overlap = overlappingIds.length > 0 &&
+    overlappingIds.every((id) => mapLocations?.some((location) => location.id === id)) && (
+      <section className="rental-map-preview" aria-label="Rentals at this location">
+        <button
+          type="button"
+          className="rental-preview-close"
+          aria-label="Close rental choices"
+          onClick={() => setOverlappingIds([])}
+        >
+          <X size={18} />
+        </button>
+        <h3>{overlappingIds.length} rentals at this location</h3>
+        <ul className="max-h-48 overflow-y-auto">
+          {overlappingIds.map((id, index) => (
+            <li key={id}>
+              <button type="button" onClick={() => selectRental(id)}>
+                View rental {index + 1}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  const detailsStatus = selectedLocation && (details.isPending || details.isError) && (
+    <section className="rental-map-preview" role="status">
+      {details.isPending ? "Loading rental preview…" : "Rental preview unavailable."}
+      {details.isError && (
+        <button type="button" onClick={() => void details.refetch()}>
+          Retry preview
+        </button>
+      )}
+    </section>
+  );
+  const preview = (mapLocations || bbox) && selected && (
     <section className="rental-map-preview" aria-label="Selected rental" aria-live="polite">
       <button
         type="button"
@@ -442,10 +505,15 @@ export function MapHero({
               />
             </Suspense>
             {!expanded && gradientLegend}
-            {!expanded && (placePreview || preview)}
+            {!expanded && (placePreview || overlap || preview || detailsStatus)}
           </div>
           <p className="rental-map-coverage" role="status">
             {areaStatus} {coverage}
+            {failed && onRetry && (
+              <button type="button" onClick={onRetry}>
+                Retry map
+              </button>
+            )}
           </p>
 
           {placeControls}
@@ -504,9 +572,14 @@ export function MapHero({
                 />
               </Suspense>
               {gradientLegend}
-              {placePreview || preview}
+              {placePreview || overlap || preview || detailsStatus}
               <p className="rental-map-coverage rental-map-coverage-expanded" role="status">
                 {areaStatus} {coverage}
+                {failed && onRetry && (
+                  <button type="button" onClick={onRetry}>
+                    Retry map
+                  </button>
+                )}
               </p>
             </div>
             {placeControls}

@@ -114,13 +114,13 @@ export function selectListings(listings: readonly Listing[], search: CatalogueSe
   };
 }
 
-export function mockListingPage(url: URL) {
+export function mockListingPage(url: URL, all = false) {
   const search = parseCatalogueSearch(Object.fromEntries(url.searchParams));
 
   const listings = fixtures.listings.value.items as Listing[];
 
   return {
     ...fixtures.listings.value,
-    ...selectListings(listings, search),
+    ...selectListings(listings, all ? { ...search, page: 1, page_size: listings.length } : search),
   };
 }
