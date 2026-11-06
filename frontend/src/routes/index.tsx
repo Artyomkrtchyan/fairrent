@@ -209,7 +209,7 @@ function Browse() {
         <div className="sticky top-28 z-40 mt-6 h-0 sm:top-24">
           <a
             href="#map-explore"
-            className="absolute right-0 top-0 inline-flex h-[42px] items-center justify-center whitespace-nowrap rounded-md border border-primary/25 bg-primary/10 px-4 py-0 text-sm font-semibold text-primary shadow-sm backdrop-blur-sm transition hover:bg-primary/15 dark:border-white/25 dark:bg-white/[0.07] dark:text-white dark:hover:bg-white/[0.14] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="absolute right-0 top-0 inline-flex h-11 w-48 items-center justify-center whitespace-nowrap rounded-md border bg-card px-3 py-2 text-sm font-normal text-foreground transition hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             onClick={(event) => {
               event.preventDefault();
               scrollToMap();
@@ -218,7 +218,7 @@ function Browse() {
             Back to map ↑
           </a>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 pr-40 sm:pr-44">
+        <div className="flex flex-wrap items-center justify-between gap-3 pr-52">
           <p className="text-sm" aria-live="polite">
             {isPending
               ? "Loading listings…"
@@ -258,7 +258,7 @@ function Browse() {
                   });
                 }
               }}
-              className="rounded-md border bg-card px-3 py-2"
+              className="h-11 w-48 rounded-md border bg-card px-3 py-2"
             >
               <option value="newest">Newest first</option>
               <option value="price_asc">Rent: low to high</option>
