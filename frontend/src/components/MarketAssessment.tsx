@@ -7,7 +7,7 @@ import { ValuationFactors } from "@/components/ValuationFactors";
 type DetailResponse = Awaited<ReturnType<typeof getListingDetails>>;
 
 interface Props {
-  askingUsd: number | null;
+  askingUsd?: number | null;
   estimate: DetailResponse["estimate"];
 }
 
@@ -66,7 +66,7 @@ export function MarketAssessment({ askingUsd, estimate }: Props) {
   // Use the same supported range for both the badge and the displayed interval.
   // A supplied price_status may refer to an older asking rent.
   const status: keyof typeof statusLabels =
-    validInterval && askingUsd !== null && Number.isFinite(askingUsd)
+    validInterval && typeof askingUsd === "number" && Number.isFinite(askingUsd)
       ? askingUsd < validInterval.lower
         ? "below_range"
         : askingUsd > validInterval.upper
@@ -96,13 +96,15 @@ export function MarketAssessment({ askingUsd, estimate }: Props) {
         )}
 
         <dl className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-lg bg-muted p-4">
-            <dt className="text-sm text-muted-foreground">Asking rent</dt>
+          {askingUsd !== undefined && (
+            <div className="rounded-lg bg-muted p-4">
+              <dt className="text-sm text-muted-foreground">Asking rent</dt>
 
-            <dd className="mt-2 text-xl font-bold text-heading">
-              {askingUsd === null ? "Not available" : <Money usd={askingUsd} suffix="/ month" />}
-            </dd>
-          </div>
+              <dd className="mt-2 text-xl font-bold text-heading">
+                {askingUsd === null ? "Not available" : <Money usd={askingUsd} suffix="/ month" />}
+              </dd>
+            </div>
+          )}
 
           <div className="rounded-lg bg-muted p-4">
             <dt className="text-sm text-muted-foreground">
@@ -121,11 +123,13 @@ export function MarketAssessment({ askingUsd, estimate }: Props) {
 
         <RateNote />
 
-        <span
-          className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${statusColors[status]}`}
-        >
-          {statusLabels[status]}
-        </span>
+        {askingUsd !== undefined && (
+          <span
+            className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${statusColors[status]}`}
+          >
+            {statusLabels[status]}
+          </span>
+        )}
 
         {isAreaReference && (
           <p className="rounded-md border p-3 text-sm">

@@ -27,6 +27,10 @@ export const mockFetch: typeof fetch = async (input, init) => {
 
   const { pathname } = new URL(request.url);
 
+  if (request.method === "POST" && pathname === "/api/v1/valuations") {
+    const body = (await request.json()) as { area_sqm?: number; rooms?: number };
+    return fixtureResponse(body.area_sqm && body.rooms ? "valuation" : "area-reference");
+  }
   if (request.method !== "GET") {
     return fixtureResponse("error-service_unavailable", 503);
   }
