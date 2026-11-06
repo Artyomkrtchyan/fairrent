@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Map, NavigationControl, AttributionControl, Marker, setWorkerUrl } from "maplibre-gl";
+import {
+  Map,
+  NavigationControl,
+  AttributionControl,
+  Marker,
+  setWorkerUrl,
+  type GeoJSONSource,
+} from "maplibre-gl";
 import mapWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -49,6 +56,8 @@ interface Props {
   points?: readonly RentalMapPoint[];
   selectedId?: string | undefined;
   onSelect?: (id: string) => void;
+  clustered?: boolean;
+  onOverlap?: (ids: string[]) => void;
   expanded?: boolean;
   camera?: MapCamera;
   onCameraChange?: (camera: MapCamera) => void;
@@ -68,6 +77,8 @@ export function MapCanvas({
   points = EMPTY_POINTS,
   selectedId,
   onSelect,
+  clustered = false,
+  onOverlap,
 }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const instance = useRef<Map | null>(null);
@@ -277,7 +288,92 @@ export function MapCanvas({
 
   useEffect(() => {
     const map = instance.current;
-    if (!map) return;
+    if (!map || !styleReady || !clustered) return;
+    const source = "rental-locations";
+    const clusters = "rental-clusters";
+    const labels = "rental-cluster-count";
+    const individual = "rental-points";
+    map.addSource(source, {
+      type: "geojson",
+      cluster: true,
+      clusterMaxZoom: 16,
+      data: {
+        type: "FeatureCollection",
+        features: points.map(({ id, longitude, latitude }) => ({
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [longitude, latitude] },
+          properties: { id },
+        })),
+      },
+    });
+    map.addLayer({
+      id: clusters,
+      source,
+      type: "circle",
+      filter: ["has", "point_count"],
+      paint: {
+        "circle-color": "#0f766e",
+        "circle-radius": ["step", ["get", "point_count"], 15, 100, 20, 1000, 25],
+        "circle-stroke-color": "#fff",
+        "circle-stroke-width": 2,
+      },
+    });
+    map.addLayer({
+      id: labels,
+      source,
+      type: "symbol",
+      filter: ["has", "point_count"],
+      layout: { "text-field": ["get", "point_count_abbreviated"], "text-size": 12 },
+      paint: { "text-color": "#fff" },
+    });
+    map.addLayer({
+      id: individual,
+      source,
+      type: "circle",
+      filter: ["!", ["has", "point_count"]],
+      paint: {
+        "circle-color": "#0f766e",
+        "circle-radius": 6,
+        "circle-stroke-color": "#fff",
+        "circle-stroke-width": 2,
+      },
+    });
+    const clusterClick = map.on("click", clusters, (event) => {
+      const feature = event.features?.[0];
+      if (feature?.geometry.type !== "Point") return;
+      const clusterId = Number(feature.properties["cluster_id"]);
+      const [longitude, latitude] = feature.geometry.coordinates;
+      if (longitude === undefined || latitude === undefined) return;
+      void (map.getSource(source) as GeoJSONSource)
+        .getClusterExpansionZoom(clusterId)
+        .then((zoom) => {
+          if (instance.current === map && map.getLayer(clusters)) {
+            map.easeTo({ center: [longitude, latitude], zoom });
+          }
+        })
+        .catch(() => undefined);
+    });
+    const pointClick = map.on("click", individual, (event) => {
+      const ids = [
+        ...new Set((event.features ?? []).map((feature) => String(feature.properties["id"]))),
+      ];
+      if (ids.length > 1) onOverlap?.(ids);
+      else if (ids[0]) onSelect?.(ids[0]);
+    });
+    return () => {
+      clusterClick.unsubscribe();
+      pointClick.unsubscribe();
+      if (instance.current !== map) return;
+      for (const layer of [labels, individual, clusters]) {
+        if (map.getLayer(layer)) map.removeLayer(layer);
+      }
+      if (map.getSource(source)) map.removeSource(source);
+    };
+  }, [clustered, onOverlap, onSelect, points, styleReady]);
+
+  useEffect(() => {
+    const map = instance.current;
+    if (!map || clustered) return;
     const markers = points.map((point) => {
       const button = document.createElement("button");
       button.type = "button";
@@ -298,7 +394,7 @@ export function MapCanvas({
       markers.forEach((marker) => marker.remove());
       markerButtons.current = [];
     };
-  }, [points, onSelect]);
+  }, [clustered, points, onSelect]);
 
   useEffect(() => {
     const map = instance.current;

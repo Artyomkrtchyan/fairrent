@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from backend.main import app
-from backend.listing_models import ListingData, ListingQuery, public_listing
+from backend.listing_models import ListingData, ListingMapPoint, ListingQuery, public_listing
 from backend.listing_repository import search_sql
 from backend.listing_routes import repository
 
@@ -26,6 +26,14 @@ def client(listing_document):
 
         def detail(self, listing_id):
             return self.get(listing_id), []
+
+        def map_points(self, query):
+            self.query = query
+            return [
+                ListingMapPoint(id=UUID(int=i), latitude=40.18, longitude=44.51,
+                                coordinate_confidence="exact")
+                for i in range(1, 102)
+            ]
 
     repo = Repo()
     app.dependency_overrides[repository] = lambda: repo
@@ -46,6 +54,14 @@ def test_search_contract_and_defaults(client, listing_document):
     assert listing["price_status"] == "insufficient_data"
     assert listing["freshness"]["data_as_of"] == listing_document["last_seen_at"]
     assert client.repo.query.status == "active"
+
+
+def test_map_is_unpaginated(client):
+    response = client.get("/api/v1/listings/map?rooms=2")
+    assert response.status_code == 200
+    assert len(response.json()) == 101
+    assert client.repo.query.rooms == 2
+    assert client.get("/api/v1/listings/map?page=2").status_code == 422
 
 
 @pytest.mark.parametrize("query", [

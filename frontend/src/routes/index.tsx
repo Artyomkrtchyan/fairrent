@@ -14,7 +14,7 @@ import { useState } from "react";
 import { Money, RateNote } from "@/components/ui-bits";
 
 import { PropertyPhoto } from "@/components/PropertyPhoto";
-import { getListings } from "@/api/listings";
+import { getListingMap, getListings } from "@/api/listings";
 import { apiMode } from "@/api/client";
 import type { components } from "@/api/schema";
 
@@ -111,6 +111,12 @@ function Browse() {
     queryFn: ({ signal }) => getListings(signal, search),
     retry: false,
   });
+  const { page: _page, page_size: _pageSize, sort: _sort, ...mapFilters } = search;
+  const map = useQuery({
+    queryKey: ["listing-map", apiMode, mapFilters],
+    queryFn: ({ signal }) => getListingMap(mapFilters, signal),
+    retry: false,
+  });
 
   return (
     <main>
@@ -122,10 +128,10 @@ function Browse() {
           delete next.bbox;
           applyFilters(next);
         }}
-        listings={isError ? [] : (data?.items ?? [])}
-        pending={isPending}
-        failed={isError}
-        hasMore={data?.has_more ?? false}
+        mapLocations={map.data}
+        pending={map.isPending}
+        failed={map.isError}
+        onRetry={() => void map.refetch()}
       />
 
       <div

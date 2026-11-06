@@ -36,6 +36,24 @@ export const mockFetch: typeof fetch = async (input, init) => {
   }
 
   switch (pathname) {
+    case "/api/v1/listings/map":
+      return Response.json(
+        mockListingPage(new URL(request.url), true).items.flatMap((listing) =>
+          listing.latitude === null ||
+          listing.longitude === null ||
+          listing.coordinate_confidence === "unknown"
+            ? []
+            : [
+                {
+                  id: listing.id,
+                  latitude: listing.latitude,
+                  longitude: listing.longitude,
+                  coordinate_confidence: listing.coordinate_confidence,
+                },
+              ],
+        ),
+      );
+
     case "/api/v1/listings":
       return new Response(JSON.stringify(mockListingPage(new URL(request.url))), {
         status: 200,

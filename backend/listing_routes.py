@@ -4,10 +4,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 try:
-    from .listing_models import ListingDetail, ListingPage, ListingQuery, public_listing
+    from .listing_models import ListingDetail, ListingFilters, ListingMapPoint, ListingPage, ListingQuery, public_listing
     from .listing_repository import ListingRepository
 except ImportError:
-    from listing_models import ListingDetail, ListingPage, ListingQuery, public_listing
+    from listing_models import ListingDetail, ListingFilters, ListingMapPoint, ListingPage, ListingQuery, public_listing
     from listing_repository import ListingRepository
 
 
@@ -30,6 +30,11 @@ def listings(query: Annotated[ListingQuery, Query()], repo=Depends(repository)):
     return ListingPage(items=[public_listing(record) for record in records],
                        page=query.page, page_size=query.page_size,
                        total=total, has_more=query.page * query.page_size < total)
+
+
+@router.get("/map", response_model=list[ListingMapPoint], dependencies=[Depends(unique_query)])
+def listing_map(query: Annotated[ListingFilters, Query()], repo=Depends(repository)):
+    return repo.map_points(query)
 
 
 @router.get("/{id}", response_model=ListingDetail)

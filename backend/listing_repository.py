@@ -6,9 +6,9 @@ import psycopg
 from psycopg.types.json import Jsonb
 
 try:
-    from .listing_models import ListingData, ListingQuery
+    from .listing_models import ListingData, ListingFilters, ListingMapPoint, ListingQuery
 except ImportError:  # Docker runs uvicorn main:app from /app.
-    from listing_models import ListingData, ListingQuery
+    from listing_models import ListingData, ListingFilters, ListingMapPoint, ListingQuery
 
 
 ORDER_BY = {
@@ -55,7 +55,7 @@ def publish_listing(connection, record: ListingData):
         raise ValueError("Public UUID already belongs to another source listing")
 
 
-def search_sql(query: ListingQuery):
+def search_sql(query: ListingFilters):
     clauses, params = ["status = %s"], [query.status]
     for name, column, operator in (
         ("district_id", "district_id", "="), ("price_min", "price", ">="),
@@ -74,6 +74,22 @@ def search_sql(query: ListingQuery):
 
 
 class ListingRepository:
+    def map_points(self, query: ListingFilters):
+        where, params = search_sql(query)
+        with psycopg.connect(connect_timeout=3) as connection:
+            connection.execute("SET TRANSACTION READ ONLY")
+            connection.execute("SET LOCAL statement_timeout = '5s'")
+            rows = connection.execute(f"""
+                SELECT id, latitude, longitude, document->>'coordinate_confidence'
+                FROM api_listing_projection
+                WHERE {where}
+                  AND latitude BETWEEN -90 AND 90 AND longitude BETWEEN -180 AND 180
+                  AND document->>'coordinate_confidence' IN ('exact', 'approximate')
+                ORDER BY id
+            """, params).fetchall()
+        return [ListingMapPoint(id=id, latitude=lat, longitude=lon, coordinate_confidence=confidence)
+                for id, lat, lon, confidence in rows]
+
     def search(self, query: ListingQuery):
         where, params = search_sql(query)
         # Count and page must see the same snapshot, including out-of-range pages.

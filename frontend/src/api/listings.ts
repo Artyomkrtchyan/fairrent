@@ -1,7 +1,11 @@
 import { api } from "./client";
-import type { paths } from "./schema";
+import type { components, paths } from "./schema";
 
 export type ListingQuery = NonNullable<paths["/api/v1/listings"]["get"]["parameters"]["query"]>;
+export type ListingMapQuery = NonNullable<
+  paths["/api/v1/listings/map"]["get"]["parameters"]["query"]
+>;
+export type ListingMapPoint = components["schemas"]["ListingMapPoint"];
 
 export class ListingApiError extends Error {
   constructor(
@@ -40,5 +44,19 @@ export async function getListingDetails(id: string, signal?: AbortSignal) {
     throw new ListingApiError(error?.message ?? "Could not load listing details.", response.status);
   }
 
+  return data;
+}
+
+export async function getListingMap(query: ListingMapQuery, signal: AbortSignal) {
+  const { data, error, response } = await api.GET("/api/v1/listings/map", {
+    params: { query },
+    signal,
+  });
+  if (!data) {
+    throw new ListingApiError(
+      error?.message ?? "Could not load rental locations.",
+      response.status,
+    );
+  }
   return data;
 }

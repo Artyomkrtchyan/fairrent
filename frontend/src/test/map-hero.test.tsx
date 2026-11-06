@@ -87,6 +87,18 @@ afterEach(() => {
 });
 
 describe("framed map introduction", () => {
+  it("shows the complete location response before applying a map area", async () => {
+    const mapLocations = Array.from({ length: 101 }, (_, index) => ({
+      id: String(index),
+      latitude: 40.18,
+      longitude: 44.51,
+      coordinate_confidence: "exact" as const,
+    }));
+    render(<MapHero mapLocations={mapLocations} />);
+    expect(await screen.findByTestId("embedded-map")).toHaveAttribute("data-marker-count", "101");
+    expect(screen.getByText(/101 rentals with usable locations/)).toBeInTheDocument();
+  });
+
   it("offers Clear area in both toolbars only when an area is applied", async () => {
     const onClearArea = vi.fn();
     const view = render(<MapHero onSearchArea={vi.fn()} onClearArea={onClearArea} />);

@@ -132,6 +132,15 @@ def align(schemas, paths, fixtures):
         return {'name':name,'in':'query','required':False,'schema':schema}
 
     paths['/api/v1/listings']['get']['parameters'].append(parameter('sort', dict(enum('newest','price_asc','price_desc','area_asc','area_desc'),default='newest')))
+    obj('ListingMapPoint', dict(id={'type':'string','format':'uuid'}, latitude=lat, longitude=lon,
+        coordinate_confidence=enum('exact','approximate')))
+    map_op = deepcopy(paths['/api/v1/listings']['get'])
+    map_op.update(operationId='get_listing_map', summary='Get all matching rental map locations')
+    map_op['parameters'] = [p for p in map_op['parameters'] if p['name'] not in ('page','page_size','sort')]
+    map_response = map_op['responses']['200']['content']['application/json']
+    map_response.pop('example', None)
+    map_response['schema'] = {'type':'array','items':ref('ListingMapPoint')}
+    paths['/api/v1/listings/map'] = {'get':map_op}
     paths['/api/v1/reviews']['get']['parameters'] += [parameter('rule_id',text),parameter('category',enum('price_anomaly','risk_evidence'))]
     for p in paths['/api/v1/reviews']['get']['parameters']:
         if p['name']=='status':
