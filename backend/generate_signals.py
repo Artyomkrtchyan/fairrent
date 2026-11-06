@@ -18,13 +18,22 @@ import psycopg
 from data_pipeline import geography
 from ml import ontology_rules as rules
 from ml import inference
-from backend.valuation_service import ValuationService
-from backend.valuation_gateway import PackagedGateway, ModelUnavailable
-from backend.valuation_models import ValuationRequest
-from backend.valuation_coverage import OutsideCoverage, CoverageUnavailable
-from backend.valuation_repository import CandidateLimit
-from backend.listing_models import ListingData
-from backend.signal_repository import reconcile_signals
+if __package__:
+    from .valuation_service import ValuationService
+    from .valuation_gateway import PackagedGateway, ModelUnavailable
+    from .valuation_models import ValuationRequest
+    from .valuation_coverage import OutsideCoverage, CoverageUnavailable
+    from .valuation_repository import CandidateLimit
+    from .listing_models import ListingData
+    from .signal_repository import reconcile_signals
+else:
+    from valuation_service import ValuationService
+    from valuation_gateway import PackagedGateway, ModelUnavailable
+    from valuation_models import ValuationRequest
+    from valuation_coverage import OutsideCoverage, CoverageUnavailable
+    from valuation_repository import CandidateLimit
+    from listing_models import ListingData
+    from signal_repository import reconcile_signals
 
 
 def migrate(connection, *, with_valuations=False):

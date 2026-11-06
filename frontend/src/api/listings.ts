@@ -60,3 +60,15 @@ export async function getListingMap(query: ListingMapQuery, signal: AbortSignal)
   }
   return data;
 }
+
+export async function getListingEstimate(id: string, signal: AbortSignal) {
+  const { data, error, response } = await api.GET("/api/v1/listings/{id}/estimate", {
+    params: { path: { id } },
+    signal,
+  });
+  if (response.status === 404) return null;
+  if (!data) {
+    throw new ListingApiError(error?.message ?? "Could not load the estimate.", response.status);
+  }
+  return data;
+}

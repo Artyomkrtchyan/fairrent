@@ -42,7 +42,7 @@ class ValuationService:
         self.coverage = coverage  # Load configuration at request time, not import/startup.
         self.clock = clock or (lambda: datetime.now(timezone.utc))
 
-    def assess(self, query, request_id, *, subject=None, connection=None):
+    def assess(self, query, request_id, *, subject=None, connection=None, persist=True):
         now = self.clock()
         coverage = self.coverage or Coverage()
         district_path = os.environ.get('VALUATION_DISTRICTS_FILE')
@@ -50,7 +50,8 @@ class ValuationService:
         shared_connection = connection is not None
         with (nullcontext(connection) if shared_connection else self.repository.connection()) as connection:
             if not shared_connection:
-                connection.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ')
+                mode = '' if persist else ' READ ONLY'
+                connection.execute('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ' + mode)
             connection.execute("SET LOCAL statement_timeout = '5s'")
             coverage.check(connection, query)
             records, dataset_version = self.repository.candidates(connection, query, now)
@@ -183,6 +184,7 @@ class ValuationService:
                 raise ModelUnavailable('Invalid model result') from exc
             geography_version = (coverage.version + (';districts=' + districts.version if districts else '')
                                  + ';a05=' + GEOGRAPHY_VERSION)
-            self.repository.save(connection, query, result, dataset_version, geography_version,
-                                 inference_provenance=inference_provenance)
+            if persist:
+                self.repository.save(connection, query, result, dataset_version, geography_version,
+                                     inference_provenance=inference_provenance)
         return result

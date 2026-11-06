@@ -8,7 +8,8 @@ import { MarketAssessment } from "@/components/MarketAssessment";
 
 import { createFileRoute, Link, notFound, useRouter, useRouterState } from "@tanstack/react-router";
 
-import { getListingDetails, ListingApiError } from "@/api/listings";
+import { useQuery } from "@tanstack/react-query";
+import { getListingDetails, getListingEstimate, ListingApiError } from "@/api/listings";
 
 import { apiMode } from "@/api/client";
 
@@ -42,6 +43,19 @@ function ListingPage() {
   });
 
   const { listing, signals, estimate, image_urls } = Route.useLoaderData();
+  const canRequestEstimate =
+    apiMode === "real" &&
+    estimate === null &&
+    listing.status === "active" &&
+    listing.coordinate_confidence !== "unknown" &&
+    listing.latitude !== null &&
+    listing.longitude !== null;
+  const assessment = useQuery({
+    queryKey: ["listing-estimate", apiMode, listing.id],
+    queryFn: ({ signal }) => getListingEstimate(listing.id, signal),
+    enabled: canRequestEstimate,
+    retry: false,
+  });
 
   const title = listing.title || "Apartment in Yerevan";
 
@@ -148,7 +162,21 @@ function ListingPage() {
           </div>
         </section>
         <div className="space-y-4">
-          <MarketAssessment askingUsd={listing.price_monthly_normalized} estimate={estimate} />
+          {canRequestEstimate && assessment.isPending ? (
+            <p role="status">Loading market assessment…</p>
+          ) : canRequestEstimate && assessment.isError ? (
+            <section className="card-surface p-5" aria-label="Market assessment">
+              <p role="alert">The market assessment is temporarily unavailable.</p>
+              <button type="button" onClick={() => void assessment.refetch()}>
+                Retry estimate
+              </button>
+            </section>
+          ) : (
+            <MarketAssessment
+              askingUsd={listing.price_monthly_normalized}
+              estimate={assessment.data ?? estimate}
+            />
+          )}
 
           <section className="card-surface p-5 text-sm" aria-label="Listing freshness">
             <h2 className="font-sans font-bold">Listing freshness</h2>

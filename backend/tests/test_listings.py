@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from backend.main import app
 from backend.listing_models import ListingData, ListingMapPoint, ListingQuery, public_listing
 from backend.listing_repository import search_sql
-from backend.listing_routes import repository
+from backend.listing_routes import repository, service
 
 
 @pytest.fixture
@@ -62,6 +62,24 @@ def test_map_is_unpaginated(client):
     assert len(response.json()) == 101
     assert client.repo.query.rooms == 2
     assert client.get("/api/v1/listings/map?page=2").status_code == 422
+
+
+def test_listing_estimate_uses_published_subject_without_writing(client, listing_document):
+    class Evaluator:
+        def assess(self, query, request_id, *, subject, persist):
+            assert str(subject.id) == listing_document["id"]
+            assert query.latitude == subject.latitude
+            assert query.asking_price_usd_month == subject.price_monthly_normalized
+            assert not persist
+            return {"request_id": request_id}
+
+    app.dependency_overrides[service] = Evaluator
+    path = "/api/v1/listings/" + listing_document["id"] + "/estimate"
+    response = client.get(path)
+    assert response.status_code == 200
+    assert response.json()["request_id"] == response.headers["x-request-id"]
+    listing_document["status"] = "inactive"
+    assert client.get(path).status_code == 404
 
 
 @pytest.mark.parametrize("query", [

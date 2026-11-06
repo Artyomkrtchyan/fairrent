@@ -6,9 +6,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 try:
     from .listing_models import ListingDetail, ListingFilters, ListingMapPoint, ListingPage, ListingQuery, public_listing
     from .listing_repository import ListingRepository
+    from .valuation_coverage import OutsideCoverage
+    from .valuation_models import ValuationRequest
+    from .valuation_repository import CandidateLimit
+    from .valuation_routes import service
 except ImportError:
     from listing_models import ListingDetail, ListingFilters, ListingMapPoint, ListingPage, ListingQuery, public_listing
     from listing_repository import ListingRepository
+    from valuation_coverage import OutsideCoverage
+    from valuation_models import ValuationRequest
+    from valuation_repository import CandidateLimit
+    from valuation_routes import service
 
 
 router = APIRouter(prefix="/api/v1/listings", tags=["listings"])
@@ -46,3 +54,23 @@ def listing_detail(id: UUID, request: Request, repo=Depends(repository)):
         raise HTTPException(404, "Listing not found")
     return ListingDetail(listing=public_listing(record),
                          signals=[s.model_dump(mode="json") for s in signals], image_urls=record.image_urls)
+
+
+@router.get("/{id}/estimate")
+def listing_estimate(id: UUID, request: Request, repo=Depends(repository), evaluator=Depends(service)):
+    if request.query_params:
+        raise HTTPException(422, "This endpoint accepts no query parameters")
+    record = repo.get(id)
+    if (record is None or record.status != "active" or record.coordinate_confidence == "unknown"
+            or record.latitude is None or record.longitude is None):
+        raise HTTPException(404, "Listing estimate unavailable")
+    fields = ("latitude", "longitude", "area_sqm", "rooms", "floor", "total_floors",
+              "renovation", "building_type")
+    inputs = {key: getattr(record, key) for key in fields}
+    if record.price_monthly_normalized is not None:
+        inputs["asking_price_usd_month"] = record.price_monthly_normalized
+    query = ValuationRequest(**inputs)
+    try:
+        return evaluator.assess(query, request.state.request_id, subject=record, persist=False)
+    except (OutsideCoverage, CandidateLimit) as exc:
+        raise HTTPException(404, "Listing estimate unavailable") from exc
