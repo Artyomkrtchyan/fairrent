@@ -20,15 +20,13 @@ test("Next and Previous return to rentals, not the map or page top", async ({ pa
         ...fixtures.listings.value,
         page: pageNumber,
         page_size: 20,
-        total: 21,
+        total: 40,
         has_more: pageNumber === 1,
-        items: [{
+        items: Array.from({ length: 20 }, (_, index) => ({
           ...fixtures.listings.value.items[0],
-          id: pageNumber === 1
-            ? "00000000-0000-4000-8000-000000000001"
-            : "00000000-0000-4000-8000-000000000002",
-          title: `Rental on page ${pageNumber}`,
-        }],
+          id: `00000000-0000-4000-8000-${String((pageNumber - 1) * 20 + index + 1).padStart(12, "0")}`,
+          title: `Rental on page ${pageNumber} unit ${index + 1}`,
+        })),
       };
     } else if (url.pathname === "/api/v1/exchange-rate") {
       payload = fixtures["exchange-rate"].value;
@@ -46,10 +44,10 @@ test("Next and Previous return to rentals, not the map or page top", async ({ pa
   });
 
   await page.goto("/");
-  await expect(page.getByText("Rental on page 1")).toBeVisible();
+  await expect(page.getByText("Rental on page 1 unit 1")).toBeVisible();
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await expect(page).toHaveURL(/page=2/);
-  await expect(page.getByText("Rental on page 2")).toBeVisible();
+  await expect(page.getByText("Rental on page 2 unit 1")).toBeVisible();
 
   async function expectAtRentals() {
     await expect.poll(async () => page.evaluate(() => {
@@ -63,7 +61,7 @@ test("Next and Previous return to rentals, not the map or page top", async ({ pa
   await expectAtRentals();
   await page.getByRole("button", { name: "Previous", exact: true }).click();
   await expect(page).toHaveURL(/page=1/);
-  await expect(page.getByText("Rental on page 1")).toBeVisible();
+  await expect(page.getByText("Rental on page 1 unit 1")).toBeVisible();
   await expectAtRentals();
   expect(seenPages).toContain(2);
   expect(seenPages).toContain(1);
