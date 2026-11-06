@@ -1,6 +1,8 @@
 import type { getListingDetails } from "@/api/listings";
 import { apiMode } from "@/api/client";
 import { Money, RateNote } from "@/components/ui-bits";
+import { ListingRent } from "@/components/ListingRent";
+import type { ListingPrice } from "@/lib/listing-rent";
 
 import { ValuationFactors } from "@/components/ValuationFactors";
 
@@ -8,6 +10,7 @@ type DetailResponse = Awaited<ReturnType<typeof getListingDetails>>;
 
 interface Props {
   askingUsd?: number | null;
+  listingPrice?: ListingPrice;
   estimate: DetailResponse["estimate"];
 }
 
@@ -25,7 +28,7 @@ const statusColors = {
   insufficient_data: "bg-neutral-soft text-neutral",
 };
 
-export function MarketAssessment({ askingUsd, estimate }: Props) {
+export function MarketAssessment({ askingUsd, listingPrice, estimate }: Props) {
   const assessment = estimate?.valuation_assessment;
 
   const isAreaReference = estimate?.kind === "area_reference";
@@ -101,7 +104,13 @@ export function MarketAssessment({ askingUsd, estimate }: Props) {
               <dt className="text-sm text-muted-foreground">Asking rent</dt>
 
               <dd className="mt-2 text-xl font-bold text-heading">
-                {askingUsd === null ? "Not available" : <Money usd={askingUsd} suffix="/ month" />}
+                {listingPrice ? (
+                  <ListingRent listing={listingPrice} suffix="/ month" />
+                ) : askingUsd === null ? (
+                  "Not available"
+                ) : (
+                  <Money usd={askingUsd} suffix="/ month" />
+                )}
               </dd>
             </div>
           )}
