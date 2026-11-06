@@ -9,7 +9,7 @@ import { createFileRoute, Link, type SearchSchemaInput } from "@tanstack/react-r
 import { parseCatalogueSearch, type CatalogueSearch } from "@/lib/catalogue-search";
 
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Money, RateNote } from "@/components/ui-bits";
 
@@ -96,19 +96,19 @@ function Browse() {
   const navigate = Route.useNavigate();
 
   const [filterRevision, setFilterRevision] = useState(0);
-  const [showBackToMap, setShowBackToMap] = useState(false);
+  const backToMapAnchor = useRef<HTMLSpanElement>(null);
+  const [backToMapStuck, setBackToMapStuck] = useState(false);
 
   useEffect(() => {
-    const mapSection = document.getElementById("map-explore");
-    if (!mapSection) return;
-
+    const anchor = backToMapAnchor.current;
+    if (!anchor) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry) setShowBackToMap(!entry.isIntersecting && entry.boundingClientRect.bottom <= 0);
+        if (entry) setBackToMapStuck(entry.boundingClientRect.top < 100);
       },
-      { threshold: 0 },
+      { rootMargin: "-100px 0px 0px 0px" },
     );
-    observer.observe(mapSection);
+    observer.observe(anchor);
     return () => observer.disconnect();
   }, []);
 
@@ -271,10 +271,10 @@ function Browse() {
             </select>
           </label>
 
-          {showBackToMap && (
+          <span ref={backToMapAnchor} className="inline-flex min-h-[46px] shrink-0">
             <a
               href="#map-explore"
-              className="fixed bottom-5 right-5 z-40 rounded-full border border-primary bg-card px-4 py-3 text-sm font-semibold text-primary shadow-lg transition hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:bottom-8 sm:right-8"
+              className={`inline-flex min-h-[46px] items-center justify-center rounded-xl border border-[#b4c8ff66] bg-gradient-to-r from-[#193a90] via-[#172e68] to-[#152547] px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${backToMapStuck ? "fixed right-5 top-24 z-40 sm:right-8" : ""}`}
               onClick={(event) => {
                 event.preventDefault();
                 scrollToMap();
@@ -282,7 +282,7 @@ function Browse() {
             >
               Back to map ↑
             </a>
-          )}
+          </span>
         </div>
 
         {isPending && (
