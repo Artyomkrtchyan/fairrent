@@ -31,7 +31,7 @@ test("Browse and filters render a contract-backed listing", async ({ page }) => 
   await page.goto("/");
   await expect(page.getByText("1 rental found")).toBeVisible();
   await expect(page.getByText("Synthetic apartment").first()).toBeVisible();
-  await page.getByLabel("District", { exact: true }).fill("kentron");
+  await page.locator('input[list="catalogue-districts"]').fill("kentron");
   await page.getByRole("button", { name: "Apply filters" }).click();
   await expect(page).toHaveURL(/district_id=kentron/);
   await page.getByText("View details").first().click();
@@ -73,7 +73,7 @@ test("Mobile navigation and filter controls remain usable", async ({ page }) => 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await page.getByRole("button", { name: "Show filters" }).click();
-  await expect(page.getByLabel("District", { exact: true })).toBeVisible();
+  await expect(page.locator('input[list="catalogue-districts"]')).toBeVisible();
   await page.getByRole("button", { name: "Menu" }).click();
   await expect(page.getByRole("link", { name: "Market analytics" })).toBeVisible();
   await page.keyboard.press("Tab");
