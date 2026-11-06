@@ -37,7 +37,7 @@ export function resolveListingRent(
         ? original
         : validRate
           ? new Decimal(original).div(amdPerUsd).toNumber()
-          : listing.price_monthly_normalized;
+          : null;
 
     if (preferredCurrency === originalCurrency || !validRate) {
       return { amount: original, currency: originalCurrency, askingUsd };
