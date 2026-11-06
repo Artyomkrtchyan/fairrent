@@ -209,7 +209,7 @@ function Browse() {
         <div className="sticky top-28 z-40 mt-6 h-0 sm:top-24">
           <a
             href="#map-explore"
-            className="absolute right-0 top-0 inline-flex min-h-[46px] items-center justify-center rounded-xl border border-[#b4c8ff66] bg-[#193a90] px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="absolute right-0 top-0 inline-flex min-h-[46px] items-center justify-center rounded-xl border border-primary/25 bg-primary/10 px-4 py-3 text-sm font-bold text-primary shadow-sm backdrop-blur-sm transition hover:bg-primary/15 dark:border-white/25 dark:bg-white/[0.07] dark:text-white dark:hover:bg-white/[0.14] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             onClick={(event) => {
               event.preventDefault();
               scrollToMap();
