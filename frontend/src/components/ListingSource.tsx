@@ -29,7 +29,7 @@ export function ListingSource({ listing }: { listing: Listing }) {
       : "Not available";
 
   return (
-    <section className="card-surface mt-6 p-5" aria-labelledby="listing-source-title">
+    <section className="card-surface p-5" aria-labelledby="listing-source-title">
       <h2 id="listing-source-title" className="text-xl font-semibold">
         Listing source
       </h2>
@@ -74,6 +74,23 @@ export function ListingSource({ listing }: { listing: Listing }) {
       ) : (
         <p className="mt-4 text-sm text-muted-foreground">No usable source link was supplied.</p>
       )}
+      {/* Listing freshness is part of the source card. */}
+      <div className="mt-5 border-t pt-4 text-sm" aria-label="Listing freshness">
+        <h3 className="font-semibold">Listing freshness</h3>
+        <p className="mt-2 text-muted-foreground">
+          Last seen:{" "}
+          <time dateTime={listing.last_seen_at}>
+            {new Date(listing.last_seen_at).toLocaleString("en-GB", {
+              timeZone: "Asia/Yerevan",
+            })}
+          </time>
+        </p>
+        {listing.freshness.is_stale && (
+          <p className="mt-3 rounded-md border p-3 text-muted-foreground">
+            This listing’s source data is marked stale. Check the date before relying on it.
+          </p>
+        )}
+      </div>
     </section>
   );
 }

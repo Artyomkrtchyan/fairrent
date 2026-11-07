@@ -64,7 +64,7 @@ function ListingPage() {
   const askingUsd = resolveListingRent(listing, currency, amdPerUsd)?.askingUsd ?? null;
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       {fromCatalogue ? (
         <button
           type="button"
@@ -99,13 +99,14 @@ function ListingPage() {
         title={title}
       />
 
-      <div className="mt-6 grid items-start gap-6 lg:grid-cols-2">
-        <section className="card-surface p-5" aria-labelledby="property-information-title">
+      {/* Listing details local preview: balanced sections */}
+      <div className="mt-6">
+        <section className="card-surface p-6" aria-labelledby="property-information-title">
           <h2 id="property-information-title" className="text-xl font-semibold">
             Property information
           </h2>
 
-          <dl className="mt-4 grid grid-cols-2 gap-5 text-sm">
+          <dl className="mt-5 grid grid-cols-2 gap-5 text-sm lg:grid-cols-4">
             <div>
               <dt className="text-muted-foreground">District</dt>
               <dd className="mt-1 font-semibold">{listing.district_id ?? "Not available"}</dd>
@@ -165,7 +166,9 @@ function ListingPage() {
             </p>
           </div>
         </section>
-        <div className="space-y-4">
+      </div>
+
+      <div className="mt-6" aria-label="Rental price insights">
           {canRequestEstimate && assessment.isPending ? (
             <p role="status">Loading market assessment…</p>
           ) : canRequestEstimate && assessment.isError ? (
@@ -182,28 +185,11 @@ function ListingPage() {
               estimate={assessment.data ?? estimate}
             />
           )}
-
-          <section className="card-surface p-5 text-sm" aria-label="Listing freshness">
-            <h2 className="font-sans font-bold">Listing freshness</h2>
-
-            <p className="mt-3">
-              Last seen:{" "}
-              <time dateTime={listing.last_seen_at}>
-                {new Date(listing.last_seen_at).toLocaleString("en-GB", {
-                  timeZone: "Asia/Yerevan",
-                })}
-              </time>
-            </p>
-
-            {listing.freshness.is_stale && (
-              <p className="mt-3 rounded-md border p-3">
-                This listing’s source data is marked stale. Check the date before relying on it.
-              </p>
-            )}
-          </section>
-        </div>
       </div>
-      <ListingSource listing={listing} />
+
+      <div className="mt-6">
+        <ListingSource listing={listing} />
+      </div>
 
       <RiskEvidence signals={signals} />
     </main>
