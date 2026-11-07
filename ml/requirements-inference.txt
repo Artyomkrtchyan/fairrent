@@ -1,4 +1,5 @@
 # B07 runtime dependencies of ml.inference (what the backend image needs in addition to its own).
-# Python 3.10 compatible. Not needed at runtime: scikit-learn, rdflib, SQLAlchemy, GeoAlchemy2.
+# Python 3.10 compatible. scikit-learn supplies the B09 cohort index.
 -r requirements.txt
 catboost>=1.2.5
+scikit-learn>=1.5
