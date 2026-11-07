@@ -82,8 +82,8 @@ export function MapHero({
   const [viewport, setViewport] = useState<MapBounds>();
   const viewportBbox = viewport ? serializeMapBounds(viewport) : undefined;
   const validArea = parseMapBounds(viewportBbox);
-  const [showMetro, setShowMetro] = useState(false);
-  const [showUniversities, setShowUniversities] = useState(false);
+  const [showMetro, setShowMetro] = useState(true);
+  const [showUniversities, setShowUniversities] = useState(true);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string>();
   const nearby = useInfrastructure(viewportBbox, showMetro, showUniversities);
   const places = useMemo(
@@ -161,6 +161,7 @@ export function MapHero({
       </button>
       <h3>{selectedPlace.name}</h3>
       <p>{selectedPlace.type === "metro" ? "Metro station" : "University"}</p>
+      <p>Approximate reference location.</p>
       {apiMode === "mock" && <p>Demo location</p>}
     </section>
   );

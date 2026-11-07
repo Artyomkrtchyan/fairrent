@@ -9,9 +9,10 @@ import { createFileRoute, Link, type SearchSchemaInput } from "@tanstack/react-r
 import { parseCatalogueSearch, type CatalogueSearch } from "@/lib/catalogue-search";
 
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { Money, RateNote } from "@/components/ui-bits";
+import { RateNote } from "@/components/ui-bits";
+import { ListingRent } from "@/components/ListingRent";
 
 import { PropertyPhoto } from "@/components/PropertyPhoto";
 import { getListingMap, getListings } from "@/api/listings";
@@ -96,6 +97,7 @@ function Browse() {
   const navigate = Route.useNavigate();
 
   const [filterRevision, setFilterRevision] = useState(0);
+  const pendingScrollPage = useRef<number | null>(null);
   function scrollToMap() {
     const mapSection = document.getElementById("map-explore");
     if (!mapSection) return;
@@ -117,11 +119,37 @@ function Browse() {
     });
   }
 
+  function goToPage(nextPage: number) {
+    pendingScrollPage.current = nextPage;
+    void navigate({
+      search: { ...search, page: nextPage },
+      resetScroll: false,
+    });
+  }
+
   const { data, isPending, isError, isFetching, refetch } = useQuery({
     queryKey: ["listings", apiMode, search],
     queryFn: ({ signal }) => getListings(signal, search),
     retry: false,
   });
+  useEffect(() => {
+    if (pendingScrollPage.current !== search.page || isFetching) return;
+
+    // Navigate first, then move the viewport after the new results render.
+    const frame = window.requestAnimationFrame(() => {
+      const results = document.getElementById("rental-results");
+      results?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "instant"
+          : "smooth",
+        block: "start",
+      });
+      results?.focus({ preventScroll: true });
+      pendingScrollPage.current = null;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [search.page, isFetching]);
+
   const { page: _page, page_size: _pageSize, sort: _sort, ...mapFilters } = search;
   const map = useQuery({
     queryKey: ["listing-map", apiMode, mapFilters],
@@ -209,7 +237,7 @@ function Browse() {
         <div className="sticky top-28 z-40 mt-6 h-0 sm:top-24">
           <a
             href="#map-explore"
-            className="absolute right-0 top-0 inline-flex h-11 w-48 items-center justify-center whitespace-nowrap rounded-md border bg-card px-3 py-2 text-sm font-normal text-foreground transition hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="absolute right-0 top-0 inline-flex h-11 w-48 items-center justify-center whitespace-nowrap rounded-md border bg-card/70 px-3 py-2 text-sm font-normal text-foreground transition hover:bg-card/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             onClick={(event) => {
               event.preventDefault();
               scrollToMap();
@@ -218,7 +246,7 @@ function Browse() {
             Back to map ↑
           </a>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 pr-52">
+        <div id="rental-results" tabIndex={-1} className="scroll-mt-28 flex flex-wrap items-center justify-between gap-3 pr-52">
           <p className="text-sm" aria-live="polite">
             {isPending
               ? "Loading listings…"
@@ -357,14 +385,7 @@ function Browse() {
               <button
                 type="button"
                 disabled={search.page <= 1 || isFetching}
-                onClick={() => {
-                  void navigate({
-                    search: {
-                      ...search,
-                      page: search.page - 1,
-                    },
-                  });
-                }}
+                onClick={() => goToPage(search.page - 1)}
                 className="rounded-md border px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Previous
@@ -377,14 +398,7 @@ function Browse() {
               <button
                 type="button"
                 disabled={!data.has_more || isFetching}
-                onClick={() => {
-                  void navigate({
-                    search: {
-                      ...search,
-                      page: search.page + 1,
-                    },
-                  });
-                }}
+                onClick={() => goToPage(search.page + 1)}
                 className="rounded-md border px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Next
@@ -444,11 +458,7 @@ function ListingCard({ listing }: { listing: Listing }) {
           </p>
 
           <p className="mt-3 text-lg font-bold text-heading">
-            {listing.price_monthly_normalized === null ? (
-              "Rent unavailable"
-            ) : (
-              <Money usd={listing.price_monthly_normalized} suffix="/ month" />
-            )}
+            <ListingRent listing={listing} suffix="/ month" />
           </p>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
