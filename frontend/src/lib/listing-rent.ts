@@ -22,7 +22,7 @@ export function resolveListingRent(
   preferredCurrency: RentCurrency,
   amdPerUsd: number | null,
 ): DisplayRent | null {
-  const validRate = amdPerUsd !== null && Number.isFinite(amdPerUsd) && amdPerUsd > 0;
+  const rate = amdPerUsd !== null && Number.isFinite(amdPerUsd) && amdPerUsd > 0 ? amdPerUsd : null;
   const original = listing.price_original;
   const originalCurrency = listing.currency_original;
 
@@ -35,18 +35,18 @@ export function resolveListingRent(
     const askingUsd =
       originalCurrency === "USD"
         ? original
-        : validRate
-          ? new Decimal(original).div(amdPerUsd).toNumber()
+        : rate !== null
+          ? new Decimal(original).div(rate).toNumber()
           : null;
 
-    if (preferredCurrency === originalCurrency || !validRate) {
+    if (preferredCurrency === originalCurrency || rate === null) {
       return { amount: original, currency: originalCurrency, askingUsd };
     }
 
     const converted =
       originalCurrency === "AMD"
-        ? new Decimal(original).div(amdPerUsd).toNumber()
-        : new Decimal(original).times(amdPerUsd).toNumber();
+        ? new Decimal(original).div(rate).toNumber()
+        : new Decimal(original).times(rate).toNumber();
 
     return { amount: converted, currency: preferredCurrency, askingUsd };
   }
@@ -54,9 +54,9 @@ export function resolveListingRent(
   // Missing source price: fall back to the explicitly normalized USD field.
   const normalized = listing.price_monthly_normalized;
   if (normalized === null || !Number.isFinite(normalized) || normalized < 0) return null;
-  if (preferredCurrency === "AMD" && validRate) {
+  if (preferredCurrency === "AMD" && rate !== null) {
     return {
-      amount: new Decimal(normalized).times(amdPerUsd).toNumber(),
+      amount: new Decimal(normalized).times(rate).toNumber(),
       currency: "AMD",
       askingUsd: normalized,
     };
