@@ -1,5 +1,6 @@
 import type { getListingDetails } from "@/api/listings";
 import { apiMode } from "@/api/client";
+import { formatListingRent } from "@/lib/listing-rent";
 
 type Listing = Awaited<ReturnType<typeof getListingDetails>>["listing"];
 
@@ -22,10 +23,9 @@ export function ListingSource({ listing }: { listing: Listing }) {
 
   const originalPrice =
     listing.price_original !== null && listing.currency_original !== null
-      ? `${new Intl.NumberFormat("en-US", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        }).format(listing.price_original)} ${listing.currency_original} / month`
+      ? `${listing.currency_original === "USD" || listing.currency_original === "AMD"
+          ? formatListingRent(listing.price_original, listing.currency_original)
+          : `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(listing.price_original)} ${listing.currency_original}`} / month`
       : "Not available";
 
   return (

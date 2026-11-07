@@ -11,7 +11,8 @@ import { parseCatalogueSearch, type CatalogueSearch } from "@/lib/catalogue-sear
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 
-import { Money, RateNote } from "@/components/ui-bits";
+import { RateNote } from "@/components/ui-bits";
+import { ListingRent } from "@/components/ListingRent";
 
 import { PropertyPhoto } from "@/components/PropertyPhoto";
 import { getListingMap, getListings } from "@/api/listings";
@@ -457,11 +458,7 @@ function ListingCard({ listing }: { listing: Listing }) {
           </p>
 
           <p className="mt-3 text-lg font-bold text-heading">
-            {listing.price_monthly_normalized === null ? (
-              "Rent unavailable"
-            ) : (
-              <Money usd={listing.price_monthly_normalized} suffix="/ month" />
-            )}
+            <ListingRent listing={listing} suffix="/ month" />
           </p>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
