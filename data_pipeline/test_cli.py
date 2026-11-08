@@ -90,3 +90,11 @@ def test_missing_database_url_fails_cleanly(monkeypatch):
     result = CliRunner().invoke(cli_module.cli, ["run"])
     assert result.exit_code != 0
     assert "DATABASE_URL" in result.output
+
+
+def test_persistent_recovery_demo_refuses_non_demo_database(monkeypatch):
+    monkeypatch.setattr(cli_module, "get_database_url",
+                        lambda: "postgresql+psycopg://localhost/fairrent")
+    result = CliRunner().invoke(cli_module.cli, ["demo-recovery"])
+    assert result.exit_code != 0
+    assert "disposable database" in result.output
