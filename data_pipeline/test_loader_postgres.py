@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 from database.models import Base, IngestionRun, Listing, PriceObservation, Property
 from database.alembic_filters import make_include_hooks
 from . import ingestion, queries
-from .cli import ingest, load_records
+from .cli import ingest, run_recovery_demo
 from .ingestion import finish_run, start_run
 from .scraper import ListingPipeline
 
@@ -194,24 +194,11 @@ def test_run_summary_is_recorded(session):
 
 def test_recovery_demo_initial_repeat_price_change_and_failed_run(session):
     """Reproduce the runbook's load, retry, failure, and recovery sequence."""
-    initial_path = Path(__file__).with_name("recovery_demo_initial.json")
-    changed_path = Path(__file__).with_name("recovery_demo_price_change.json")
-
-    def import_snapshot(path):
-        records = load_records(str(path))
-        pipeline = ListingPipeline(delay=0)
-        run_row = start_run(session, "recovery-demo", {"file": path.name})
-        saved = ingest(records, pipeline, session, "recovery-demo", run_id=run_row.id)
-        finish_run(session, run_row, crawl_complete=None, stats={
-            "listings_seen": len(records), "listings_saved": saved,
-            "listings_quarantined": len(pipeline.quarantine_log)})
-        pipeline.close()
-        return run_row
-
-    initial = import_snapshot(initial_path)
+    runs = run_recovery_demo(session)
+    initial = runs["initial"]
     first_seen = listing(session, "RUNBOOK-001", source="recovery-demo").first_seen_at
-    repeated = import_snapshot(initial_path)
-    changed = import_snapshot(changed_path)
+    repeated = runs["repeat"]
+    changed = runs["price_change"]
 
     assert [initial.status, repeated.status, changed.status] == ["success"] * 3
     assert counts(session) == (2, 2, 3)  # one added observation for the price change only
@@ -219,12 +206,11 @@ def test_recovery_demo_initial_repeat_price_change_and_failed_run(session):
     assert row.price_usd == 725
     assert row.first_seen_at == first_seen and row.last_seen_run_id == changed.id
 
-    failed = start_run(session, "recovery-demo", {"demo_failure": "synthetic source outage"})
-    finish_run(session, failed, crawl_complete=True, error="synthetic source outage")
+    failed = runs["failed"]
     assert failed.status == "failed" and failed.listings_deactivated == 0
     assert session.query(Listing).filter_by(source="recovery-demo", is_active=True).count() == 2
 
-    recovered = import_snapshot(changed_path)
+    recovered = runs["recovery"]
     assert recovered.status == "success"
     assert counts(session) == (2, 2, 3)
     assert listing(session, "RUNBOOK-001", source="recovery-demo").last_seen_run_id == recovered.id

@@ -40,13 +40,30 @@ Expected result:
 
 Imports are non-crawls, so `is_complete` is false and no inventory is deactivated.
 Keep the database disposable: the fixture rows remain after the commands finish.
+These three manual import commands create successful run records only; they do not
+create the failed-run/recovery sequence shown in the audit queries below.
 
 ## Reproduce failure and recovery
 
 The PostgreSQL integration test exercises the same fixture sequence and inserts a
 synthetic failed run between the changed snapshot and its recovery import. It verifies
 that the failed run deactivates nothing, the next successful import updates
-`last_seen_run_id`, and listing/price-history counts remain stable.
+`last_seen_run_id`, and listing/price-history counts remain stable. Its fixture drops
+its tables at teardown, so its records are not available to inspect afterward.
+
+To persist and inspect all five runs, use the standalone command against a migrated,
+disposable database whose database name contains a separate `test` or `demo` token.
+The command refuses to run against other database names. It prints each run ID and
+retains the listings, price observations, and ingestion-run audit rows:
+
+```powershell
+$env:DATABASE_URL = "postgresql+psycopg://USER:PASSWORD@localhost:5432/fairrent_test"
+py -3.14 -m data_pipeline.cli demo-recovery
+```
+
+The command is safe to repeat for listing and price idempotency, but each invocation
+adds five more ingestion-run audit rows. Use the printed IDs to scope the queries below
+to one invocation. A fresh disposable database gives the cleanest audit output.
 
 Create a dedicated test database whose database name contains `test`, install PostGIS,
 and set `TEST_DATABASE_URL` to it. The test fixture refuses to run if the database name
@@ -84,6 +101,7 @@ SELECT id, source, status, is_complete, listings_seen, listings_saved,
        listings_quarantined, listings_deactivated, notes
 FROM ingestion_runs
 WHERE source = 'recovery-demo'
+  AND id BETWEEN 1 AND 5 -- replace with initial and recovery run IDs from command output
 ORDER BY id;
 
 SELECT external_id, original_price, original_currency, is_active,
@@ -99,6 +117,11 @@ JOIN listings AS l ON l.id = o.listing_id
 WHERE l.source = 'recovery-demo'
 ORDER BY l.external_id, o.recorded_at, o.id;
 ```
+
+The run query is scoped to the five IDs printed by one `demo-recovery` invocation.
+The listing and price-history queries show the retained state for the entire
+`recovery-demo` source; run them on a fresh disposable database to avoid mixing prior
+manual imports or earlier demo invocations.
 
 The audit should show the failed run, followed by a successful recovery. The changed
 listing has two price observations (700 and 725); the unchanged listing has one.
