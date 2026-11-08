@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense, useState, type FormEvent } from "react";
 import { requestValuation } from "@/api/valuations";
 import { MarketAssessment } from "@/components/MarketAssessment";
-import { Money, PageHeader } from "@/components/ui-bits";
+import { PageHeader } from "@/components/ui-bits";
 
 const MapCanvas = lazy(() =>
   import("@/components/MapCanvas").then((module) => ({ default: module.MapCanvas })),
@@ -31,6 +31,10 @@ export const Route = createFileRoute("/valuation")({
 const field = "mt-1 w-full rounded-md border bg-card px-3 py-2 text-sm";
 const INITIAL_LAT = "40.1872";
 const INITIAL_LNG = "44.5152";
+
+function usdStatistic(value: number | null, unit: string) {
+  return value === null ? "Not available" : `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value)} ${unit}`;
+}
 
 function coordinateIsValid(latitude: number, longitude: number) {
   return (
@@ -226,33 +230,25 @@ export function Valuation() {
                   <div>
                     <dt className="text-muted-foreground">Mean monthly rent (USD/month)</dt>
                     <dd className="mt-1 font-semibold">
-                      {statistics.cluster_mean_price_usd === null
-                        ? "Not available"
-                        : <Money usd={statistics.cluster_mean_price_usd} suffix="/ month" />}
+                      {usdStatistic(statistics.cluster_mean_price_usd, "USD/month")}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">Monthly rent standard deviation (USD/month)</dt>
                     <dd className="mt-1 font-semibold">
-                      {statistics.observed_price_std_dev_usd === null
-                        ? "Not available"
-                        : <Money usd={statistics.observed_price_std_dev_usd} suffix="/ month" />}
+                      {usdStatistic(statistics.observed_price_std_dev_usd, "USD/month")}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">Mean rent per m² (USD/m²/month)</dt>
                     <dd className="mt-1 font-semibold">
-                      {statistics.cluster_mean_price_per_sqm_usd === null
-                        ? "Not available"
-                        : <Money usd={statistics.cluster_mean_price_per_sqm_usd} suffix="/ month/m²" />}
+                      {usdStatistic(statistics.cluster_mean_price_per_sqm_usd, "USD/m²/month")}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground">Rent standard deviation per m² (USD/m²/month)</dt>
                     <dd className="mt-1 font-semibold">
-                      {statistics.observed_price_std_dev_per_sqm_usd === null
-                        ? "Not available"
-                        : <Money usd={statistics.observed_price_std_dev_per_sqm_usd} suffix="/ month/m²" />}
+                      {usdStatistic(statistics.observed_price_std_dev_per_sqm_usd, "USD/m²/month")}
                     </dd>
                   </div>
                 </dl>
