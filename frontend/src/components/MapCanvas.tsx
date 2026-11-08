@@ -419,7 +419,7 @@ export function MapCanvas({
     const point = new Marker({ element: marker, anchor: "center" })
       .setLngLat([pickedCoordinate.longitude, pickedCoordinate.latitude])
       .addTo(map);
-    return () => point.remove();
+    return () => { point.remove(); };
   }, [pickedCoordinate]);
 
   useEffect(() => {
