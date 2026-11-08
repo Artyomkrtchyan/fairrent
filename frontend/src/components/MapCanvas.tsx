@@ -248,9 +248,11 @@ export function MapCanvas({
       filter: ["==", ["get", "has_data"], true],
       paint: {
         "fill-color": equal
-          ? "#2563eb"
+          ? "#facc15"
           : ["interpolate", ["linear"], ["get", "price_m2"],
-              priceRange.minimum, "#dbeafe", priceRange.maximum, "#1d4ed8"],
+              priceRange.minimum, "#16a34a",
+              (priceRange.minimum + priceRange.maximum) / 2, "#facc15",
+              priceRange.maximum, "#dc2626"],
         "fill-opacity": 0.55,
       },
     }, before);
