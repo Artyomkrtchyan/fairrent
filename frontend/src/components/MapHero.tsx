@@ -328,7 +328,9 @@ export function MapHero({
     setSelectedId(undefined);
   }, []);
   const selectOverlap = useCallback((ids: string[]) => {
-    setSelectedId(undefined);
+    // Several rentals may share approximate coordinates. Preview the first one
+    // immediately instead of forcing users through an anonymous numbered list.
+    setSelectedId(ids[0]);
     setSelectedPlaceId(undefined);
     setOverlappingIds(ids);
   }, []);
@@ -378,29 +380,15 @@ export function MapHero({
         : !bbox
           ? "Rental results are also available in the catalogue below."
           : `${points.length} of ${listings.length} rentals on this results page have usable locations.${hasMore ? " More results are available in the catalogue." : ""}`;
-  const overlap = overlappingIds.length > 0 &&
-    overlappingIds.every((id) => mapLocations?.some((location) => location.id === id)) && (
-      <section className="rental-map-preview" aria-label="Rentals at this location">
-        <button
-          type="button"
-          className="rental-preview-close"
-          aria-label="Close rental choices"
-          onClick={() => setOverlappingIds([])}
-        >
-          <X size={18} />
-        </button>
-        <h3>{overlappingIds.length} rentals at this location</h3>
-        <ul className="max-h-48 overflow-y-auto">
-          {overlappingIds.map((id, index) => (
-            <li key={id}>
-              <button type="button" onClick={() => selectRental(id)}>
-                View rental {index + 1}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-    );
+  const overlappingPosition =
+    selectedId === undefined ? -1 : overlappingIds.indexOf(selectedId);
+  const hasOtherRentals = overlappingIds.length > 1 && overlappingPosition >= 0;
+  const navigateOverlap = (direction: -1 | 1) => {
+    if (!hasOtherRentals) return;
+    const nextIndex =
+      (overlappingPosition + direction + overlappingIds.length) % overlappingIds.length;
+    setSelectedId(overlappingIds[nextIndex]);
+  };
   const detailsStatus = selectedLocation && (details.isPending || details.isError) && (
     <section className="rental-map-preview" role="status">
       {details.isPending ? "Loading rental preview…" : "Rental preview unavailable."}
@@ -417,10 +405,38 @@ export function MapHero({
         type="button"
         className="rental-preview-close"
         aria-label="Close rental preview"
-        onClick={() => setSelectedId(undefined)}
+        onClick={() => {
+          setSelectedId(undefined);
+          setOverlappingIds([]);
+        }}
       >
         <X size={18} />
       </button>
+      {hasOtherRentals && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+          <span className="font-semibold">
+            Rental {overlappingPosition + 1} of {overlappingIds.length} at this location
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="rounded-md border px-2 py-1"
+              aria-label="Previous rental at this location"
+              onClick={() => navigateOverlap(-1)}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              className="rounded-md border px-2 py-1"
+              aria-label="Next rental at this location"
+              onClick={() => navigateOverlap(1)}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
       <h3>{selected.title || "Apartment in Yerevan"}</h3>
       <p className="rental-preview-price">
         {selected.price_monthly_normalized === null
@@ -581,7 +597,7 @@ export function MapHero({
               />
             </Suspense>
             {!expanded && gradientLegend}
-            {!expanded && (placePreview || overlap || preview || detailsStatus)}
+            {!expanded && (placePreview || preview || detailsStatus)}
           </div>
           <p className="rental-map-coverage" role="status">
             {areaStatus} {coverage}
@@ -648,7 +664,7 @@ export function MapHero({
                 />
               </Suspense>
               {gradientLegend}
-              {placePreview || overlap || preview || detailsStatus}
+              {placePreview || preview || detailsStatus}
               <p className="rental-map-coverage rental-map-coverage-expanded" role="status">
                 {areaStatus} {coverage}
                 {failed && onRetry && (
