@@ -99,7 +99,7 @@ describe("location assessment form", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Choose coordinate on map" }));
     submit();
 
-    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(request.mock.calls[0]?.[0]).toEqual(expect.objectContaining({
       latitude: 40.181234,
       longitude: 44.512345,
     })));
