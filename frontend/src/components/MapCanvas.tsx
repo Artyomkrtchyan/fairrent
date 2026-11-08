@@ -4,6 +4,7 @@ import {
   NavigationControl,
   AttributionControl,
   Marker,
+  Popup,
   setWorkerUrl,
   type GeoJSONSource,
 } from "maplibre-gl";
@@ -14,6 +15,8 @@ import type { InfrastructurePoint } from "@/api/infrastructure";
 import { apiMode } from "@/api/client";
 import { DEMO_SURFACE, demoSurfaceImage } from "@/lib/map-demo-surface";
 import { parseMapBounds, type MapBounds } from "@/lib/map-bounds";
+import type { DistrictPrice } from "@/lib/district-price-layer";
+import districtGeojson from "@/data/yerevan-districts.geojson?raw";
 
 setWorkerUrl(mapWorkerUrl);
 
@@ -48,6 +51,8 @@ const DEFAULT_CAMERA: MapCamera = {
 interface Props {
   viewMode?: "2d" | "3d";
   places?: readonly InfrastructurePoint[];
+  districtPrices?: readonly DistrictPrice[];
+  priceRange?: { minimum: number; maximum: number } | null;
   selectedPlaceId?: string | undefined;
   onSelectPlace?: (id: string) => void;
   onPickCoordinate?: (latitude: number, longitude: number) => void;
@@ -68,6 +73,8 @@ interface Props {
 export function MapCanvas({
   viewMode = "2d",
   places = EMPTY_PLACES,
+  districtPrices,
+  priceRange,
   selectedPlaceId,
   onSelectPlace,
   onPickCoordinate,
@@ -197,6 +204,88 @@ export function MapCanvas({
       map?.remove();
     };
   }, []);
+
+  useEffect(() => {
+    const map = instance.current;
+    if (!map || !styleReady || !districtPrices?.length || !priceRange) return;
+
+    const sourceId = "fairrent-district-price-data";
+    const fillId = "fairrent-district-prices";
+    const outlineId = "fairrent-district-price-boundaries";
+    const prices = new Map<string, DistrictPrice>(districtPrices.map((item) => [item.districtId, item]));
+    const registry = JSON.parse(districtGeojson) as {
+      type: "FeatureCollection";
+      features: Array<{
+        type: "Feature";
+        geometry: { type: "Polygon" | "MultiPolygon"; coordinates: unknown };
+        properties: { district_id: string; name: string };
+      }>;
+    };
+    const data = {
+      type: "FeatureCollection" as const,
+      features: registry.features.map((feature) => {
+        const price = prices.get(feature.properties.district_id);
+        return {
+          type: "Feature" as const,
+          geometry: feature.geometry,
+          properties: {
+            name: feature.properties.name,
+            has_data: Boolean(price),
+            price_m2: price?.medianUsdM2 ?? 0,
+            sample_count: price?.areaSampleCount ?? 0,
+            stale: price?.stale ?? false,
+          },
+        };
+      }),
+    };
+    map.addSource(sourceId, { type: "geojson", data: data as Parameters<GeoJSONSource["setData"]>[0] });
+    const before = map.getStyle().layers?.find((layer) => layer.type === "symbol")?.id;
+    const equal = priceRange.minimum === priceRange.maximum;
+    map.addLayer({
+      id: fillId,
+      source: sourceId,
+      type: "fill",
+      filter: ["==", ["get", "has_data"], true],
+      paint: {
+        "fill-color": equal
+          ? "#2563eb"
+          : ["interpolate", ["linear"], ["get", "price_m2"],
+              priceRange.minimum, "#dbeafe", priceRange.maximum, "#1d4ed8"],
+        "fill-opacity": 0.55,
+      },
+    }, before);
+    map.addLayer({
+      id: outlineId,
+      source: sourceId,
+      type: "line",
+      paint: { "line-color": "#53718f", "line-width": 1, "line-opacity": 0.55 },
+    }, before);
+
+    map.on("mouseenter", fillId, () => { map.getCanvas().style.cursor = "pointer"; });
+    map.on("mouseleave", fillId, () => { map.getCanvas().style.cursor = ""; });
+    const clicked = map.on("click", fillId, (event) => {
+      const feature = event.features?.[0];
+      if (!feature) return;
+      const props = feature.properties;
+      const name = String(props["name"] ?? "District");
+      const value = Number(props["price_m2"]);
+      const count = Number(props["sample_count"]);
+      const stale = Boolean(props["stale"]);
+      const label = `${name}: ${value.toFixed(2)} USD/m²/month median asking rent · ${count} supporting listings${stale ? " · stale data" : ""}`;
+      new Popup({ closeButton: true, maxWidth: "320px" })
+        .setLngLat(event.lngLat)
+        .setText(label)
+        .addTo(map);
+    });
+    return () => {
+      clicked.unsubscribe();
+      map.getCanvas().style.cursor = "";
+      if (instance.current !== map) return;
+      if (map.getLayer(outlineId)) map.removeLayer(outlineId);
+      if (map.getLayer(fillId)) map.removeLayer(fillId);
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
+    };
+  }, [styleReady, districtPrices, priceRange]);
 
   useEffect(() => {
     const map = instance.current;
