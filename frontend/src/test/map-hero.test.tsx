@@ -3,7 +3,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import fixtures from "../../../contracts/fixtures.json";
 import type { MapListing } from "@/lib/map-listings";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { MapHero } from "@/components/MapHero";
 
 function render(ui: ReactElement) {
@@ -15,7 +15,10 @@ function render(ui: ReactElement) {
   });
 }
 
-vi.mock("@/lib/prefs", () => ({ usePrefs: () => ({ format: (value: number) => `$${value}` }) }));
+vi.mock("@/lib/prefs", () => ({ usePrefs: () => ({ format: (value: number) => `${value}` }) }));
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children }: { children: ReactNode }) => <a href="/listings/example">{children}</a>,
+}));
 
 vi.mock("@/components/MapCanvas", () => ({
   MapCanvas: ({
@@ -24,8 +27,10 @@ vi.mock("@/components/MapCanvas", () => ({
     onCameraChange,
     camera,
     points = [],
+    onOverlap,
   }: {
     points?: { id: string }[];
+    onOverlap?: (ids: string[]) => void;
     camera?: { zoom: number };
     onCameraChange?: (camera: {
       center: [number, number];
@@ -42,6 +47,9 @@ vi.mock("@/components/MapCanvas", () => ({
       data-marker-count={points.length}
     >
       Map preview
+      <button onClick={() => onOverlap?.(points.map((point) => point.id))}>
+        Select overlapping rentals
+      </button>
       <button
         onClick={() => {
           onCameraChange?.({ center: [44.55, 40.15], zoom: 15, pitch: 0, bearing: 0 });
@@ -97,6 +105,26 @@ describe("framed map introduction", () => {
     render(<MapHero mapLocations={mapLocations} />);
     expect(await screen.findByTestId("embedded-map")).toHaveAttribute("data-marker-count", "101");
     expect(screen.getByText(/101 rentals with usable locations/)).toBeInTheDocument();
+  });
+
+  it("shows the first rental details immediately when multiple points overlap", async () => {
+    const first = fixtures.listings.value.items[0] as MapListing;
+    const second = { ...first, id: "second-rental", title: "Second apartment" };
+    render(<MapHero listings={[first, second]} bbox="44.5,40.1,44.6,40.2" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Select overlapping rentals" }));
+    const preview = screen.getByRole("region", { name: "Selected rental" });
+    expect(within(preview).getByText("Rental 1 of 2 at this location")).toBeInTheDocument();
+    expect(within(preview).getByText(first.title!)).toBeInTheDocument();
+    expect(within(preview).getByText(/rooms/)).toBeInTheDocument();
+    expect(within(preview).getByText("View details →")).toBeInTheDocument();
+    expect(screen.queryByText("View rental 1")).not.toBeInTheDocument();
+
+    fireEvent.click(within(preview).getByRole("button", { name: "Next rental at this location" }));
+    expect(within(preview).getByText("Rental 2 of 2 at this location")).toBeInTheDocument();
+    expect(within(preview).getByText("Second apartment")).toBeInTheDocument();
+
+    fireEvent.click(within(preview).getByRole("button", { name: "Previous rental at this location" }));
+    expect(within(preview).getByText("Rental 1 of 2 at this location")).toBeInTheDocument();
   });
 
   it("offers Clear area in both toolbars only when an area is applied", async () => {
