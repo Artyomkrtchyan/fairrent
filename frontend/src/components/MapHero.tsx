@@ -288,13 +288,15 @@ export function MapHero({
           <h3>Median USD/m²/month</h3>
           <div
             className="map-price-ramp"
-            style={{ background: "linear-gradient(to right, #dbeafe, #1d4ed8)" }}
+            style={{ background: "linear-gradient(to right, #16a34a 0%, #facc15 50%, #dc2626 100%)" }}
             aria-hidden="true"
           />
           <div className="map-price-ticks">
             <span>{districtSummary.minimum.toFixed(2)} USD</span>
+            <span>{((districtSummary.minimum + districtSummary.maximum) / 2).toFixed(2)} USD</span>
             <span>{districtSummary.maximum.toFixed(2)} USD</span>
           </div>
+          <p>Green = lower, yellow = middle, red = higher district rents</p>
           <p>Week: {districtSummary.periodStart} to {districtSummary.periodEnd}</p>
           <p>{districtSummary.latest.length} of 12 districts have supported per-m² data</p>
           {districtSummary.staleCount > 0 && (
