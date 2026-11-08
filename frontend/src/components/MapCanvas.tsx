@@ -50,6 +50,8 @@ interface Props {
   places?: readonly InfrastructurePoint[];
   selectedPlaceId?: string | undefined;
   onSelectPlace?: (id: string) => void;
+  onPickCoordinate?: (latitude: number, longitude: number) => void;
+  pickedCoordinate?: { latitude: number; longitude: number } | null;
   showDemoSurface?: boolean;
   bbox?: string | undefined;
   onBoundsChange?: ((bounds: MapBounds) => void) | undefined;
@@ -68,6 +70,8 @@ export function MapCanvas({
   places = EMPTY_PLACES,
   selectedPlaceId,
   onSelectPlace,
+  onPickCoordinate,
+  pickedCoordinate,
   showDemoSurface = false,
   bbox,
   onBoundsChange,
@@ -87,6 +91,10 @@ export function MapCanvas({
   const initialOptions = useRef({ expanded, camera: camera ?? DEFAULT_CAMERA });
   const cameraCallback = useRef(onCameraChange);
   const boundsCallback = useRef(onBoundsChange);
+  const pickCallback = useRef(onPickCoordinate);
+  useEffect(() => {
+    pickCallback.current = onPickCoordinate;
+  }, [onPickCoordinate]);
   useEffect(() => {
     boundsCallback.current = onBoundsChange;
   }, [onBoundsChange]);
@@ -129,6 +137,10 @@ export function MapCanvas({
       map.addControl(new AttributionControl({ compact: true }), "bottom-right");
 
       const activeMap = map;
+      map.on("click", (event) => {
+        if (!disposed) pickCallback.current?.(event.lngLat.lat, event.lngLat.lng);
+      });
+
       map.on("moveend", () => {
         if (disposed) return;
         const bounds = activeMap.getBounds();
@@ -395,6 +407,20 @@ export function MapCanvas({
       markerButtons.current = [];
     };
   }, [clustered, points, onSelect]);
+
+  useEffect(() => {
+    const map = instance.current;
+    if (!map || !pickedCoordinate) return;
+    const marker = document.createElement("div");
+    marker.className = "rental-map-marker";
+    marker.title = "Selected assessment location";
+    marker.setAttribute("role", "img");
+    marker.setAttribute("aria-label", "Selected assessment location");
+    const point = new Marker({ element: marker, anchor: "center" })
+      .setLngLat([pickedCoordinate.longitude, pickedCoordinate.latitude])
+      .addTo(map);
+    return () => { point.remove(); };
+  }, [pickedCoordinate]);
 
   useEffect(() => {
     const map = instance.current;
