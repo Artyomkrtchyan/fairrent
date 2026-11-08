@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -99,10 +99,10 @@ describe("location assessment form", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Choose coordinate on map" }));
     submit();
 
-    expect(request).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(request).toHaveBeenCalledWith(expect.objectContaining({
       latitude: 40.181234,
       longitude: 44.512345,
-    }));
+    })));
   });
 
   it("requires positive area for a rooms-based property assessment", () => {
