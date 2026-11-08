@@ -33,7 +33,7 @@ const INITIAL_LAT = "40.1872";
 const INITIAL_LNG = "44.5152";
 
 function usdStatistic(value: number | null, unit: string) {
-  return value === null ? "Not available" : `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value)} ${unit}`;
+  return value === null ? "Not available" : `${new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)} USD${unit}`;
 }
 
 function coordinateIsValid(latitude: number, longitude: number) {
@@ -228,27 +228,27 @@ export function Valuation() {
                     <dd className="mt-1 font-semibold">{areaReference ? "Area reference" : "Property assessment"}</dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">Mean monthly rent (USD/month)</dt>
+                    <dt className="text-muted-foreground">Mean monthly rent</dt>
                     <dd className="mt-1 font-semibold">
-                      {usdStatistic(statistics.cluster_mean_price_usd, "USD/month")}
+                      {usdStatistic(statistics.cluster_mean_price_usd, " / month")}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">Monthly rent standard deviation (USD/month)</dt>
+                    <dt className="text-muted-foreground">Monthly rent standard deviation</dt>
                     <dd className="mt-1 font-semibold">
-                      {usdStatistic(statistics.observed_price_std_dev_usd, "USD/month")}
+                      {usdStatistic(statistics.observed_price_std_dev_usd, " / month")}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">Mean rent per m² (USD/m²/month)</dt>
+                    <dt className="text-muted-foreground">Mean rent per m²</dt>
                     <dd className="mt-1 font-semibold">
-                      {usdStatistic(statistics.cluster_mean_price_per_sqm_usd, "USD/m²/month")}
+                      {usdStatistic(statistics.cluster_mean_price_per_sqm_usd, " / month/m²")}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">Rent standard deviation per m² (USD/m²/month)</dt>
+                    <dt className="text-muted-foreground">Rent standard deviation per m²</dt>
                     <dd className="mt-1 font-semibold">
-                      {usdStatistic(statistics.observed_price_std_dev_per_sqm_usd, "USD/m²/month")}
+                      {usdStatistic(statistics.observed_price_std_dev_per_sqm_usd, " / month/m²")}
                     </dd>
                   </div>
                 </dl>
