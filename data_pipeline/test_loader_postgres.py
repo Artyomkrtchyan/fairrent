@@ -204,7 +204,7 @@ def test_recovery_demo_initial_repeat_price_change_and_failed_run(session):
     assert counts(session) == (2, 2, 3)  # one added observation for the price change only
     row = listing(session, "RUNBOOK-001", source="recovery-demo")
     assert row.price_usd == 725
-    assert row.first_seen_at == first_seen and row.last_seen_run_id == changed.id
+    assert row.first_seen_at == first_seen and row.last_seen_run_id == runs["recovery"].id
 
     failed = runs["failed"]
     assert failed.status == "failed" and failed.listings_deactivated == 0
