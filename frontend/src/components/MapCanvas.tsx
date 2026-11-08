@@ -212,7 +212,7 @@ export function MapCanvas({
     const sourceId = "fairrent-district-price-data";
     const fillId = "fairrent-district-prices";
     const outlineId = "fairrent-district-price-boundaries";
-    const prices = new Map<string, DistrictPrice>(districtPrices.map((item) => [item.districtId, item]));
+    const prices = new globalThis.Map<string, DistrictPrice>(districtPrices.map((item) => [item.districtId, item]));
     const registry = JSON.parse(districtGeojson) as {
       type: "FeatureCollection";
       features: Array<{
@@ -261,8 +261,8 @@ export function MapCanvas({
       paint: { "line-color": "#53718f", "line-width": 1, "line-opacity": 0.55 },
     }, before);
 
-    map.on("mouseenter", fillId, () => { map.getCanvas().style.cursor = "pointer"; });
-    map.on("mouseleave", fillId, () => { map.getCanvas().style.cursor = ""; });
+    const entered = map.on("mouseenter", fillId, () => { map.getCanvas().style.cursor = "pointer"; });
+    const left = map.on("mouseleave", fillId, () => { map.getCanvas().style.cursor = ""; });
     const clicked = map.on("click", fillId, (event) => {
       const feature = event.features?.[0];
       if (!feature) return;
@@ -270,7 +270,7 @@ export function MapCanvas({
       const name = String(props["name"] ?? "District");
       const value = Number(props["price_m2"]);
       const count = Number(props["sample_count"]);
-      const stale = Boolean(props["stale"]);
+      const stale = props["stale"] === true || props["stale"] === "true";
       const label = `${name}: ${value.toFixed(2)} USD/m²/month median asking rent · ${count} supporting listings${stale ? " · stale data" : ""}`;
       new Popup({ closeButton: true, maxWidth: "320px" })
         .setLngLat(event.lngLat)
@@ -279,6 +279,8 @@ export function MapCanvas({
     });
     return () => {
       clicked.unsubscribe();
+      entered.unsubscribe();
+      left.unsubscribe();
       map.getCanvas().style.cursor = "";
       if (instance.current !== map) return;
       if (map.getLayer(outlineId)) map.removeLayer(outlineId);
