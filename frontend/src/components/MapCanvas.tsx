@@ -51,7 +51,7 @@ const DEFAULT_CAMERA: MapCamera = {
 interface Props {
   viewMode?: "2d" | "3d";
   places?: readonly InfrastructurePoint[];
-  districtPrices?: readonly DistrictPrice[];
+  districtPrices?: readonly DistrictPrice[] | undefined;
   priceRange?: { minimum: number; maximum: number } | null;
   selectedPlaceId?: string | undefined;
   onSelectPlace?: (id: string) => void;
