@@ -107,7 +107,7 @@ export function Valuation() {
               Map locations are approximate references, not verified building addresses.
             </p>
             <div className="mt-4 overflow-hidden rounded-lg border">
-              <div className="relative h-72">
+              <div className="relative h-80 [&_.map-canvas]:!h-full">
                 <Suspense fallback={<p role="status" className="p-4">Loading map…</p>}>
                   <MapCanvas
                     onPickCoordinate={(nextLatitude, nextLongitude) => {
