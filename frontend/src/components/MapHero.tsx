@@ -20,6 +20,8 @@ import { hasMapCoordinates, type MapListing } from "@/lib/map-listings";
 import type { MapCamera } from "@/components/MapCanvas";
 import { useQuery } from "@tanstack/react-query";
 import { getListingDetails, type ListingMapPoint } from "@/api/listings";
+import { getMarketIndex, type MarketIndex } from "@/api/market";
+import { summarizeDistrictPrices } from "@/lib/district-price-layer";
 
 const MapCanvas = lazy(() =>
   import("@/components/MapCanvas").then((module) => ({ default: module.MapCanvas })),
@@ -84,6 +86,35 @@ export function MapHero({
   const validArea = parseMapBounds(viewportBbox);
   const [showMetro, setShowMetro] = useState(true);
   const [showUniversities, setShowUniversities] = useState(true);
+  const [showDistrictPrices, setShowDistrictPrices] = useState(true);
+  const districtQuery = useQuery({
+    queryKey: ["map-district-median-prices", apiMode],
+    enabled: apiMode === "real" && showDistrictPrices,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async ({ signal }): Promise<MarketIndex[]> => {
+      // A bounded recent history avoids publishing out-of-date district colors.
+      const period_start = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
+        .toISOString().slice(0, 10);
+      const all: MarketIndex[] = [];
+      for (let page = 1; page <= 12; page++) {
+        const result = await getMarketIndex({ period_start, page_size: 100, page }, signal);
+        all.push(...result.items);
+        if (!result.has_more) return all;
+      }
+      throw new Error("The district price history exceeds the supported page limit.");
+    },
+  });
+  const districtSummary = useMemo(
+    () => summarizeDistrictPrices(districtQuery.data ?? []),
+    [districtQuery.data],
+  );
+  const priceRange = useMemo(
+    () => districtSummary.minimum !== null && districtSummary.maximum !== null
+      ? { minimum: districtSummary.minimum, maximum: districtSummary.maximum }
+      : null,
+    [districtSummary.minimum, districtSummary.maximum],
+  );
   const [selectedPlaceId, setSelectedPlaceId] = useState<string>();
   const nearby = useInfrastructure(viewportBbox, showMetro, showUniversities);
   const places = useMemo(
@@ -118,6 +149,16 @@ export function MapHero({
         />{" "}
         <span className="map-layer-symbol">U</span> Universities
       </label>
+      {apiMode === "real" && (
+        <label>
+          <input
+            type="checkbox"
+            checked={showDistrictPrices}
+            onChange={(event) => setShowDistrictPrices(event.target.checked)}
+          />{" "}
+          District rent prices
+        </label>
+      )}
       {showNearby && (
         <span role="status" className="map-nearby-status">
           {!validArea
@@ -214,23 +255,53 @@ export function MapHero({
           : "Search this area to show available rentals.";
   const gradientLegend = (
     <aside className="map-price-legend" aria-label="Area rent colour legend">
-      <p className="map-demo-label">
-        {showDemoSurface ? "Demo data" : "Area price layer unavailable"}
-      </p>
-      {showDemoSurface && (
+      {showDemoSurface ? (
         <>
+          <p className="map-demo-label">Demo data</p>
           <h3>Monthly asking rent / m²</h3>
           <div className="map-price-ramp" aria-hidden="true" />
           <div className="map-price-ticks">
-            <span>6</span>
-            <span>12</span>
-            <span>18</span>
-            <span>24</span>
+            <span>6</span><span>12</span><span>18</span><span>24</span>
           </div>
           <p>USD / m² / month</p>
-          <p>
-            <span className="map-no-data-key" /> No data
-          </p>
+          <p><span className="map-no-data-key" /> No data</p>
+        </>
+      ) : !showDistrictPrices ? (
+        <p className="map-demo-label">District price layer hidden</p>
+      ) : districtQuery.isPending ? (
+        <p role="status" className="map-demo-label">Loading district rent prices…</p>
+      ) : districtQuery.isError ? (
+        <>
+          <p role="alert" className="map-demo-label">District price data unavailable</p>
+          <button type="button" onClick={() => void districtQuery.refetch()}>
+            Retry
+          </button>
+        </>
+      ) : districtSummary.minimum === null || districtSummary.maximum === null ? (
+        <p className="map-demo-label">
+          No supported recent district rent prices
+          {districtSummary.periodStart ? ` for week of ${districtSummary.periodStart}` : ""}
+        </p>
+      ) : (
+        <>
+          <p className="map-demo-label">Observed district asking rents</p>
+          <h3>Median USD/m²/month</h3>
+          <div
+            className="map-price-ramp"
+            style={{ background: "linear-gradient(to right, #dbeafe, #1d4ed8)" }}
+            aria-hidden="true"
+          />
+          <div className="map-price-ticks">
+            <span>{districtSummary.minimum.toFixed(2)} USD</span>
+            <span>{districtSummary.maximum.toFixed(2)} USD</span>
+          </div>
+          <p>Week: {districtSummary.periodStart} to {districtSummary.periodEnd}</p>
+          <p>{districtSummary.latest.length} of 12 districts have supported per-m² data</p>
+          {districtSummary.staleCount > 0 && (
+            <p>Warning: {districtSummary.staleCount} districts use stale observations</p>
+          )}
+          <p><span className="map-no-data-key" /> Uncolored: insufficient/missing data</p>
+          <p className="text-xs">District medians, not street-level prices or predictions</p>
         </>
       )}
     </aside>
@@ -288,6 +359,8 @@ export function MapHero({
     onOverlap: selectOverlap,
     showDemoSurface,
     places,
+    districtPrices: !showDemoSurface && showDistrictPrices ? districtSummary.latest : undefined,
+    priceRange: !showDemoSurface && showDistrictPrices ? priceRange : null,
     selectedPlaceId,
     onSelectPlace: selectPlace,
     selectedId,
