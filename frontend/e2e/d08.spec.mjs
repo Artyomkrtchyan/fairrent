@@ -104,6 +104,35 @@ test("Location form rejects invalid coordinates", async ({ page }) => {
   await expect(page.getByRole("alert")).toContainText("valid latitude");
 });
 
+test("Map price legend uses real active listing snapshot when weekly index has no data", async ({ page }) => {
+  const original = data.listings.value.items[0];
+  const items = Array.from({ length: 5 }, (_, index) => ({
+    ...original,
+    id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    external_id: `listing-${index + 1}`,
+    property_id: `property-${index + 1}`,
+    dedup_group_id: null,
+    district_id: "kentron",
+    price_monthly_normalized: 500 + index * 40,
+    area_sqm: 50,
+  }));
+  await page.route("**/api/v1/market-index*", (route) => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify(data["market-empty"].value),
+  }));
+  await page.route("**/api/v1/listings?*", (route) => route.fulfill({
+    status: 200, contentType: "application/json",
+    body: JSON.stringify({
+      items, page: 1, page_size: 100, total: 5, has_more: false,
+    }),
+  }));
+  await page.goto("/");
+  const legend = page.getByLabel("Area rent colour legend").first();
+  await expect(legend.getByText("Current active listings snapshot")).toBeVisible();
+  await expect(legend.getByText(/Green = lower, yellow = middle, red = higher/)).toBeVisible();
+  await expect(legend.getByText(/1 districts meet the five-listing threshold/)).toBeVisible();
+});
+
 test("Market analytics defaults to an actual listing snapshot", async ({ page }) => {
   await page.goto("/analytics");
   await expect(page.getByRole("heading", { name: "Market analytics" })).toBeVisible();
