@@ -17,6 +17,7 @@ import { DEMO_SURFACE, demoSurfaceImage } from "@/lib/map-demo-surface";
 import { parseMapBounds, type MapBounds } from "@/lib/map-bounds";
 import type { DistrictPrice } from "@/lib/district-price-layer";
 import districtGeojson from "@/data/yerevan-districts.geojson?raw";
+import { renderSmoothRentSurface } from "@/lib/map-smooth-rent-surface";
 
 setWorkerUrl(mapWorkerUrl);
 
@@ -211,7 +212,6 @@ export function MapCanvas({
 
     const sourceId = "fairrent-district-price-data";
     const fillId = "fairrent-district-prices";
-    const outlineId = "fairrent-district-price-boundaries";
     const prices = new globalThis.Map<string, DistrictPrice>(districtPrices.map((item) => [item.districtId, item]));
     const registry = JSON.parse(districtGeojson) as {
       type: "FeatureCollection";
@@ -238,30 +238,33 @@ export function MapCanvas({
         };
       }),
     };
-    map.addSource(sourceId, { type: "geojson", data: data as Parameters<GeoJSONSource["setData"]>[0] });
+    const surface = renderSmoothRentSurface(registry.features, prices, priceRange);
+    const rasterId = "fairrent-smooth-rent-gradient";
+    const rasterSourceId = "fairrent-smooth-rent-gradient-image";
+    const [west, south, east, north] = surface.bounds;
+    map.addSource(rasterSourceId, {
+      type: "image",
+      url: surface.url,
+      coordinates: [[west, north], [east, north], [east, south], [west, south]],
+    });
     const before = map.getStyle().layers?.find((layer) => layer.type === "symbol")?.id;
-    const equal = priceRange.minimum === priceRange.maximum;
+    map.addLayer({
+      id: rasterId,
+      type: "raster",
+      source: rasterSourceId,
+      paint: { "raster-opacity": 0.72, "raster-fade-duration": 0 },
+    }, before);
+
+    // Keep a transparent, interactive district layer so clicks still reveal the
+    // actual district median and supporting listing count, not interpolated values.
+    map.addSource(sourceId, { type: "geojson", data: data as Parameters<GeoJSONSource["setData"]>[0] });
     map.addLayer({
       id: fillId,
       source: sourceId,
       type: "fill",
       filter: ["==", ["get", "has_data"], true],
-      paint: {
-        "fill-color": equal
-          ? "#facc15"
-          : ["interpolate", ["linear"], ["get", "price_m2"],
-              priceRange.minimum, "#16a34a",
-              (priceRange.minimum + priceRange.maximum) / 2, "#facc15",
-              priceRange.maximum, "#dc2626"],
-        "fill-opacity": 0.55,
-      },
-    }, before);
-    map.addLayer({
-      id: outlineId,
-      source: sourceId,
-      type: "line",
-      paint: { "line-color": "#53718f", "line-width": 1, "line-opacity": 0.55 },
-    }, before);
+      paint: { "fill-opacity": 0 },
+    });
 
     const entered = map.on("mouseenter", fillId, () => { map.getCanvas().style.cursor = "pointer"; });
     const left = map.on("mouseleave", fillId, () => { map.getCanvas().style.cursor = ""; });
@@ -285,9 +288,10 @@ export function MapCanvas({
       left.unsubscribe();
       map.getCanvas().style.cursor = "";
       if (instance.current !== map) return;
-      if (map.getLayer(outlineId)) map.removeLayer(outlineId);
       if (map.getLayer(fillId)) map.removeLayer(fillId);
       if (map.getSource(sourceId)) map.removeSource(sourceId);
+      if (map.getLayer(rasterId)) map.removeLayer(rasterId);
+      if (map.getSource(rasterSourceId)) map.removeSource(rasterSourceId);
     };
   }, [styleReady, districtPrices, priceRange]);
 
@@ -417,7 +421,7 @@ export function MapCanvas({
       type: "circle",
       filter: ["has", "point_count"],
       paint: {
-        "circle-color": "#0f766e",
+        "circle-color": "#294aaf",
         "circle-radius": ["step", ["get", "point_count"], 15, 100, 20, 1000, 25],
         "circle-stroke-color": "#fff",
         "circle-stroke-width": 2,
@@ -437,7 +441,7 @@ export function MapCanvas({
       type: "circle",
       filter: ["!", ["has", "point_count"]],
       paint: {
-        "circle-color": "#0f766e",
+        "circle-color": "#294aaf",
         "circle-radius": 6,
         "circle-stroke-color": "#fff",
         "circle-stroke-width": 2,
