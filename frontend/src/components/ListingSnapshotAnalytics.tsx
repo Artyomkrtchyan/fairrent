@@ -74,10 +74,18 @@ export function ListingSnapshotAnalytics() {
     measure === "month" ? district.medianMonthlyUsd : district.medianPerSqmUsd;
   const metricCount = (district: (typeof districts)[number]) =>
     measure === "month" ? district.pricedCount : district.areaPricedCount;
-  const chartData = shownDistricts
+  // Order both views by the selected rent measure, highest first.
+  // Missing median values belong at the end, not at zero.
+  const sortedDistricts = [...shownDistricts].sort((a, b) => {
+    const left = metricValue(a);
+    const right = metricValue(b);
+    if (left === null) return right === null ? a.label.localeCompare(b.label) : 1;
+    if (right === null) return -1;
+    return right - left || a.label.localeCompare(b.label);
+  });
+  const chartData = sortedDistricts
     .filter((district) => metricValue(district) !== null)
-    .map((district) => ({ district: district.label, median: metricValue(district)!, count: metricCount(district) }))
-    .sort((a, b) => b.median - a.median);
+    .map((district) => ({ district: district.label, median: metricValue(district)!, count: metricCount(district) }));
 
   return (
     <section className="space-y-5" aria-label="Current listing market snapshot">
@@ -177,7 +185,7 @@ export function ListingSnapshotAnalytics() {
             </div>
           ) : view === "chart" ? (
             <figure className="card-surface p-4">
-              <figcaption className="mb-3 font-semibold">Median asking rent by neighborhood ({selectedUnit})</figcaption>
+              <figcaption className="mb-3 font-semibold">Median asking rent by neighborhood ({selectedUnit}) · highest to lowest</figcaption>
               {chartData.length ? (
                 <div style={{ height: Math.max(270, chartData.length * 38 + 50) }} aria-hidden="true">
                   <ResponsiveContainer width="100%" height="100%">
@@ -201,14 +209,14 @@ export function ListingSnapshotAnalytics() {
           ) : (
             <div className="card-surface overflow-x-auto">
               <table className="w-full text-left text-sm">
-                <caption className="p-4 text-left font-semibold">Current asking-rent medians by neighborhood ({selectedUnit})</caption>
+                <caption className="p-4 text-left font-semibold">Current asking-rent medians by neighborhood ({selectedUnit}) · highest to lowest</caption>
                 <thead className="bg-muted"><tr>
                   <th scope="col" className="p-3">Neighborhood</th>
                   <th scope="col" className="p-3">Active listings</th>
                   <th scope="col" className="p-3">Usable observations</th>
                   <th scope="col" className="p-3">Median asking rent</th>
                 </tr></thead>
-                <tbody>{shownDistricts.map((district) => (
+                <tbody>{sortedDistricts.map((district) => (
                   <tr key={district.districtId} className="border-t">
                     <th scope="row" className="p-3 font-medium">{district.label}</th>
                     <td className="p-3">{district.listingCount}</td>
