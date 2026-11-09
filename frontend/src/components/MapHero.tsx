@@ -510,6 +510,7 @@ export function MapHero({
     </section>
   );
   const [expanded, setExpanded] = useState(false);
+  const [fullscreenReady, setFullscreenReady] = useState(false);
   const [expandedCamera, setExpandedCamera] = useState(INITIAL_CAMERA);
   const [returnedCamera, setReturnedCamera] = useState(INITIAL_CAMERA);
   const latestCamera = useRef(INITIAL_CAMERA);
@@ -524,6 +525,7 @@ export function MapHero({
 
   function closeMap() {
     setReturnedCamera(latestCamera.current);
+    setFullscreenReady(false);
     setExpanded(false);
   }
 
@@ -535,6 +537,8 @@ export function MapHero({
     const previousOverflow = document.body.style.overflow;
     modal.showModal();
     document.body.style.overflow = "hidden";
+    // Mount MapLibre only after the native dialog has a measurable viewport.
+    setFullscreenReady(true);
 
     return () => {
       if (modal.open) modal.close();
@@ -704,14 +708,14 @@ export function MapHero({
                   </p>
                 }
               >
-                <MapCanvas
+                {fullscreenReady ? <MapCanvas
                   expanded
                   onBoundsChange={setViewport}
                   camera={expandedCamera}
                   onCameraChange={rememberCamera}
                   {...markerProps}
                   bbox={undefined}
-                />
+                /> : <p role="status" className="p-5">Preparing the expanded map…</p>}
               </Suspense>
               {gradientLegend}
               {placePreview || preview || detailsStatus}
