@@ -63,4 +63,30 @@ describe("market analytics page", () => {
     const table = await screen.findByRole("table");
     expect(within(table).getByText("Kentron")).toBeInTheDocument();
   });
+  it("loads every page within the API's 100-listing limit", async () => {
+    const original = fixtures.listings.value.items[0]!;
+    vi.mocked(getListings).mockImplementation(async (_signal, options) => {
+      const page = options?.page ?? 1;
+      const count = page === 4 ? 1 : 100;
+      return {
+        ...fixtures.listings.value,
+        page,
+        page_size: 100,
+        total: 301,
+        has_more: page < 4,
+        items: Array.from({ length: count }, (_, index) => ({
+          ...original,
+          id: `00000000-0000-4000-8000-${String((page - 1) * 100 + index).padStart(12, "0")}`,
+          external_id: `analytics-${page}-${index}`,
+          property_id: `analytics-property-${page}-${index}`,
+          dedup_group_id: null,
+        })),
+      } as Awaited<ReturnType<typeof getListings>>;
+    });
+    renderPage();
+    expect(await screen.findByText(/Loaded 301 of 301 active listing rows/)).toBeInTheDocument();
+    expect(vi.mocked(getListings).mock.calls.map(([, options]) => options?.page).sort((a, b) => Number(a) - Number(b))).toEqual([1, 2, 3, 4]);
+    expect(vi.mocked(getListings).mock.calls.every(([, options]) => options?.page_size === 100)).toBe(true);
+  });
+
 });
