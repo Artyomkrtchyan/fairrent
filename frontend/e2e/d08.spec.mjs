@@ -144,11 +144,10 @@ test("Market analytics defaults to an actual listing snapshot", async ({ page })
   await expect(table.getByText("Kentron")).toBeVisible();
 });
 
-test("Market analytics preserves the published weekly view", async ({ page }) => {
+test("Market analytics has no weekly history control", async ({ page }) => {
   await page.goto("/analytics");
-  await page.getByRole("button", { name: "Published weekly history" }).click();
-  await page.getByRole("button", { name: "Table" }).click();
-  await expect(page.getByRole("table")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Current listing snapshot" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Published weekly history" })).toHaveCount(0);
 });
 
 test("Reviewer workspace requires a session in real mode", async ({ page }) => {
