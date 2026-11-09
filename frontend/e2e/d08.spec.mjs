@@ -104,9 +104,20 @@ test("Location form rejects invalid coordinates", async ({ page }) => {
   await expect(page.getByRole("alert")).toContainText("valid latitude");
 });
 
-test("Market analytics shows the weekly data table", async ({ page }) => {
+test("Market analytics defaults to an actual listing snapshot", async ({ page }) => {
   await page.goto("/analytics");
   await expect(page.getByRole("heading", { name: "Market analytics" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Current listing snapshot" })).toBeVisible();
+  await expect(page.getByText("600.00 USD").first()).toBeVisible();
+  await page.getByRole("button", { name: "Table" }).click();
+  const table = page.getByRole("table");
+  await expect(table).toBeVisible();
+  await expect(table.getByText("Kentron")).toBeVisible();
+});
+
+test("Market analytics preserves the published weekly view", async ({ page }) => {
+  await page.goto("/analytics");
+  await page.getByRole("button", { name: "Published weekly history" }).click();
   await page.getByRole("button", { name: "Table" }).click();
   await expect(page.getByRole("table")).toBeVisible();
 });
