@@ -31,7 +31,7 @@ function weekly(
 }
 
 describe("district median rent layer", () => {
-  it("uses a single latest weekly bucket, never older fallback figures", () => {
+  it("uses a single latest supported weekly bucket, never mixing older district figures", () => {
     const result = summarizeDistrictPrices([
       weekly("kentron", "2026-10-26", 20),
       weekly("arabkir", "2026-11-02", 10),
@@ -42,6 +42,7 @@ describe("district median rent layer", () => {
     expect(result.maximum).toBe(16);
     expect(result.staleCount).toBe(1);
     expect(result.periodStart).toBe("2026-11-02");
+    expect(result.latestPublishedPeriod).toBe("2026-11-02");
   });
 
   it("never colors null, invalid or undersampled per-square-meter records", () => {
@@ -56,9 +57,28 @@ describe("district median rent layer", () => {
     expect(result.maximum).toBe(15);
   });
 
+  it("uses the most recent supported week when newer weekly data is sparse", () => {
+    const result = summarizeDistrictPrices([
+      weekly("kentron", "2026-10-26", 16, 10, true),
+      weekly("arabkir", "2026-11-02", null, 10),
+      weekly("kentron", "2026-11-02", 22, 3),
+    ]);
+    expect(result.periodStart).toBe("2026-10-26");
+    expect(result.latestPublishedPeriod).toBe("2026-11-02");
+    expect(result.latest.map((item) => item.districtId)).toEqual(["kentron"]);
+    expect(result.staleCount).toBe(1);
+  });
+
+  it("does not present any colored district without a supported per-m² statistic", () => {
+    const result = summarizeDistrictPrices([weekly("kentron", "2026-11-02", null)]);
+    expect(result.periodStart).toBeNull();
+    expect(result.latestPublishedPeriod).toBe("2026-11-02");
+    expect(result.latest).toEqual([]);
+  });
+
   it("shows no supported colors when the API publishes no data", () => {
     expect(summarizeDistrictPrices([])).toEqual({
-      periodStart: null, periodEnd: null, latest: [], minimum: null, maximum: null, staleCount: 0,
+      periodStart: null, periodEnd: null, latestPublishedPeriod: null, latest: [], minimum: null, maximum: null, staleCount: 0,
     });
   });
 });
