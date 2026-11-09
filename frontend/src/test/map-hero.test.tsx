@@ -165,6 +165,7 @@ describe("framed map introduction", () => {
     fireEvent.click(screen.getByRole("button", { name: "Expand map" }));
     const dialog = screen.getByRole("dialog");
     const map = within(dialog).getByTestId("expanded-map");
+    expect(screen.queryByTestId("embedded-map")).not.toBeInTheDocument();
     expect(map).toHaveAttribute("data-initial-zoom", "13");
     fireEvent.click(within(dialog).getByRole("button", { name: "Move map in test" }));
     expect(map).toHaveAttribute("data-initial-zoom", "13");
