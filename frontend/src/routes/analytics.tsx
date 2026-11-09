@@ -20,6 +20,7 @@ import {
   type MarketMeasure,
 } from "@/lib/market-series";
 import { usePrefs } from "@/lib/prefs";
+import { ListingSnapshotAnalytics } from "@/components/ListingSnapshotAnalytics";
 
 export const Route = createFileRoute("/analytics")({
   head: () => ({
@@ -57,6 +58,31 @@ function observationDate(value: string | null) {
 }
 
 export function MarketAnalytics() {
+  const [source, setSource] = useState<"snapshot" | "weekly">("snapshot");
+  return (
+    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+      <PageHeader
+        title="Market analytics"
+        intro="Compare asking rents in available rental listings. Weekly trends appear only if published weekly aggregates exist."
+        tag={apiMode === "mock"}
+      />
+      <nav className="flex flex-wrap gap-3" aria-label="Market analytics dataset">
+        <button type="button" aria-pressed={source === "snapshot"} onClick={() => setSource("snapshot")}
+          className="rounded-md border bg-card px-4 py-2 text-sm font-semibold aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground">
+          Current listings snapshot
+        </button>
+        <button type="button" aria-pressed={source === "weekly"} onClick={() => setSource("weekly")}
+          className="rounded-md border bg-card px-4 py-2 text-sm font-semibold aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground">
+          Published weekly history
+        </button>
+      </nav>
+      {source === "snapshot" ? <ListingSnapshotAnalytics /> : <WeeklyMarketAnalytics />}
+      <RateNote />
+    </main>
+  );
+}
+
+function WeeklyMarketAnalytics() {
   const { format, currency } = usePrefs();
   const [draft, setDraft] = useState(INITIAL_FILTERS);
   const [filters, setFilters] = useState(INITIAL_FILTERS);
@@ -96,12 +122,8 @@ export function MarketAnalytics() {
   const fieldClass = "mt-1 w-full rounded-md border bg-card px-3 py-2";
 
   return (
-    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
-      <PageHeader
-        title="Market analytics"
-        intro="Explore weekly median asking rents. These are advertised rents, not completed rental agreements."
-        tag={apiMode === "mock"}
-      />
+    <section className="space-y-6" aria-label="Published weekly market history">
+      <p className="text-sm text-muted-foreground">This historical view uses only officially published weekly aggregates. When none are available, it remains empty; it does not synthesize a trend from current listings.</p>
 
       <form
         className="card-surface p-4"
@@ -416,7 +438,6 @@ export function MarketAnalytics() {
           </div>
         </section>
       )}
-      <RateNote />
-    </main>
+    </section>
   );
 }

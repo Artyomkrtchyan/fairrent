@@ -3,11 +3,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fixtures from "../../../contracts/fixtures.json";
 import { getMarketIndex, type MarketIndexPage } from "@/api/market";
+import { getListings } from "@/api/listings";
 import { MarketAnalytics } from "@/routes/analytics";
 
 vi.mock("@/api/market", () => ({
   getMarketIndex: vi.fn(),
 }));
+vi.mock("@/api/listings", () => ({ getListings: vi.fn() }));
 
 vi.mock("@/lib/prefs", () => ({
   usePrefs: () => ({
@@ -19,6 +21,8 @@ vi.mock("@/lib/prefs", () => ({
 // Test accessible values and controls without requiring browser chart dimensions.
 vi.mock("recharts", () => ({
   ResponsiveContainer: () => null,
+  Bar: () => null,
+  BarChart: () => null,
   CartesianGrid: () => null,
   Line: () => null,
   LineChart: () => null,
@@ -41,12 +45,14 @@ function renderPage() {
     </QueryClientProvider>,
   );
 
+  fireEvent.click(screen.getByRole("button", { name: "Published weekly history" }));
   fireEvent.click(screen.getByRole("button", { name: /^table$/i }));
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getMarketIndex).mockResolvedValue(response);
+  vi.mocked(getListings).mockResolvedValue(fixtures.listings.value as Awaited<ReturnType<typeof getListings>>);
 });
 
 afterEach(cleanup);
