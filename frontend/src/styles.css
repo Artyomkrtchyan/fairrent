@@ -572,8 +572,10 @@
   right: 1rem;
   bottom: 2.6rem;
   z-index: 2;
-  width: 240px;
-  padding: 0.85rem 1rem;
+  width: 224px;
+  max-height: min(45%, 260px);
+  overflow-y: auto;
+  padding: 0.65rem 0.8rem;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--card);
@@ -609,7 +611,15 @@
   font-variant-numeric: tabular-nums;
 }
 .map-price-legend p + p {
-  margin-top: 0.35rem;
+  margin-top: 0.25rem;
+}
+.map-price-legend p {
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+.map-price-ticks {
+  gap: 0.35rem;
+  font-size: 0.66rem;
 }
 .map-no-data-key {
   display: inline-block;
@@ -630,6 +640,7 @@
   }
   .map-price-legend {
     width: 190px;
+    max-height: 35%;
     right: 0.65rem;
     bottom: 2rem;
     padding: 0.6rem 0.75rem;

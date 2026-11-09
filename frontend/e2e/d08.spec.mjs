@@ -128,9 +128,9 @@ test("Map price legend uses real active listing snapshot when weekly index has n
   }));
   await page.goto("/");
   const legend = page.getByLabel("Area rent colour legend").first();
-  await expect(legend.getByText("Current active listings snapshot")).toBeVisible();
-  await expect(legend.getByText(/Green = lower, yellow = middle, red = higher/)).toBeVisible();
-  await expect(legend.getByText(/1 districts meet the five-listing threshold/)).toBeVisible();
+  await expect(legend.getByText("Active listings snapshot")).toBeVisible();
+  await expect(legend.getByText(/Green: lower.*Yellow: middle.*Red: higher/)).toBeVisible();
+  await expect(legend.getByText(/1 districts with ≥5 listings/)).toBeVisible();
 });
 
 test("Market analytics defaults to an actual listing snapshot", async ({ page }) => {
@@ -144,11 +144,10 @@ test("Market analytics defaults to an actual listing snapshot", async ({ page })
   await expect(table.getByText("Kentron")).toBeVisible();
 });
 
-test("Market analytics preserves the published weekly view", async ({ page }) => {
+test("Market analytics has no weekly history control", async ({ page }) => {
   await page.goto("/analytics");
-  await page.getByRole("button", { name: "Published weekly history" }).click();
-  await page.getByRole("button", { name: "Table" }).click();
-  await expect(page.getByRole("table")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Current listing snapshot" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Published weekly history" })).toHaveCount(0);
 });
 
 test("Reviewer workspace requires a session in real mode", async ({ page }) => {
