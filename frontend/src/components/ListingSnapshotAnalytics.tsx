@@ -85,8 +85,7 @@ export function ListingSnapshotAnalytics() {
   });
   const chartData = sortedDistricts
     .filter((district) => metricValue(district) !== null)
-    .map((district) => ({ district: district.label, median: metricValue(district)!, count: metricCount(district) }))
-;
+    .map((district) => ({ district: district.label, median: metricValue(district)!, count: metricCount(district) }));
 
   return (
     <section className="space-y-5" aria-label="Current listing market snapshot">
