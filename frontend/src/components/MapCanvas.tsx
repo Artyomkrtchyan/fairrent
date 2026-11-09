@@ -252,7 +252,7 @@ export function MapCanvas({
       id: rasterId,
       type: "raster",
       source: rasterSourceId,
-      paint: { "raster-opacity": 0.72, "raster-fade-duration": 0 },
+      paint: { "raster-opacity": 0.9, "raster-fade-duration": 0 },
     }, before);
 
     // Keep a transparent, interactive district layer so clicks still reveal the
