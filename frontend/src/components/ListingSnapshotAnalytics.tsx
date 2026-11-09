@@ -20,6 +20,8 @@ const PAGE_SIZE = 100;
 const MAX_PAGES = 500;
 const CONCURRENT_PAGES = 8;
 const field = "rounded-md border bg-card px-3 py-2 text-sm";
+type ListingPage = Awaited<ReturnType<typeof getListings>>;
+type SnapshotProgress = { pages: ListingPage[]; total: number; hasUnloaded: boolean };
 
 export function ListingSnapshotAnalytics() {
   const { format, currency } = usePrefs();
@@ -27,6 +29,7 @@ export function ListingSnapshotAnalytics() {
   const [view, setView] = useState<"chart" | "table">("chart");
   const [districtFilter, setDistrictFilter] = useState("all");
   const [includeStale, setIncludeStale] = useState(true);
+  const [progress, setProgress] = useState<SnapshotProgress | null>(null);
   const query = useQuery({
     queryKey: ["market-listing-snapshot", apiMode],
     retry: false,
@@ -37,6 +40,9 @@ export function ListingSnapshotAnalytics() {
       const pages = [first];
       const requestedPages = Math.max(1, Math.ceil(first.total / PAGE_SIZE));
       const lastPage = Math.min(requestedPages, MAX_PAGES);
+      // Publish real partial results immediately: charts grow and adjust as
+      // supported listing batches arrive, rather than waiting for all pages.
+      if (!signal.aborted) setProgress({ pages: [...pages], total: first.total, hasUnloaded: first.has_more });
       // Bounded batches avoid overloading the API while substantially reducing
       // wall time compared with sequential 100-row requests.
       for (let start = 2; start <= lastPage; start += CONCURRENT_PAGES) {
@@ -47,6 +53,13 @@ export function ListingSnapshotAnalytics() {
           ),
         );
         pages.push(...batch);
+        if (!signal.aborted) {
+          setProgress({
+            pages: [...pages],
+            total: first.total,
+            hasUnloaded: requestedPages > lastPage || pages.at(-1)?.has_more === true,
+          });
+        }
       }
       return {
         pages,
@@ -56,14 +69,19 @@ export function ListingSnapshotAnalytics() {
     },
   });
 
+  // Query cache remains authoritative when fetching finishes. During an active
+  // request, show only data actually received so far, never simulated values.
+  const snapshot = query.isFetching ? progress : (query.data ?? progress);
   const records = useMemo(
-    () => (query.data?.pages.flatMap((page) => page.items) ?? []) as SnapshotListing[],
-    [query.data],
+    () => (snapshot?.pages.flatMap((page) => page.items) ?? []) as SnapshotListing[],
+    [snapshot],
   );
   const unique = useMemo(() => uniqueActiveListings(records), [records]);
-  const total = query.data?.total ?? 0;
-  const hasUnloaded = query.data?.hasUnloaded ?? false;
-  const fullyLoaded = Boolean(query.data) && !hasUnloaded && !query.isError;
+  const total = snapshot?.total ?? 0;
+  const hasUnloaded = snapshot?.hasUnloaded ?? false;
+  const fullyLoaded = !query.isFetching && !query.isError && Boolean(query.data) && !hasUnloaded;
+  const loadingLive = query.isFetching && snapshot !== null;
+  const loadedPercent = total > 0 ? Math.min(100, Math.round(records.length / total * 100)) : 100;
   const visibleRecords = useMemo(
     () => unique.filter((listing) => includeStale || !listing.freshness.is_stale),
     [unique, includeStale],
@@ -136,7 +154,18 @@ export function ListingSnapshotAnalytics() {
         </div>
       </div>
 
-      {query.isPending && <p role="status" className="card-surface p-5">Loading the complete available rental snapshot…</p>}
+      {query.isPending && !snapshot && <p role="status" className="card-surface p-5">Starting market analysis…</p>}
+      {loadingLive && (
+        <div className="card-surface space-y-2 p-4" role="status" aria-live="polite">
+          <p className="text-sm font-semibold">
+            Updating charts from real listings… {records.length.toLocaleString()} of {total.toLocaleString()} loaded ({loadedPercent}%)
+          </p>
+          <progress aria-label="Listing analysis progress" className="h-2 w-full accent-primary" max={Math.max(total, 1)} value={records.length} />
+          <p className="text-xs text-muted-foreground">
+            Medians and rankings are provisional until all available pages finish loading.
+          </p>
+        </div>
+      )}
       {query.isError && (
         <section role="alert" className="card-surface p-5">
           <h3 className="font-semibold">Could not load the full current listings snapshot.</h3>
@@ -148,13 +177,13 @@ export function ListingSnapshotAnalytics() {
         </section>
       )}
 
-      {query.data && (
+      {snapshot && (
         <>
           {!fullyLoaded && (
             <p role="status" className="rounded-md border px-4 py-3 text-sm">
               <strong>Partial coverage:</strong> {records.length.toLocaleString()} of {total.toLocaleString()} API listing rows loaded.
               District figures currently describe only the loaded subset, not the whole market.
-              {hasUnloaded && query.data.pages.length >= MAX_PAGES && " The 50,000-row request limit has been reached."}
+              {hasUnloaded && snapshot.pages.length >= MAX_PAGES && " The 50,000-row request limit has been reached."}
             </p>
           )}
           <div className="grid gap-4 sm:grid-cols-3">
@@ -199,7 +228,7 @@ export function ListingSnapshotAnalytics() {
             </div>
           ) : view === "chart" ? (
             <figure className="card-surface p-4">
-              <figcaption className="mb-3 font-semibold">Median asking rent by neighborhood ({selectedUnit}) · highest to lowest</figcaption>
+              <figcaption className="mb-3 font-semibold">Median asking rent by neighborhood ({selectedUnit}) · highest to lowest{loadingLive ? " · updating" : ""}</figcaption>
               {chartData.length ? (
                 <div style={{ height: Math.max(270, chartData.length * 38 + 50) }} aria-hidden="true">
                   <ResponsiveContainer width="100%" height="100%">
@@ -211,14 +240,14 @@ export function ListingSnapshotAnalytics() {
                         formatter={(value) => [format(Number(value)), "Median asking rent"]}
                         contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", color: "var(--popover-foreground)" }}
                       />
-                      <Bar dataKey="median" name="Median rent" fill="var(--primary)" />
+                      <Bar dataKey="median" name="Median rent" fill="var(--primary)" isAnimationActive animationDuration={450} animationEasing="ease-out" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
                 <p className="py-6 text-sm">Not enough listings with valid prices{measure === "m2" ? " and area" : ""} for this measure.</p>
               )}
-              <p className="mt-2 text-xs text-muted-foreground">District medians reflect only the loaded active listing sample. No weekly price history is inferred.</p>
+              <p className="mt-2 text-xs text-muted-foreground">District medians reflect only the loaded active listing sample{loadingLive ? " and are still changing" : ""}. No weekly price history is inferred.</p>
             </figure>
           ) : (
             <div className="card-surface overflow-x-auto">
@@ -243,7 +272,7 @@ export function ListingSnapshotAnalytics() {
           )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
-              Loaded {records.length.toLocaleString()} of {total.toLocaleString()} active listing rows ({unique.length.toLocaleString()} unique after available deduplication).
+              {loadingLive ? "Loading" : "Loaded"} {records.length.toLocaleString()} of {total.toLocaleString()} active listing rows ({unique.length.toLocaleString()} unique after available deduplication).
             </p>
           </div>
           <p className="text-xs text-muted-foreground">
