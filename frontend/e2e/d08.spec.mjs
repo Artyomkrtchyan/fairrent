@@ -128,9 +128,9 @@ test("Map price legend uses real active listing snapshot when weekly index has n
   }));
   await page.goto("/");
   const legend = page.getByLabel("Area rent colour legend").first();
-  await expect(legend.getByText("Current active listings snapshot")).toBeVisible();
-  await expect(legend.getByText(/Green = lower, yellow = middle, red = higher/)).toBeVisible();
-  await expect(legend.getByText(/1 districts meet the five-listing threshold/)).toBeVisible();
+  await expect(legend.getByText("Active listings snapshot")).toBeVisible();
+  await expect(legend.getByText(/Green: lower.*Yellow: middle.*Red: higher/)).toBeVisible();
+  await expect(legend.getByText(/1 districts with ≥5 listings/)).toBeVisible();
 });
 
 test("Market analytics defaults to an actual listing snapshot", async ({ page }) => {
