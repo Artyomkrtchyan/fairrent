@@ -13,11 +13,17 @@ const polygons: Polygon[] = registry.features.flatMap((feature) =>
     ? [feature.geometry.coordinates as Polygon]
     : feature.geometry.coordinates as Polygon[],
 );
-const vertices = polygons.flatMap((polygon) => polygon.flat());
-const west = Math.min(...vertices.map((point) => point[0]!));
-const east = Math.max(...vertices.map((point) => point[0]!));
-const south = Math.min(...vertices.map((point) => point[1]!));
-const north = Math.max(...vertices.map((point) => point[1]!));
+let west = Infinity, east = -Infinity, south = Infinity, north = -Infinity;
+for (const polygon of polygons) {
+  for (const ring of polygon) {
+    for (const point of ring) {
+      west = Math.min(west, point[0]!);
+      east = Math.max(east, point[0]!);
+      south = Math.min(south, point[1]!);
+      north = Math.max(north, point[1]!);
+    }
+  }
+}
 
 export const DEMO_SURFACE = {
   bounds: [west, south, east, north] as const,
