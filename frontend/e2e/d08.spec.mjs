@@ -127,6 +127,7 @@ test("Map price legend uses real active listing snapshot when weekly index has n
     }),
   }));
   await page.goto("/");
+  await page.getByRole("button", { name: "Open district rent price guide" }).click();
   const legend = page.getByLabel("Area rent colour legend").first();
   await expect(legend.getByText("Active listings snapshot")).toBeVisible();
   await expect(legend.getByText(/Green: lower.*Yellow: middle.*Red: higher/)).toBeVisible();
