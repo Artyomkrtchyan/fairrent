@@ -22,3 +22,13 @@ The "District rent prices" checkbox toggles the polygon layer. Rental markers, c
 - Review municipal geometry source/attribution before any separate public data redistribution.
 
 **Before final release sign-off:** Save a redacted live-browser screenshot with timestamp and deployed SHA. Automated fixture-backed tests do not establish the current production data coverage.
+
+## Runtime fallback for deployments without a populated weekly index
+
+When the C06 weekly index has no supported observations (or the weekly API cannot be reached), the frontend can show a **clearly labeled current-active-listing snapshot**. It queries up to 1,500 active listings through the existing listings API, groups unique known properties by district, computes the median of each listing's observed USD monthly asking rent divided by its positive floor area, and fills only districts with at least five suitable listings. The legend identifies the data source, number of loaded rows, observation date and any partial pagination. This is a cross-sectional sample, **not weekly price growth or an inferred historical trend**. No unsupported district is colored.
+
+When weekly medians are present, they remain preferred. When neither source is adequate, the palette guide remains visible but the map stays uncolored. Do not treat missing data as zero.
+
+## Expanded-map performance
+
+Only the embedded map or the modal map is mounted at a time, avoiding duplicate active WebGL renderers, marker trees and ResizeObservers. Expanding preserves the user's camera state and existing controls; closing restores the embedded map. Verify both transitions in production before closing issue #114.
