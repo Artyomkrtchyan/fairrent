@@ -54,9 +54,9 @@ export function renderSmoothRentSurface(
     throw new Error("Cannot render a rent gradient without supported district prices.");
   }
 
-  // Render once per data update, not on pan/zoom. A bounded 320px raster keeps
-  // the expanded map responsive and has no district polygon seams.
-  const size = 320;
+  // Generate one fixed-size, data-driven image rather than recomputing on
+  // camera changes. All districts contribute to one uninterrupted surface.
+  const size = 512;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
@@ -71,32 +71,60 @@ export function renderSmoothRentSurface(
     const latitude = north - ((y + 0.5) / size) * latitudeSpan;
     for (let x = 0; x < size; x++) {
       const longitude = west + ((x + 0.5) / size) * longitudeSpan;
-      let totalWeight = 0, weightedPrice = 0, nearestDistance = Infinity;
+      let totalWeight = 0;
+      let weightedPrice = 0;
       for (const anchor of anchors) {
         const dx = (longitude - anchor.longitude) * xScale;
         const dy = latitude - anchor.latitude;
-        const squaredDistance = dx * dx + dy * dy;
-        nearestDistance = Math.min(nearestDistance, Math.sqrt(squaredDistance));
-        const weight = 1 / (squaredDistance + 0.000075);
+        // Smooth inverse-distance weighting. Do not invent street-level values:
+        // the raster is a visual blend of district-level medians only.
+        const weight = 1 / (dx * dx + dy * dy + 0.000025);
         totalWeight += weight;
         weightedPrice += weight * anchor.normalized;
       }
-      const value = weightedPrice / totalWeight;
-      // Green -> pure yellow -> red, with no additional orange band or hard edge.
+      const normalized = weightedPrice / totalWeight;
+      const value = Math.max(0, Math.min(1, 0.5 + (normalized - 0.5) * 1.35));
       const t = value < 0.5 ? value * 2 : (value - 0.5) * 2;
-      const start = value < 0.5 ? [22, 163, 74] : [250, 204, 21];
-      const finish = value < 0.5 ? [250, 204, 21] : [220, 38, 38];
+      const start = value < 0.5 ? [34, 197, 94] : [250, 204, 21];
+      const finish = value < 0.5 ? [250, 204, 21] : [239, 68, 68];
       const offset = (y * size + x) * 4;
       for (let channel = 0; channel < 3; channel++) {
         pixels.data[offset + channel] = Math.round(start[channel]! * (1 - t) + finish[channel]! * t);
       }
-      // Fade into the map at the outer boundary and outside measured areas.
-      const edge = Math.min(x, y, size - x - 1, size - y - 1) / 15;
-      const maxDistance = Math.max(longitudeSpan * xScale, latitudeSpan) * 0.33;
-      const coverage = Math.max(0, Math.min(1, (maxDistance - nearestDistance) / (maxDistance * 0.45)));
-      pixels.data[offset + 3] = Math.round(245 * Math.min(1, edge) * coverage);
+      pixels.data[offset + 3] = 255;
     }
   }
   context.putImageData(pixels, 0, 0);
+
+  // Mask to the *actual Yerevan district geometries*, not a rectangular,
+  // elliptical, or distance-limited fade. Each polygon uses even/odd filling
+  // so that inner rings remain holes. Shared district edges are not outlined.
+  const mask = document.createElement("canvas");
+  mask.width = size;
+  mask.height = size;
+  const maskContext = mask.getContext("2d");
+  if (!maskContext) throw new Error("Cannot create the city boundary mask.");
+  maskContext.fillStyle = "#fff";
+  for (const feature of features) {
+    const polygons: Polygon[] = feature.geometry.type === "Polygon"
+      ? [feature.geometry.coordinates as Polygon]
+      : feature.geometry.coordinates as Polygon[];
+    for (const polygon of polygons) {
+      maskContext.beginPath();
+      for (const ring of polygon) {
+        ring.forEach((point, index) => {
+          const x = ((point[0]! - west) / longitudeSpan) * size;
+          const y = ((north - point[1]!) / latitudeSpan) * size;
+          if (index === 0) maskContext.moveTo(x, y);
+          else maskContext.lineTo(x, y);
+        });
+        maskContext.closePath();
+      }
+      maskContext.fill("evenodd");
+    }
+  }
+  context.globalCompositeOperation = "destination-in";
+  context.drawImage(mask, 0, 0);
+  context.globalCompositeOperation = "source-over";
   return { bounds: [west, south, east, north], url: canvas.toDataURL("image/png") };
 }
