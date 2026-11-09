@@ -567,13 +567,43 @@
   color: var(--primary-foreground);
   border-color: transparent;
 }
-.map-price-legend {
+.map-price-guide-control {
   position: absolute;
   right: 1rem;
   bottom: 2.6rem;
-  z-index: 2;
+  z-index: 4;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-end;
+  gap: 0.4rem;
+  max-height: calc(100% - 3rem);
+  pointer-events: none;
+}
+.map-price-guide-toggle {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--foreground);
+  background: var(--card);
+  box-shadow: 0 4px 18px #0003;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.map-price-guide-toggle:hover,
+.map-price-guide-toggle[aria-expanded="true"] {
+  background: var(--accent);
+}
+.map-price-guide-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.map-price-legend {
+  position: relative;
   width: 224px;
-  max-height: min(45%, 260px);
+  max-height: min(45vh, 260px);
   overflow-y: auto;
   padding: 0.65rem 0.8rem;
   border: 1px solid var(--border);
@@ -584,8 +614,6 @@
   font-size: 0.75rem;
   line-height: 1.4;
   pointer-events: auto;
-  max-height: 52%;
-  overflow-y: auto;
 }
 .map-demo-label {
   font-size: 0.6rem;
@@ -602,7 +630,7 @@
   height: 9px;
   margin-top: 0.65rem;
   border-radius: 99px;
-  background: linear-gradient(to right, #16a34a, #facc15, #f97316, #dc2626);
+  background: linear-gradient(to right, #22c55e, #facc15, #ef4444);
 }
 .map-price-ticks {
   display: flex;
@@ -638,11 +666,13 @@
     width: 100%;
     justify-content: flex-end;
   }
-  .map-price-legend {
-    width: 190px;
-    max-height: 35%;
+  .map-price-guide-control {
     right: 0.65rem;
     bottom: 2rem;
+  }
+  .map-price-legend {
+    width: min(190px, calc(100vw - 2rem));
+    max-height: 35vh;
     padding: 0.6rem 0.75rem;
   }
   .rental-map-preview {
