@@ -255,6 +255,17 @@ export function MapHero({
           : "Search this area to show available rentals.";
   const gradientLegend = (
     <aside className="map-price-legend" aria-label="Area rent colour legend">
+      {!showDemoSurface && showDistrictPrices && (
+        <div className="mb-2">
+          <h3>District rent price guide</h3>
+          <div
+            className="map-price-ramp"
+            style={{ background: "linear-gradient(to right, #16a34a 0%, #facc15 50%, #dc2626 100%)" }}
+            aria-hidden="true"
+          />
+          <p>Green = lower, yellow = middle, red = higher asking rent per m².</p>
+        </div>
+      )}
       {showDemoSurface ? (
         <>
           <p className="map-demo-label">Demo data</p>
@@ -288,18 +299,12 @@ export function MapHero({
       ) : (
         <>
           <p className="map-demo-label">Observed district asking rents</p>
-          <h3>Median USD/m²/month</h3>
-          <div
-            className="map-price-ramp"
-            style={{ background: "linear-gradient(to right, #16a34a 0%, #facc15 50%, #dc2626 100%)" }}
-            aria-hidden="true"
-          />
+          <p>Median monthly asking rent per m² (USD)</p>
           <div className="map-price-ticks">
             <span>{districtSummary.minimum.toFixed(2)} USD</span>
             <span>{((districtSummary.minimum + districtSummary.maximum) / 2).toFixed(2)} USD</span>
             <span>{districtSummary.maximum.toFixed(2)} USD</span>
           </div>
-          <p>Green = lower, yellow = middle, red = higher district rents</p>
           <p>Data week: {districtSummary.periodStart} to {districtSummary.periodEnd}</p>
           {districtSummary.latestPublishedPeriod !== districtSummary.periodStart && (
             <p>Note: latest published week {districtSummary.latestPublishedPeriod} has no supported per-m² readings; showing an older supported week.</p>
