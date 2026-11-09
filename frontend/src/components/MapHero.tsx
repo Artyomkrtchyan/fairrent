@@ -10,7 +10,7 @@ import {
   type MouseEvent,
   type KeyboardEvent,
 } from "react";
-import { ArrowDown, Expand, MapPin, X } from "lucide-react";
+import { ArrowDown, Expand, Info, MapPin, X } from "lucide-react";
 import { parseMapBounds, serializeMapBounds, type MapBounds } from "@/lib/map-bounds";
 import { useInfrastructure, hasInfrastructureCoordinates } from "@/api/infrastructure";
 import { Link } from "@tanstack/react-router";
@@ -85,10 +85,11 @@ export function MapHero({
   const [viewport, setViewport] = useState<MapBounds>();
   const viewportBbox = viewport ? serializeMapBounds(viewport) : undefined;
   const validArea = parseMapBounds(viewportBbox);
-  const [showMetro, setShowMetro] = useState(true);
-  const [showUniversities, setShowUniversities] = useState(true);
+  const [showMetro, setShowMetro] = useState(false);
+  const [showUniversities, setShowUniversities] = useState(false);
   const [showDistrictPrices, setShowDistrictPrices] = useState(true);
-  const [showRentalDots, setShowRentalDots] = useState(true);
+  const [showRentalDots, setShowRentalDots] = useState(false);
+  const [showPriceGuide, setShowPriceGuide] = useState(false);
   const districtQuery = useQuery({
     queryKey: ["map-district-median-prices", apiMode],
     enabled: apiMode === "real" && showDistrictPrices,
@@ -298,14 +299,25 @@ export function MapHero({
         : bbox
           ? "Rental dots show your searched area."
           : "Search this area to show available rentals.";
-  const gradientLegend = (
-    <aside className="map-price-legend" aria-label="Area rent colour legend">
+  const gradientLegend = (showDemoSurface || showDistrictPrices) && (
+    <div className="map-price-guide-control">
+      <button
+        type="button"
+        className="map-price-guide-toggle"
+        aria-label={showPriceGuide ? "Close district rent price guide" : "Open district rent price guide"}
+        aria-expanded={showPriceGuide}
+        onClick={() => setShowPriceGuide((value) => !value)}
+        title="District rent price guide"
+      >
+        <Info size={18} aria-hidden="true" />
+      </button>
+      {showPriceGuide && <aside className="map-price-legend" aria-label="Area rent colour legend">
       {!showDemoSurface && showDistrictPrices && (
         <div className="mb-2">
           <h3>District rent price guide</h3>
           <div
             className="map-price-ramp"
-            style={{ background: "linear-gradient(to right, #16a34a 0%, #facc15 50%, #dc2626 100%)" }}
+            style={{ background: "linear-gradient(to right, #22c55e 0%, #facc15 50%, #ef4444 100%)" }}
             aria-hidden="true"
           />
           <p>Green: lower · Yellow: middle · Red: higher (USD/month/m²).</p>
@@ -366,7 +378,8 @@ export function MapHero({
           <p className="text-xs">Smooth color transitions are interpolated from district medians, not street-level estimates. Missing data is not zero.</p>
         </>
       )}
-    </aside>
+      </aside>}
+    </div>
   );
   const [selectedId, setSelectedId] = useState<string>();
   const [overlappingIds, setOverlappingIds] = useState<readonly string[]>([]);

@@ -1,5 +1,5 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import {
   Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
@@ -14,8 +14,11 @@ import {
   type SnapshotMeasure,
 } from "@/lib/listing-snapshot";
 
-const MAX_PAGES = 30;
+// The listings API contract currently caps page_size at 100. Fetch its pages
+// concurrently instead of requesting an unsupported 1,000-row response.
 const PAGE_SIZE = 100;
+const MAX_PAGES = 500;
+const CONCURRENT_PAGES = 8;
 const field = "rounded-md border bg-card px-3 py-2 text-sm";
 
 export function ListingSnapshotAnalytics() {
@@ -24,31 +27,42 @@ export function ListingSnapshotAnalytics() {
   const [view, setView] = useState<"chart" | "table">("chart");
   const [districtFilter, setDistrictFilter] = useState("all");
   const [includeStale, setIncludeStale] = useState(true);
-  const query = useInfiniteQuery({
+  const query = useQuery({
     queryKey: ["market-listing-snapshot", apiMode],
-    initialPageParam: 1,
-    queryFn: ({ pageParam, signal }) =>
-      getListings(signal, { page: pageParam, page_size: PAGE_SIZE, status: "active", sort: "newest" }),
-    getNextPageParam: (lastPage, pages) =>
-      lastPage.has_more && pages.length < MAX_PAGES ? lastPage.page + 1 : undefined,
     retry: false,
     staleTime: 2 * 60 * 1000,
+    queryFn: async ({ signal }) => {
+      const parameters = { page_size: PAGE_SIZE, status: "active" as const, sort: "newest" as const };
+      const first = await getListings(signal, { ...parameters, page: 1 });
+      const pages = [first];
+      const requestedPages = Math.max(1, Math.ceil(first.total / PAGE_SIZE));
+      const lastPage = Math.min(requestedPages, MAX_PAGES);
+      // Bounded batches avoid overloading the API while substantially reducing
+      // wall time compared with sequential 100-row requests.
+      for (let start = 2; start <= lastPage; start += CONCURRENT_PAGES) {
+        const count = Math.min(CONCURRENT_PAGES, lastPage - start + 1);
+        const batch = await Promise.all(
+          Array.from({ length: count }, (_, offset) =>
+            getListings(signal, { ...parameters, page: start + offset }),
+          ),
+        );
+        pages.push(...batch);
+      }
+      return {
+        pages,
+        total: first.total,
+        hasUnloaded: requestedPages > lastPage || pages.at(-1)?.has_more === true,
+      };
+    },
   });
-  // Load the full available snapshot up to the documented 3,000-row safety cap.
-  // The UI explicitly marks partial coverage if the API has more rows.
-  useEffect(() => {
-    if (query.hasNextPage && !query.isFetching && !query.isError) {
-      void query.fetchNextPage();
-    }
-  }, [query.hasNextPage, query.isFetching, query.isError, query.fetchNextPage]);
 
   const records = useMemo(
     () => (query.data?.pages.flatMap((page) => page.items) ?? []) as SnapshotListing[],
     [query.data],
   );
   const unique = useMemo(() => uniqueActiveListings(records), [records]);
-  const total = query.data?.pages[0]?.total ?? 0;
-  const hasUnloaded = query.data?.pages.at(-1)?.has_more ?? false;
+  const total = query.data?.total ?? 0;
+  const hasUnloaded = query.data?.hasUnloaded ?? false;
   const fullyLoaded = Boolean(query.data) && !hasUnloaded && !query.isError;
   const visibleRecords = useMemo(
     () => unique.filter((listing) => includeStale || !listing.freshness.is_stale),
@@ -122,13 +136,13 @@ export function ListingSnapshotAnalytics() {
         </div>
       </div>
 
-      {query.isPending && <p role="status" className="card-surface p-5">Loading actual rental listings…</p>}
+      {query.isPending && <p role="status" className="card-surface p-5">Loading the complete available rental snapshot…</p>}
       {query.isError && (
         <section role="alert" className="card-surface p-5">
-          <h3 className="font-semibold">Could not load {query.isFetchNextPageError ? "the next listings page" : "current listings"}.</h3>
+          <h3 className="font-semibold">Could not load the full current listings snapshot.</h3>
           <p className="mt-2 text-sm">Previously loaded pages remain available if any were retrieved. No synthetic values are substituted.</p>
           <button className="mt-3 rounded-md border px-4 py-2 text-sm" type="button"
-            onClick={() => void (query.isFetchNextPageError ? query.fetchNextPage() : query.refetch())}>
+            onClick={() => void query.refetch()}>
             Retry
           </button>
         </section>
@@ -140,7 +154,7 @@ export function ListingSnapshotAnalytics() {
             <p role="status" className="rounded-md border px-4 py-3 text-sm">
               <strong>Partial coverage:</strong> {records.length.toLocaleString()} of {total.toLocaleString()} API listing rows loaded.
               District figures currently describe only the loaded subset, not the whole market.
-              {hasUnloaded && query.data.pages.length >= MAX_PAGES && " The 3,000-row request limit has been reached."}
+              {hasUnloaded && query.data.pages.length >= MAX_PAGES && " The 50,000-row request limit has been reached."}
             </p>
           )}
           <div className="grid gap-4 sm:grid-cols-3">
@@ -231,12 +245,6 @@ export function ListingSnapshotAnalytics() {
             <p className="text-sm text-muted-foreground">
               Loaded {records.length.toLocaleString()} of {total.toLocaleString()} active listing rows ({unique.length.toLocaleString()} unique after available deduplication).
             </p>
-            {query.hasNextPage && (
-              <button type="button" className="rounded-md border bg-card px-4 py-2 text-sm font-semibold"
-                disabled={query.isFetching} onClick={() => void query.fetchNextPage()}>
-                {query.isFetchingNextPage ? "Loading…" : "Load more listings"}
-              </button>
-            )}
           </div>
           <p className="text-xs text-muted-foreground">
             Asking-price observations are not completed transactions or a representative survey.
