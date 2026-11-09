@@ -646,7 +646,7 @@ export function MapHero({
                 {...markerProps}
               />
             </Suspense>}
-            {!expanded && gradientLegend
+            {!expanded && gradientLegend}
             {!expanded && (placePreview || preview || detailsStatus)}
           </div>
           <p className="rental-map-coverage" role="status">
