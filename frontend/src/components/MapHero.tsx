@@ -88,6 +88,7 @@ export function MapHero({
   const [showMetro, setShowMetro] = useState(true);
   const [showUniversities, setShowUniversities] = useState(true);
   const [showDistrictPrices, setShowDistrictPrices] = useState(true);
+  const [showRentalDots, setShowRentalDots] = useState(true);
   const districtQuery = useQuery({
     queryKey: ["map-district-median-prices", apiMode],
     enabled: apiMode === "real" && showDistrictPrices,
@@ -182,6 +183,14 @@ export function MapHero({
         />{" "}
         <span className="map-layer-symbol">U</span> Universities
       </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={showRentalDots}
+          onChange={(event) => setShowRentalDots(event.target.checked)}
+        />{" "}
+        Apartment dots
+      </label>
       {apiMode === "real" && (
         <label>
           <input
@@ -266,7 +275,10 @@ export function MapHero({
         className="map-expand-button map-search-button"
         disabled={pending || !validArea || viewportBbox === bbox}
         onClick={() => {
-          if (viewportBbox && validArea) onSearchArea(viewportBbox);
+          if (viewportBbox && validArea) {
+            setShowRentalDots(true);
+            onSearchArea(viewportBbox);
+          }
         }}
       >
         {pending ? "Searching…" : "Search this area"}
@@ -296,7 +308,7 @@ export function MapHero({
             style={{ background: "linear-gradient(to right, #16a34a 0%, #facc15 50%, #dc2626 100%)" }}
             aria-hidden="true"
           />
-          <p>Green = lower, yellow = middle, red = higher asking rent per m².</p>
+          <p>Green: lower · Yellow: middle · Red: higher (USD/month/m²).</p>
         </div>
       )}
       {showDemoSurface ? (
@@ -330,8 +342,8 @@ export function MapHero({
         </>
       ) : (
         <>
-          <p className="map-demo-label">{useSnapshot ? "Current active listings snapshot" : "Published weekly district index"}</p>
-          <p>Median monthly asking rent per m² (USD)</p>
+          <p className="map-demo-label">{useSnapshot ? "Active listings snapshot" : "Published district medians"}</p>
+          <p>Median asking rent · USD/month/m²</p>
           <div className="map-price-ticks">
             <span>{priceRange.minimum.toFixed(2)} USD</span>
             <span>{((priceRange.minimum + priceRange.maximum) / 2).toFixed(2)} USD</span>
@@ -339,9 +351,8 @@ export function MapHero({
           </div>
           {useSnapshot ? (
             <>
-              <p>Based on {snapshotQuery.data?.listings.length ?? 0} loaded active listings. {activePrices.length} districts meet the five-listing threshold.</p>
-              {snapshotQuery.data?.truncated && <p>Partial sample: only the first 1,500 listing rows were analyzed.</p>}
-              <p>Most recent listing observation: {snapshotSummary.latestObservation?.slice(0, 10) ?? "unknown"}. This is not a weekly historical price trend.</p>
+              <p>{activePrices.length} districts with ≥5 listings · {snapshotQuery.data?.listings.length ?? 0} sampled listings{snapshotQuery.data?.truncated ? " (partial sample)" : ""}.</p>
+              <p>Observed: {snapshotSummary.latestObservation?.slice(0, 10) ?? "unknown"}. Snapshot, not a weekly trend.</p>
             </>
           ) : (
             <>
@@ -352,8 +363,7 @@ export function MapHero({
                 <p>Most recent published week lacks sufficient data, so an older supported period is displayed.</p>}
             </>
           )}
-          <p><span className="map-no-data-key" /> Uncolored districts lack sufficient data.</p>
-          <p className="text-xs">District medians are asking rents, not street-level prices or model predictions.</p>
+          <p className="text-xs">Smooth color transitions are interpolated from district medians, not street-level estimates. Missing data is not zero.</p>
         </>
       )}
     </aside>
@@ -408,7 +418,7 @@ export function MapHero({
     : listings.find((listing) => listing.id === selectedId && hasMapCoordinates(listing));
   const markerProps = {
     viewMode,
-    points: mapLocations || bbox ? points : [],
+    points: showRentalDots && (mapLocations || bbox) ? points : [],
     clustered: mapLocations !== undefined,
     onOverlap: selectOverlap,
     showDemoSurface,
