@@ -93,8 +93,8 @@ export function MapHero({
     retry: false,
     staleTime: 5 * 60 * 1000,
     queryFn: async ({ signal }): Promise<MarketIndex[]> => {
-      // A bounded recent history avoids publishing out-of-date district colors.
-      const period_start = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
+      // Query up to 180 days of published index history, without inventing prices.\n      // Older observations are visibly labelled rather than presented as current.
+      const period_start = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000)
         .toISOString().slice(0, 10);
       const all: MarketIndex[] = [];
       for (let page = 1; page <= 12; page++) {
@@ -279,8 +279,11 @@ export function MapHero({
         </>
       ) : districtSummary.minimum === null || districtSummary.maximum === null ? (
         <p className="map-demo-label">
-          No supported recent district rent prices
-          {districtSummary.periodStart ? ` for week of ${districtSummary.periodStart}` : ""}
+          No supported district rent-per-m² statistics in the past 180 days.
+          {districtSummary.latestPublishedPeriod && (
+            <> Latest published week: {districtSummary.latestPublishedPeriod}, but its per-m² sample is insufficient.</>
+          )}
+          <span className="mt-1 block">Uncolored districts do not mean zero rent.</span>
         </p>
       ) : (
         <>
@@ -297,7 +300,13 @@ export function MapHero({
             <span>{districtSummary.maximum.toFixed(2)} USD</span>
           </div>
           <p>Green = lower, yellow = middle, red = higher district rents</p>
-          <p>Week: {districtSummary.periodStart} to {districtSummary.periodEnd}</p>
+          <p>Data week: {districtSummary.periodStart} to {districtSummary.periodEnd}</p>
+          {districtSummary.latestPublishedPeriod !== districtSummary.periodStart && (
+            <p>Note: latest published week {districtSummary.latestPublishedPeriod} has no supported per-m² readings; showing an older supported week.</p>
+          )}
+          {districtSummary.periodEnd && (Date.now() - new Date(`${districtSummary.periodEnd}T23:59:59Z`).getTime()) > 14 * 86400000 && (
+            <p>Historical observations, not current rents.</p>
+          )}
           <p>{districtSummary.latest.length} of 12 districts have supported per-m² data</p>
           {districtSummary.staleCount > 0 && (
             <p>Warning: {districtSummary.staleCount} districts use stale observations</p>
