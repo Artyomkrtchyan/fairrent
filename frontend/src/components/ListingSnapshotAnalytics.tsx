@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
@@ -34,6 +34,14 @@ export function ListingSnapshotAnalytics() {
     retry: false,
     staleTime: 2 * 60 * 1000,
   });
+  // Load the full available snapshot up to the documented 3,000-row safety cap.
+  // The UI explicitly marks partial coverage if the API has more rows.
+  useEffect(() => {
+    if (query.hasNextPage && !query.isFetching && !query.isError) {
+      void query.fetchNextPage();
+    }
+  }, [query.hasNextPage, query.isFetching, query.isError, query.fetchNextPage]);
+
   const records = useMemo(
     () => (query.data?.pages.flatMap((page) => page.items) ?? []) as SnapshotListing[],
     [query.data],
