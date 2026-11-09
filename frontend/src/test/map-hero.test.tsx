@@ -104,8 +104,8 @@ describe("framed map introduction", () => {
     }));
     render(<MapHero mapLocations={mapLocations} />);
     expect(await screen.findByTestId("embedded-map")).toHaveAttribute("data-marker-count", "0");
-    expect(screen.getByLabelText("Metro")).not.toBeChecked();
-    expect(screen.getByLabelText("Universities")).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Metro/ })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Universities/ })).not.toBeChecked();
     fireEvent.click(screen.getByLabelText("Apartment dots"));
     expect(screen.getByTestId("embedded-map")).toHaveAttribute("data-marker-count", "101");
     expect(screen.getByText(/101 rentals with usable locations/)).toBeInTheDocument();
@@ -153,8 +153,8 @@ describe("framed map introduction", () => {
     const view = render(<MapHero listings={listings} onSearchArea={searchArea} />);
     const map = await screen.findByTestId("embedded-map");
     expect(map).toHaveAttribute("data-marker-count", "0");
-    expect(screen.getByLabelText("Metro")).not.toBeChecked();
-    expect(screen.getByLabelText("Universities")).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Metro/ })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Universities/ })).not.toBeChecked();
     expect(screen.queryByLabelText("Area rent colour legend")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Open district rent price guide" }));
     expect(screen.getByLabelText("Area rent colour legend")).toHaveTextContent("Demo data");
