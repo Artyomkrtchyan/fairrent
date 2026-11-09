@@ -579,8 +579,11 @@
   background: var(--card);
   color: var(--foreground);
   box-shadow: 0 4px 18px #0002;
-  font-size: 0.65rem;
-  pointer-events: none;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  pointer-events: auto;
+  max-height: 52%;
+  overflow-y: auto;
 }
 .map-demo-label {
   font-size: 0.6rem;

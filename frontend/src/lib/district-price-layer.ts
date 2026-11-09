@@ -12,6 +12,7 @@ export interface DistrictPrice {
 export interface PriceLayerSummary {
   periodStart: string | null;
   periodEnd: string | null;
+  latestPublishedPeriod: string | null;
   latest: DistrictPrice[];
   minimum: number | null;
   maximum: number | null;
@@ -19,27 +20,40 @@ export interface PriceLayerSummary {
 }
 
 /**
- * Choose one shared weekly observation period for a comparable, non-interpolated
- * district map. Never mix a previous district's week into the current one.
- * Null and undersampled USD/m² values stay uncolored.
+ * Prefer the most recent published week that contains at least one supported
+ * per-square-metre observation. Never combine figures from different weeks.
+ * Do not invent values for missing districts or fall back to asking rent/month.
+ * Preserve the latest publication week separately for a truthful age warning.
  */
 export function summarizeDistrictPrices(records: readonly MarketIndex[]): PriceLayerSummary {
-  const periodStart = records.reduce<string | null>(
+  const latestPublishedPeriod = records.reduce<string | null>(
+    (latest, item) => (!latest || item.period_start > latest ? item.period_start : latest),
+    null,
+  );
+  const supported = records.filter(
+    (item) =>
+      typeof item.median_usd_m2 === "number" &&
+      Number.isFinite(item.median_usd_m2) &&
+      item.median_usd_m2 > 0 &&
+      item.area_sample_count >= 5,
+  );
+  const periodStart = supported.reduce<string | null>(
     (latest, item) => (!latest || item.period_start > latest ? item.period_start : latest),
     null,
   );
   if (!periodStart) {
-    return { periodStart: null, periodEnd: null, latest: [], minimum: null, maximum: null, staleCount: 0 };
+    return {
+      periodStart: null,
+      periodEnd: null,
+      latestPublishedPeriod,
+      latest: [],
+      minimum: null,
+      maximum: null,
+      staleCount: 0,
+    };
   }
-  const sameWeek = records.filter((item) => item.period_start === periodStart);
-  const latest = sameWeek
-    .filter(
-      (item) =>
-        typeof item.median_usd_m2 === "number" &&
-        Number.isFinite(item.median_usd_m2) &&
-        item.median_usd_m2 > 0 &&
-        item.area_sample_count >= 5,
-    )
+  const latest = supported
+    .filter((item) => item.period_start === periodStart)
     .map((item) => ({
       districtId: item.district_id,
       medianUsdM2: item.median_usd_m2!,
@@ -51,10 +65,11 @@ export function summarizeDistrictPrices(records: readonly MarketIndex[]): PriceL
   const values = latest.map((item) => item.medianUsdM2);
   return {
     periodStart,
-    periodEnd: sameWeek[0]?.period_end ?? null,
+    periodEnd: latest[0]?.periodEnd ?? null,
+    latestPublishedPeriod,
     latest,
-    minimum: values.length ? Math.min(...values) : null,
-    maximum: values.length ? Math.max(...values) : null,
+    minimum: Math.min(...values),
+    maximum: Math.max(...values),
     staleCount: latest.filter((item) => item.stale).length,
   };
 }
