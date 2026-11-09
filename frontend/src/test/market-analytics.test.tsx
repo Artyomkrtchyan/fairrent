@@ -89,4 +89,37 @@ describe("market analytics page", () => {
     expect(vi.mocked(getListings).mock.calls.every(([, options]) => options?.page_size === 100)).toBe(true);
   });
 
+  it("updates chart metrics from real batches before the full snapshot finishes", async () => {
+    const original = fixtures.listings.value.items[0]!;
+    let releaseNextBatch: (() => void) | undefined;
+    const nextBatch = new Promise<void>((resolve) => { releaseNextBatch = resolve; });
+    vi.mocked(getListings).mockImplementation(async (_signal, options) => {
+      const page = options?.page ?? 1;
+      if (page > 1) await nextBatch;
+      const count = page === 3 ? 1 : 100;
+      return {
+        ...fixtures.listings.value,
+        page,
+        page_size: 100,
+        total: 201,
+        has_more: page < 3,
+        items: Array.from({ length: count }, (_, index) => ({
+          ...original,
+          id: `00000000-0000-4000-8000-${String((page - 1) * 100 + index).padStart(12, "0")}`,
+          external_id: `live-${page}-${index}`,
+          property_id: `live-property-${page}-${index}`,
+          dedup_group_id: null,
+        })),
+      } as Awaited<ReturnType<typeof getListings>>;
+    });
+
+    renderPage();
+    expect(await screen.findByText(/100 of 201 loaded/)).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Listing analysis progress" })).toHaveAttribute("value", "100");
+    expect(screen.getByText("100", { selector: "p" })).toBeInTheDocument();
+    releaseNextBatch?.();
+    expect(await screen.findByText(/Loaded 201 of 201 active listing rows/)).toBeInTheDocument();
+    expect(screen.queryByText(/Updating charts from real listings/)).not.toBeInTheDocument();
+  });
+
 });
