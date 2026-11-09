@@ -77,7 +77,8 @@ export function MarketAnalytics() {
         </button>
       </nav>
       {source === "snapshot" ? <ListingSnapshotAnalytics /> : <WeeklyMarketAnalytics />}
-    </section>
+      <RateNote />
+    </main>
   );
 }
 
@@ -437,7 +438,6 @@ function WeeklyMarketAnalytics() {
           </div>
         </section>
       )}
-      <RateNote />
-    </main>
+    </section>
   );
 }
