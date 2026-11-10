@@ -13,7 +13,8 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 import type { InfrastructurePoint } from "@/api/infrastructure";
 import { apiMode } from "@/api/client";
-import { DEMO_SURFACE, demoRentValue } from "@/lib/map-demo-surface";
+import { DEMO_SURFACE, demoRentValue, demoSurfaceImage } from "@/lib/map-demo-surface";
+import { renderSmoothRentSurface } from "@/lib/map-smooth-rent-surface";
 import { parseMapBounds, type MapBounds } from "@/lib/map-bounds";
 import type { DistrictPrice } from "@/lib/district-price-layer";
 import districtGeojson from "@/data/yerevan-districts.geojson?raw";
@@ -51,6 +52,7 @@ const DEFAULT_CAMERA: MapCamera = {
 
 interface Props {
   viewMode?: "2d" | "3d";
+  rentColorMode?: "buildings" | "ground";
   places?: readonly InfrastructurePoint[];
   districtPrices?: readonly DistrictPrice[] | undefined;
   priceRange?: { minimum: number; maximum: number } | null;
@@ -73,6 +75,7 @@ interface Props {
 
 export function MapCanvas({
   viewMode = "2d",
+  rentColorMode = "buildings",
   places = EMPTY_PLACES,
   districtPrices,
   priceRange,
@@ -280,12 +283,61 @@ export function MapCanvas({
     if (camera) instance.current?.jumpTo(camera);
   }, [camera]);
 
+  // One-click comparison and rollback to the preserved, city-clipped ground
+  // surface. The building-only experiment is the default, never both at once.
+  useEffect(() => {
+    const map = instance.current;
+    if (!map || !styleReady || rentColorMode !== "ground") return;
+
+    const name = "fairrent-preserved-ground-rent-gradient";
+    let bounds: readonly [number, number, number, number];
+    let url: string;
+    if (showDemoSurface) {
+      bounds = DEMO_SURFACE.bounds;
+      url = demoSurfaceImage();
+    } else {
+      if (!districtPrices?.length || !priceRange) return;
+      const registry = JSON.parse(districtGeojson) as {
+        features: Array<{
+          geometry: { type: "Polygon" | "MultiPolygon"; coordinates: unknown };
+          properties: { district_id: string; name: string };
+        }>;
+      };
+      const surface = renderSmoothRentSurface(
+        registry.features,
+        new globalThis.Map(districtPrices.map((item) => [item.districtId, item])),
+        priceRange,
+      );
+      bounds = surface.bounds;
+      url = surface.url;
+    }
+    const [west, south, east, north] = bounds;
+    map.addSource(name, {
+      type: "image",
+      url,
+      coordinates: [[west, north], [east, north], [east, south], [west, south]],
+    });
+    const before = map.getStyle().layers?.find((layer) => layer.type === "symbol")?.id;
+    map.addLayer({
+      id: name,
+      type: "raster",
+      source: name,
+      paint: { "raster-opacity": showDemoSurface ? 0.8 : 0.9, "raster-fade-duration": 0 },
+    }, before);
+    return () => {
+      if (instance.current !== map) return;
+      if (map.getLayer(name)) map.removeLayer(name);
+      if (map.getSource(name)) map.removeSource(name);
+    };
+  }, [styleReady, rentColorMode, showDemoSurface, districtPrices, priceRange]);
+
   // Experimental mode: color actual vector-tile building footprints while
   // leaving the ground, streets, and parks at their default basemap colors.
   // This does not assign a rental price to an individual building.
   useEffect(() => {
     const map = instance.current;
-    if (!map || !styleReady || (!showDemoSurface && (!districtPrices?.length || !priceRange))) return;
+    if (!map || !styleReady || rentColorMode !== "buildings" ||
+      (!showDemoSurface && (!districtPrices?.length || !priceRange))) return;
 
     const originalBuildingLayer = map.getStyle().layers?.find(
       (layer) => (layer.type === "fill-extrusion" || layer.type === "fill") &&
@@ -396,7 +448,7 @@ export function MapCanvas({
       if (map.getLayer(flatId)) map.removeLayer(flatId);
       if (map.getSource(sourceId)) map.removeSource(sourceId);
     };
-  }, [styleReady, districtPrices, priceRange, showDemoSurface]);
+  }, [styleReady, districtPrices, priceRange, showDemoSurface, rentColorMode]);
 
   useEffect(() => {
     const map = instance.current;
@@ -433,7 +485,7 @@ export function MapCanvas({
       );
     }
 
-    map.setLayoutProperty(flatBuildingsId, "visibility", "none");
+    map.setLayoutProperty(flatBuildingsId, "visibility", rentColorMode === "ground" && viewMode === "2d" ? "visible" : "none");
     if (map.getLayer("fairrent-rent-building-flat")) {
       map.setLayoutProperty("fairrent-rent-building-flat", "visibility", viewMode === "2d" ? "visible" : "none");
     }
@@ -442,7 +494,7 @@ export function MapCanvas({
     }
 
     for (const layer of buildings) {
-      map.setLayoutProperty(layer.id, "visibility", "none");
+      map.setLayoutProperty(layer.id, "visibility", rentColorMode === "ground" && viewMode === "3d" ? "visible" : "none");
     }
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -452,7 +504,7 @@ export function MapCanvas({
       ...(viewMode === "3d" ? { zoom: Math.max(map.getZoom(), 15) } : {}),
       duration: reducedMotion ? 0 : 600,
     });
-  }, [viewMode, styleReady, districtPrices, priceRange, showDemoSurface]);
+  }, [viewMode, styleReady, districtPrices, priceRange, showDemoSurface, rentColorMode]);
 
   useEffect(() => {
     const bounds = parseMapBounds(bbox);
