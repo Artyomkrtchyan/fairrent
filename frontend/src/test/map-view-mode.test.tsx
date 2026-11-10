@@ -100,7 +100,7 @@ afterEach(() => {
 
 describe("map view modes", () => {
   it("shows flat buildings and looks straight down in 2D", () => {
-    render(<MapCanvas viewMode="2d" />);
+    render(<MapCanvas viewMode="2d" rentColorMode="ground" />);
     act(() => state.load?.());
 
     expect(state.layout).toHaveBeenCalledWith("fairrent-flat-buildings", "visibility", "visible");
@@ -112,7 +112,7 @@ describe("map view modes", () => {
   });
 
   it("raises buildings in 3D and restores flat buildings in 2D", () => {
-    const view = render(<MapCanvas viewMode="3d" />);
+    const view = render(<MapCanvas viewMode="3d" rentColorMode="ground" />);
     act(() => state.load?.());
 
     expect(state.layout).toHaveBeenCalledWith("provider-buildings", "visibility", "visible");
@@ -131,6 +131,13 @@ describe("map view modes", () => {
       duration: 0,
     });
     expect(state.addLayer).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps provider building colors hidden by default in the experimental mode", () => {
+    render(<MapCanvas viewMode="2d" />);
+    act(() => state.load?.());
+    expect(state.layout).toHaveBeenCalledWith("fairrent-flat-buildings", "visibility", "none");
+    expect(state.layout).toHaveBeenCalledWith("provider-buildings", "visibility", "none");
   });
 
   it("does not invent buildings when the provider has no building layer", () => {

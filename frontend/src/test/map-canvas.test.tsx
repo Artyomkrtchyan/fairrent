@@ -156,17 +156,17 @@ describe("map canvas", () => {
     expect(marker.remove).toHaveBeenCalledOnce();
   });
 
-  it("adds the synthetic raster below roads after style load and cleans up on disable", () => {
-    const view = render(<MapCanvas showDemoSurface />);
+  it("restores the saved synthetic ground raster on demand and cleans up on disable", () => {
+    const view = render(<MapCanvas showDemoSurface rentColorMode="ground" />);
     const map = state.maps[0]!;
     expect(map.addSource).not.toHaveBeenCalled();
     act(() => map.handlers["load"]?.());
     expect(map.addSource).toHaveBeenCalledWith(
-      "fairrent-synthetic-rent-surface",
+      "fairrent-preserved-ground-rent-gradient",
       expect.objectContaining({ type: "image" }),
     );
     expect(map.addLayer).toHaveBeenCalledWith(expect.objectContaining({ type: "raster" }), "roads");
-    view.rerender(<MapCanvas showDemoSurface={false} />);
+    view.rerender(<MapCanvas showDemoSurface={false} rentColorMode="ground" />);
     expect(map.removeLayer).toHaveBeenCalledOnce();
     expect(map.removeSource).toHaveBeenCalledOnce();
   });
