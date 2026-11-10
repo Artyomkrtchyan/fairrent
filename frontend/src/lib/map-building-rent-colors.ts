@@ -63,7 +63,18 @@ export function createBuildingRentSampler(
   prices: ReadonlyMap<string, DistrictPrice>,
   range: { minimum: number; maximum: number },
 ): (longitude: number, latitude: number) => string | null {
-  const city = features.flatMap((feature) => polygonsOf(feature.geometry));
+  // Precompute bounding boxes so a city-wide set of vector footprints does not
+  // repeatedly scan every coordinate of every district on each map movement.
+  const city = features.flatMap((feature) => polygonsOf(feature.geometry)).map((polygon) => {
+    let west = Infinity, east = -Infinity, south = Infinity, north = -Infinity;
+    for (const point of polygon[0] ?? []) {
+      west = Math.min(west, point[0]!);
+      east = Math.max(east, point[0]!);
+      south = Math.min(south, point[1]!);
+      north = Math.max(north, point[1]!);
+    }
+    return { polygon, west, east, south, north };
+  });
   const anchors: { lng: number; lat: number; normalized: number }[] = [];
   for (const feature of features) {
     const price = prices.get(feature.properties.district_id);
@@ -101,7 +112,8 @@ export function createBuildingRentSampler(
 
   return (longitude, latitude) => {
     // Never color buildings outside the provided city district geometry.
-    if (!city.some((polygon) => {
+    if (!city.some(({ polygon, west, east, south, north }) => {
+      if (longitude < west || longitude > east || latitude < south || latitude > north) return false;
       const exterior = polygon[0];
       return exterior && insideRing(longitude, latitude, exterior) &&
         !polygon.slice(1).some((hole) => insideRing(longitude, latitude, hole));
