@@ -448,6 +448,9 @@ export function MapHero({
   const markerProps = {
     viewMode,
     rentColorMode,
+    // The citywide building visualization uses rental locations independently
+    // of the optional apartment-count dots overlay.
+    buildingLocations: points,
     points: showRentalDots && (mapLocations || bbox) ? points : [],
     clustered: mapLocations !== undefined,
     onOverlap: selectOverlap,
