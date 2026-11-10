@@ -209,7 +209,7 @@ describe("map canvas", () => {
         expect.objectContaining({
           type: "symbol",
           minzoom: 7,
-          maxzoom: 14,
+          maxzoom: 15,
         }),
         undefined,
       );
