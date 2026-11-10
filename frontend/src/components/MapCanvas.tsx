@@ -332,19 +332,36 @@ export function MapCanvas({
       addedImages.push(name);
     }
 
-    const features = buildingLocations.flatMap((point) => {
-      if (!Number.isFinite(point.longitude) || !Number.isFinite(point.latitude)) return [];
+    // Citywide locations can exceed 16,000. One colored house per small
+    // geographic grid cell is enough at this scale; avoid sending thousands
+    // of overlapping symbols to the renderer on every data refresh.
+    const features: Array<{
+      type: "Feature";
+      geometry: { type: "Point"; coordinates: number[] };
+      properties: { shade: number };
+    }> = [];
+    const seenCells = new Set<string>();
+    const shadeCache = new globalThis.Map<string, number>();
+    const maxSymbols = 3500;
+    for (const point of buildingLocations) {
+      if (features.length >= maxSymbols) break;
+      if (!Number.isFinite(point.longitude) || !Number.isFinite(point.latitude)) continue;
+      const cell = `${Math.floor(point.longitude / 0.0004)}:${Math.floor(point.latitude / 0.0004)}`;
+      if (seenCells.has(cell)) continue;
       const color = sampleColor(point.longitude, point.latitude);
-      if (!color) return [];
-      return [{
-        type: "Feature" as const,
-        geometry: {
-          type: "Point" as const,
-          coordinates: [point.longitude, point.latitude],
-        },
-        properties: { shade: nearestBuildingRentColorIndex(color, shadeCount) },
-      }];
-    });
+      if (!color) continue;
+      seenCells.add(cell);
+      let shade = shadeCache.get(color);
+      if (shade === undefined) {
+        shade = nearestBuildingRentColorIndex(color, shadeCount);
+        shadeCache.set(color, shade);
+      }
+      features.push({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [point.longitude, point.latitude] },
+        properties: { shade },
+      });
+    }
 
     map.addSource(sourceId, {
       type: "geojson",
