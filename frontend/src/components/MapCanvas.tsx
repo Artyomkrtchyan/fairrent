@@ -317,7 +317,9 @@ export function MapCanvas({
       url,
       coordinates: [[west, north], [east, north], [east, south], [west, south]],
     });
-    const before = map.getStyle().layers?.find((layer) => layer.type === "symbol")?.id;
+    const before = map.getStyle().layers?.find((layer) =>
+      showDemoSurface ? (layer.type === "line" || layer.type === "symbol") : layer.type === "symbol",
+    )?.id;
     map.addLayer({
       id: name,
       type: "raster",
