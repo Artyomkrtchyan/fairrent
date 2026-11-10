@@ -4,7 +4,6 @@ import {
   NavigationControl,
   AttributionControl,
   Marker,
-  Popup,
   setWorkerUrl,
   type GeoJSONSource,
 } from "maplibre-gl";
@@ -213,76 +212,6 @@ export function MapCanvas({
   }, []);
 
   useEffect(() => {
-    const map = instance.current;
-    if (!map || !styleReady || !districtPrices?.length || !priceRange) return;
-
-    const sourceId = "fairrent-district-price-data";
-    const fillId = "fairrent-district-prices";
-    const prices = new globalThis.Map<string, DistrictPrice>(districtPrices.map((item) => [item.districtId, item]));
-    const registry = JSON.parse(districtGeojson) as {
-      type: "FeatureCollection";
-      features: Array<{
-        type: "Feature";
-        geometry: { type: "Polygon" | "MultiPolygon"; coordinates: unknown };
-        properties: { district_id: string; name: string };
-      }>;
-    };
-    const data = {
-      type: "FeatureCollection" as const,
-      features: registry.features.map((feature) => {
-        const price = prices.get(feature.properties.district_id);
-        return {
-          type: "Feature" as const,
-          geometry: feature.geometry,
-          properties: {
-            name: feature.properties.name,
-            has_data: Boolean(price),
-            price_m2: price?.medianUsdM2 ?? 0,
-            sample_count: price?.areaSampleCount ?? 0,
-            stale: price?.stale ?? false,
-          },
-        };
-      }),
-    };
-    // Keep a transparent, interactive district layer so clicks still reveal the
-    // actual district median and supporting listing count, not interpolated values.
-    map.addSource(sourceId, { type: "geojson", data: data as Parameters<GeoJSONSource["setData"]>[0] });
-    map.addLayer({
-      id: fillId,
-      source: sourceId,
-      type: "fill",
-      filter: ["==", ["get", "has_data"], true],
-      paint: { "fill-opacity": 0 },
-    });
-
-    const entered = map.on("mouseenter", fillId, () => { map.getCanvas().style.cursor = "pointer"; });
-    const left = map.on("mouseleave", fillId, () => { map.getCanvas().style.cursor = ""; });
-    const clicked = map.on("click", fillId, (event) => {
-      const feature = event.features?.[0];
-      if (!feature) return;
-      const props = feature.properties;
-      const name = String(props["name"] ?? "District");
-      const value = Number(props["price_m2"]);
-      const count = Number(props["sample_count"]);
-      const stale = props["stale"] === true || props["stale"] === "true";
-      const label = `${name}: ${value.toFixed(2)} USD/m²/month median asking rent · ${count} supporting listings${stale ? " · stale data" : ""}`;
-      new Popup({ closeButton: true, maxWidth: "320px" })
-        .setLngLat(event.lngLat)
-        .setText(label)
-        .addTo(map);
-    });
-    return () => {
-      clicked.unsubscribe();
-      entered.unsubscribe();
-      left.unsubscribe();
-      map.getCanvas().style.cursor = "";
-      if (instance.current !== map) return;
-      if (map.getLayer(fillId)) map.removeLayer(fillId);
-      if (map.getSource(sourceId)) map.removeSource(sourceId);
-    };
-  }, [styleReady, districtPrices, priceRange]);
-
-  useEffect(() => {
     if (camera) instance.current?.jumpTo(camera);
   }, [camera]);
 
@@ -427,10 +356,10 @@ export function MapCanvas({
       type: "symbol",
       source: sourceId,
       minzoom: 7,
-      maxzoom: 14,
+      maxzoom: 15,
       layout: {
         "icon-image": ["concat", iconPrefix, ["to-string", ["get", "shade"]]],
-        "icon-size": ["interpolate", ["linear"], ["zoom"], 9, 0.7, 12, 1.1, 13.9, 1.3],
+        "icon-size": ["interpolate", ["linear"], ["zoom"], 9, 0.7, 12, 1.1, 14.9, 0.7],
         "icon-allow-overlap": false,
         "icon-padding": 0,
       },
@@ -518,15 +447,24 @@ export function MapCanvas({
 
     let disposed = false;
     let pending: number | undefined;
+    let lastUpdateKey = "";
     const update = () => {
       if (disposed || instance.current !== map || !map.getSource(vectorSource)) return;
+      if (map.getZoom() < 13) return; // low-zoom colored house glyphs are faster
       const visible = map.querySourceFeatures(vectorSource, { sourceLayer: vectorSourceLayer });
       const features = [];
-      // Tile-clipped footprints may repeat; their coloring is still location-based.
+      // Limit expensive GeoJSON updates, prevent duplicate tile-clipped buildings,
+      // and never rebuild on every zoom frame.
+      const seen = new Set<string>();
       for (const feature of visible) {
         if (feature.geometry.type !== "Polygon" && feature.geometry.type !== "MultiPolygon") continue;
         const center = footprintCenter(feature.geometry);
         if (!center) continue;
+        const key = feature.id === undefined
+          ? `${center[0].toFixed(5)}:${center[1].toFixed(5)}`
+          : String(feature.id);
+        if (seen.has(key)) continue;
+        seen.add(key);
         const color = sampleColor(center[0], center[1]);
         if (!color) continue;
         const rawHeight = Number(feature.properties?.["render_height"] ?? feature.properties?.["height"] ?? 10);
@@ -537,20 +475,32 @@ export function MapCanvas({
           geometry: feature.geometry,
           properties: { rentColor: color, buildingHeight },
         });
+        if (features.length >= 8000) break;
       }
+      // Avoid setting identical datasets while map tiles continue loading.
+      const extent = map.getBounds();
+      const updateKey = [
+        Math.round(map.getZoom() * 4),
+        extent.getWest().toFixed(3), extent.getSouth().toFixed(3),
+        extent.getEast().toFixed(3), extent.getNorth().toFixed(3),
+        features.length,
+      ].join(":");
+      if (lastUpdateKey === updateKey) return;
+      lastUpdateKey = updateKey;
       const colored = map.getSource(sourceId) as GeoJSONSource | undefined;
       if (colored) void colored.setData({ type: "FeatureCollection", features });
     };
     const schedule = () => {
-      if (disposed || pending !== undefined) return;
+      if (disposed) return;
+      if (pending !== undefined) window.clearTimeout(pending);
       pending = window.setTimeout(() => {
         pending = undefined;
         update();
-      }, 180);
+      }, 350);
     };
     const moved = map.on("moveend", schedule);
     const sourceChanged = map.on("sourcedata", (event) => {
-      if (event.sourceId === vectorSource) schedule();
+      if (event.sourceId === vectorSource && event.isSourceLoaded) schedule();
     });
     schedule();
     return () => {
