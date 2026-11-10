@@ -343,7 +343,7 @@ export function MapCanvas({
       (layer) => (layer.type === "fill-extrusion" || layer.type === "fill") &&
         layer["source-layer"] === "building",
     );
-    if (!originalBuildingLayer) return;
+    if (!originalBuildingLayer || !("source" in originalBuildingLayer)) return;
     const vectorSource = originalBuildingLayer.source;
     const vectorSourceLayer = "building";
     const sourceId = "fairrent-rent-building-footprints";
