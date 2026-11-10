@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
     jumpTo: ReturnType<typeof vi.fn>;
     addSource: ReturnType<typeof vi.fn>;
     addLayer: ReturnType<typeof vi.fn>;
+    addImage: ReturnType<typeof vi.fn>;
     removeSource: ReturnType<typeof vi.fn>;
     removeLayer: ReturnType<typeof vi.fn>;
   }[],
@@ -30,6 +31,7 @@ vi.mock("@/api/client", () => ({
 vi.mock("@/lib/map-demo-surface", () => ({
   DEMO_SURFACE: { bounds: [44.44, 40.11, 44.6, 40.24] },
   demoSurfaceImage: () => "data:image/png;base64,test-only",
+  demoRentValue: () => 12,
 }));
 
 vi.mock("maplibre-gl", () => ({
@@ -60,6 +62,9 @@ vi.mock("maplibre-gl", () => ({
     resize = vi.fn();
     addSource = vi.fn();
     addLayer = vi.fn();
+    addImage = vi.fn();
+    removeImage = vi.fn();
+    hasImage = vi.fn(() => false);
     removeSource = vi.fn();
     removeLayer = vi.fn();
     getStyle() {
@@ -170,6 +175,60 @@ describe("map canvas", () => {
     expect(map.removeLayer).toHaveBeenCalledOnce();
     expect(map.removeSource).toHaveBeenCalledOnce();
   });
+  it("uses colored house glyphs without a ground raster at city zoom and restores ground on selection", () => {
+    const canvasContext = {
+      fillStyle: "",
+      strokeStyle: "",
+      lineWidth: 0,
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      closePath: vi.fn(),
+      fill: vi.fn(),
+      stroke: vi.fn(),
+      fillRect: vi.fn(),
+      strokeRect: vi.fn(),
+      getImageData: vi.fn(() => ({ width: 28, height: 30, data: new Uint8ClampedArray(28 * 30 * 4) })),
+    };
+    const contextSpy = vi.spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockReturnValue(canvasContext as unknown as CanvasRenderingContext2D);
+    try {
+      const locations = [{
+        id: "listing-1", longitude: 44.52, latitude: 40.18,
+        label: "Apartment listing", approximate: false,
+      }];
+      const view = render(<MapCanvas showDemoSurface buildingLocations={locations} />);
+      const map = state.maps[0]!;
+      act(() => map.handlers["load"]?.());
+      expect(map.addImage).toHaveBeenCalledTimes(21);
+      expect(map.addSource).toHaveBeenCalledWith(
+        "fairrent-citywide-building-locations",
+        expect.objectContaining({ type: "geojson" }),
+      );
+      expect(map.addLayer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "symbol",
+          minzoom: 7,
+          maxzoom: 14,
+        }),
+        undefined,
+      );
+      expect(map.addSource).not.toHaveBeenCalledWith(
+        "fairrent-preserved-ground-rent-gradient",
+        expect.anything(),
+      );
+
+      view.rerender(<MapCanvas showDemoSurface buildingLocations={locations} rentColorMode="ground" />);
+      expect(map.removeLayer).toHaveBeenCalledWith("fairrent-citywide-building-symbols");
+      expect(map.addSource).toHaveBeenCalledWith(
+        "fairrent-preserved-ground-rent-gradient",
+        expect.objectContaining({ type: "image" }),
+      );
+    } finally {
+      contextSpy.mockRestore();
+    }
+  });
+
   it("never adds synthetic market colours in real API mode", () => {
     state.mode = "real";
     render(<MapCanvas showDemoSurface />);

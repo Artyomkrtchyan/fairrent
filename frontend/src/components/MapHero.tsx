@@ -336,7 +336,7 @@ export function MapHero({
             aria-hidden="true"
           />
           <p>Green: lower · Yellow: middle · Red: higher (USD/month/m²).</p>
-          <p>Colors are district-level gradients shown on {rentColorMode === "buildings" ? "building footprints" : "the ground"}, not rents measured for individual homes.</p>
+          <p>{rentColorMode === "buildings" ? "Zoomed out: colored house symbols indicate rental locations. Zoom in for actual building footprints." : "District-level gradient shown on the ground."} Colors reflect area-level rents, not verified prices for individual homes.</p>
         </div>
       )}
       {showDemoSurface ? (
@@ -448,6 +448,9 @@ export function MapHero({
   const markerProps = {
     viewMode,
     rentColorMode,
+    // The citywide building visualization uses rental locations independently
+    // of the optional apartment-count dots overlay.
+    buildingLocations: points,
     points: showRentalDots && (mapLocations || bbox) ? points : [],
     clustered: mapLocations !== undefined,
     onOverlap: selectOverlap,

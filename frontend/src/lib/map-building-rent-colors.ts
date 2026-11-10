@@ -131,3 +131,22 @@ export function createBuildingRentSampler(
     return rentGradientColor(0.5 + (weighted / sum - 0.5) * 1.35);
   };
 }
+
+/** Select a stable icon color from the same continuous gradient as the footprints. */
+export function nearestBuildingRentColorIndex(hex: string, steps = 21): number {
+  if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return Math.floor((steps - 1) / 2);
+  const rgb = [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16));
+  let bestIndex = 0;
+  let bestDistance = Infinity;
+  for (let index = 0; index < steps; index++) {
+    const sample = rentGradientColor(index / (steps - 1));
+    const candidate = [1, 3, 5].map((offset) => parseInt(sample.slice(offset, offset + 2), 16));
+    const distance = candidate.reduce((sum, channel, idx) =>
+      sum + (channel - rgb[idx]!) ** 2, 0);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  }
+  return bestIndex;
+}
