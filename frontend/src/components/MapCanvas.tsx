@@ -356,7 +356,10 @@ export function MapCanvas({
       type: "symbol",
       source: sourceId,
       minzoom: 7,
-      maxzoom: 15,
+      maxzoom: 16,
+      paint: {
+        "icon-opacity": ["interpolate", ["linear"], ["zoom"], 14.8, 1, 15.8, 0],
+      },
       layout: {
         "icon-image": ["concat", iconPrefix, ["to-string", ["get", "shade"]]],
         "icon-size": ["interpolate", ["linear"], ["zoom"], 9, 0.7, 12, 1.1, 14.9, 0.7],
