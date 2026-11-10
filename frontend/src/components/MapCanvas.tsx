@@ -332,19 +332,36 @@ export function MapCanvas({
       addedImages.push(name);
     }
 
-    const features = buildingLocations.flatMap((point) => {
-      if (!Number.isFinite(point.longitude) || !Number.isFinite(point.latitude)) return [];
+    // Citywide locations can exceed 16,000. One colored house per small
+    // geographic grid cell is enough at this scale; avoid sending thousands
+    // of overlapping symbols to the renderer on every data refresh.
+    const features: Array<{
+      type: "Feature";
+      geometry: { type: "Point"; coordinates: number[] };
+      properties: { shade: number };
+    }> = [];
+    const seenCells = new Set<string>();
+    const shadeCache = new globalThis.Map<string, number>();
+    const maxSymbols = 3500;
+    for (const point of buildingLocations) {
+      if (features.length >= maxSymbols) break;
+      if (!Number.isFinite(point.longitude) || !Number.isFinite(point.latitude)) continue;
+      const cell = `${Math.floor(point.longitude / 0.0004)}:${Math.floor(point.latitude / 0.0004)}`;
+      if (seenCells.has(cell)) continue;
       const color = sampleColor(point.longitude, point.latitude);
-      if (!color) return [];
-      return [{
-        type: "Feature" as const,
-        geometry: {
-          type: "Point" as const,
-          coordinates: [point.longitude, point.latitude],
-        },
-        properties: { shade: nearestBuildingRentColorIndex(color, shadeCount) },
-      }];
-    });
+      if (!color) continue;
+      seenCells.add(cell);
+      let shade = shadeCache.get(color);
+      if (shade === undefined) {
+        shade = nearestBuildingRentColorIndex(color, shadeCount);
+        shadeCache.set(color, shade);
+      }
+      features.push({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [point.longitude, point.latitude] },
+        properties: { shade },
+      });
+    }
 
     map.addSource(sourceId, {
       type: "geojson",
@@ -356,7 +373,10 @@ export function MapCanvas({
       type: "symbol",
       source: sourceId,
       minzoom: 7,
-      maxzoom: 15,
+      maxzoom: 16,
+      paint: {
+        "icon-opacity": ["interpolate", ["linear"], ["zoom"], 14.8, 1, 15.8, 0],
+      },
       layout: {
         "icon-image": ["concat", iconPrefix, ["to-string", ["get", "shade"]]],
         "icon-size": ["interpolate", ["linear"], ["zoom"], 9, 0.7, 12, 1.1, 14.9, 0.7],
@@ -426,6 +446,7 @@ export function MapCanvas({
     map.addLayer({
       id: flatId,
       type: "fill",
+      minzoom: 15,
       source: sourceId,
       paint: {
         "fill-color": ["get", "rentColor"],
@@ -436,6 +457,7 @@ export function MapCanvas({
     map.addLayer({
       id: extrusionId,
       type: "fill-extrusion",
+      minzoom: 15,
       source: sourceId,
       paint: {
         "fill-extrusion-color": ["get", "rentColor"],
@@ -445,21 +467,36 @@ export function MapCanvas({
       },
     }, beforeSymbols);
 
+    // Heavy tile-to-GeoJSON conversion must NEVER run during a pan/zoom.
+    // "idle" fires after the camera settles and tiles finish loading.
+    // Keep MapLibre's native vector basemap responsive throughout movement.
     let disposed = false;
     let pending: number | undefined;
     let lastUpdateKey = "";
+    let lastSourcesSignature = "";
+    const MAX_VISIBLE_BUILDINGS = 1200;
+
     const update = () => {
       if (disposed || instance.current !== map || !map.getSource(vectorSource)) return;
-      if (map.getZoom() < 13) return; // low-zoom colored house glyphs are faster
+      if (map.getZoom() < 15 || map.isMoving()) return;
+      const bounds = map.getBounds();
+      const signature = [
+        Math.round(map.getZoom() * 3),
+        bounds.getWest().toFixed(3), bounds.getSouth().toFixed(3),
+        bounds.getEast().toFixed(3), bounds.getNorth().toFixed(3),
+      ].join(":");
       const visible = map.querySourceFeatures(vectorSource, { sourceLayer: vectorSourceLayer });
       const features = [];
-      // Limit expensive GeoJSON updates, prevent duplicate tile-clipped buildings,
-      // and never rebuild on every zoom frame.
       const seen = new Set<string>();
+      // Filter cached/offscreen vector-tile features BEFORE geometry processing.
+      // Once a dense street has enough detail, favor smooth scrolling over
+      // synchronously converting thousands of additional buildings.
       for (const feature of visible) {
         if (feature.geometry.type !== "Polygon" && feature.geometry.type !== "MultiPolygon") continue;
         const center = footprintCenter(feature.geometry);
         if (!center) continue;
+        if (center[0] < bounds.getWest() || center[0] > bounds.getEast() ||
+            center[1] < bounds.getSouth() || center[1] > bounds.getNorth()) continue;
         const key = feature.id === undefined
           ? `${center[0].toFixed(5)}:${center[1].toFixed(5)}`
           : String(feature.id);
@@ -468,46 +505,39 @@ export function MapCanvas({
         const color = sampleColor(center[0], center[1]);
         if (!color) continue;
         const rawHeight = Number(feature.properties?.["render_height"] ?? feature.properties?.["height"] ?? 10);
-        const buildingHeight = Number.isFinite(rawHeight)
-          ? Math.max(3, Math.min(160, rawHeight)) : 10;
+        const buildingHeight = Number.isFinite(rawHeight) ? Math.max(3, Math.min(160, rawHeight)) : 10;
         features.push({
           type: "Feature" as const,
           geometry: feature.geometry,
           properties: { rentColor: color, buildingHeight },
         });
-        if (features.length >= 8000) break;
+        if (features.length >= MAX_VISIBLE_BUILDINGS) break;
       }
-      // Avoid setting identical datasets while map tiles continue loading.
-      const extent = map.getBounds();
-      const updateKey = [
-        Math.round(map.getZoom() * 4),
-        extent.getWest().toFixed(3), extent.getSouth().toFixed(3),
-        extent.getEast().toFixed(3), extent.getNorth().toFixed(3),
-        features.length,
-      ].join(":");
-      if (lastUpdateKey === updateKey) return;
-      lastUpdateKey = updateKey;
-      const colored = map.getSource(sourceId) as GeoJSONSource | undefined;
-      if (colored) void colored.setData({ type: "FeatureCollection", features });
+      // A source update can itself cause another idle event. Avoid that loop,
+      // but allow genuinely new tile data at the same viewport to render.
+      const sourceSignature = `${features.length}:${features.slice(0, 4).map((item) =>
+        item.geometry.coordinates.length).join(",")}`;
+      if (signature === lastUpdateKey && sourceSignature === lastSourcesSignature) return;
+      lastUpdateKey = signature;
+      lastSourcesSignature = sourceSignature;
+      const source = map.getSource(sourceId) as GeoJSONSource | undefined;
+      if (source) void source.setData({ type: "FeatureCollection", features });
     };
+
     const schedule = () => {
-      if (disposed) return;
-      if (pending !== undefined) window.clearTimeout(pending);
+      if (disposed || pending !== undefined) return;
       pending = window.setTimeout(() => {
         pending = undefined;
         update();
-      }, 350);
+      }, 90);
     };
-    const moved = map.on("moveend", schedule);
-    const sourceChanged = map.on("sourcedata", (event) => {
-      if (event.sourceId === vectorSource && event.isSourceLoaded) schedule();
-    });
+    const idle = map.on("idle", schedule);
+    // When the layer is installed after the map is already idle, trigger once.
     schedule();
     return () => {
       disposed = true;
       if (pending !== undefined) window.clearTimeout(pending);
-      moved.unsubscribe();
-      sourceChanged.unsubscribe();
+      idle.unsubscribe();
       if (instance.current !== map) return;
       if (map.getLayer(extrusionId)) map.removeLayer(extrusionId);
       if (map.getLayer(flatId)) map.removeLayer(flatId);
