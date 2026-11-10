@@ -88,6 +88,7 @@ export function MapHero({
   const [showMetro, setShowMetro] = useState(false);
   const [showUniversities, setShowUniversities] = useState(false);
   const [showDistrictPrices, setShowDistrictPrices] = useState(true);
+  const [rentColorMode, setRentColorMode] = useState<"buildings" | "ground">("buildings");
   const [showRentalDots, setShowRentalDots] = useState(false);
   const [showPriceGuide, setShowPriceGuide] = useState(false);
   const districtQuery = useQuery({
@@ -200,6 +201,20 @@ export function MapHero({
             onChange={(event) => setShowDistrictPrices(event.target.checked)}
           />{" "}
           District rent prices
+        </label>
+      )}
+      {(showDemoSurface || showDistrictPrices) && (
+        <label>
+          Color on
+          <select
+            aria-label="Rent colors on"
+            className="rounded border bg-card px-2 py-1 text-xs"
+            value={rentColorMode}
+            onChange={(event) => setRentColorMode(event.target.value === "ground" ? "ground" : "buildings")}
+          >
+            <option value="buildings">Buildings (experiment)</option>
+            <option value="ground">Ground (saved version)</option>
+          </select>
         </label>
       )}
       {showNearby && (
@@ -321,6 +336,7 @@ export function MapHero({
             aria-hidden="true"
           />
           <p>Green: lower · Yellow: middle · Red: higher (USD/month/m²).</p>
+          <p>Colors are district-level gradients shown on {rentColorMode === "buildings" ? "building footprints" : "the ground"}, not rents measured for individual homes.</p>
         </div>
       )}
       {showDemoSurface ? (
@@ -431,6 +447,7 @@ export function MapHero({
     : listings.find((listing) => listing.id === selectedId && hasMapCoordinates(listing));
   const markerProps = {
     viewMode,
+    rentColorMode,
     points: showRentalDots && (mapLocations || bbox) ? points : [],
     clustered: mapLocations !== undefined,
     onOverlap: selectOverlap,
