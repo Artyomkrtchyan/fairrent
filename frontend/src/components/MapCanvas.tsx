@@ -18,7 +18,7 @@ import { renderSmoothRentSurface } from "@/lib/map-smooth-rent-surface";
 import { parseMapBounds, type MapBounds } from "@/lib/map-bounds";
 import type { DistrictPrice } from "@/lib/district-price-layer";
 import districtGeojson from "@/data/yerevan-districts.geojson?raw";
-import { createBuildingRentSampler, footprintCenter, rentGradientColor } from "@/lib/map-building-rent-colors";
+import { createBuildingRentSampler, footprintCenter, nearestBuildingRentColorIndex, rentGradientColor } from "@/lib/map-building-rent-colors";
 
 setWorkerUrl(mapWorkerUrl);
 
@@ -64,6 +64,8 @@ interface Props {
   bbox?: string | undefined;
   onBoundsChange?: ((bounds: MapBounds) => void) | undefined;
   points?: readonly RentalMapPoint[];
+  /** Colorful, noninteractive house symbols for zoom levels without building geometry. */
+  buildingLocations?: readonly RentalMapPoint[];
   selectedId?: string | undefined;
   onSelect?: (id: string) => void;
   clustered?: boolean;
@@ -90,6 +92,7 @@ export function MapCanvas({
   camera,
   onCameraChange,
   points = EMPTY_POINTS,
+  buildingLocations = EMPTY_POINTS,
   selectedId,
   onSelect,
   clustered = false,
@@ -332,6 +335,116 @@ export function MapCanvas({
       if (map.getSource(name)) map.removeSource(name);
     };
   }, [styleReady, rentColorMode, showDemoSurface, districtPrices, priceRange]);
+
+  // At citywide zoom, the basemap omits individual building polygons. Display
+  // small building-shaped symbols AT KNOWN RENTAL LOCATIONS, not a colored ground
+  // layer or fabricated footprints. At zoom >= 14, the vector footprints take
+  // over. Symbol collision keeps the overview legible and fast.
+  useEffect(() => {
+    const map = instance.current;
+    if (!map || !styleReady || rentColorMode !== "buildings" || !buildingLocations.length ||
+      (!showDemoSurface && (!districtPrices?.length || !priceRange))) return;
+
+    const registry = JSON.parse(districtGeojson) as {
+      features: Array<{
+        geometry: { type: "Polygon" | "MultiPolygon"; coordinates: unknown };
+        properties: { district_id: string; name: string };
+      }>;
+    };
+    const sampleColor: (longitude: number, latitude: number) => string | null = showDemoSurface
+      ? (longitude, latitude) => {
+          const [west, south, east, north] = DEMO_SURFACE.bounds;
+          const value = demoRentValue(
+            (longitude - west) / (east - west),
+            (north - latitude) / (north - south),
+          );
+          return value === null ? null :
+            rentGradientColor((value - DEMO_SURFACE.minimum) /
+              (DEMO_SURFACE.maximum - DEMO_SURFACE.minimum));
+        }
+      : createBuildingRentSampler(
+          registry.features,
+          new globalThis.Map((districtPrices ?? []).map((item) => [item.districtId, item])),
+          priceRange!,
+        );
+
+    const sourceId = "fairrent-citywide-building-locations";
+    const layerId = "fairrent-citywide-building-symbols";
+    const iconPrefix = "fairrent-rent-house-";
+    const shadeCount = 21;
+    const addedImages: string[] = [];
+
+    // A small silhouette with a roof and windows stays recognizable as a house
+    // even at low zoom; this is a *rental location* marker, not a roof polygon.
+    for (let shade = 0; shade < shadeCount; shade++) {
+      const name = `${iconPrefix}${shade}`;
+      if (map.hasImage(name)) continue;
+      const canvas = document.createElement("canvas");
+      canvas.width = 28;
+      canvas.height = 30;
+      const context = canvas.getContext("2d");
+      if (!context) continue;
+      context.fillStyle = rentGradientColor(shade / (shadeCount - 1));
+      context.strokeStyle = "#27344d";
+      context.lineWidth = 1.8;
+      context.beginPath();
+      context.moveTo(2, 13);
+      context.lineTo(14, 3);
+      context.lineTo(26, 13);
+      context.closePath();
+      context.fill();
+      context.stroke();
+      context.fillRect(5, 13, 18, 14);
+      context.strokeRect(5, 13, 18, 14);
+      context.fillStyle = "#f8fafc";
+      context.fillRect(10, 17, 4, 5);
+      context.fillRect(17, 17, 4, 5);
+      map.addImage(name, context.getImageData(0, 0, canvas.width, canvas.height), { pixelRatio: 2 });
+      addedImages.push(name);
+    }
+
+    const features = buildingLocations.flatMap((point) => {
+      if (!Number.isFinite(point.longitude) || !Number.isFinite(point.latitude)) return [];
+      const color = sampleColor(point.longitude, point.latitude);
+      if (!color) return [];
+      return [{
+        type: "Feature" as const,
+        geometry: {
+          type: "Point" as const,
+          coordinates: [point.longitude, point.latitude],
+        },
+        properties: { shade: nearestBuildingRentColorIndex(color, shadeCount) },
+      }];
+    });
+
+    map.addSource(sourceId, {
+      type: "geojson",
+      data: { type: "FeatureCollection", features },
+    });
+    const beforeLabels = map.getStyle().layers?.find((layer) => layer.type === "symbol")?.id;
+    map.addLayer({
+      id: layerId,
+      type: "symbol",
+      source: sourceId,
+      minzoom: 7,
+      maxzoom: 14,
+      layout: {
+        "icon-image": ["concat", iconPrefix, ["to-string", ["get", "shade"]]],
+        "icon-size": ["interpolate", ["linear"], ["zoom"], 9, 0.7, 12, 1.1, 13.9, 1.3],
+        "icon-allow-overlap": false,
+        "icon-padding": 0,
+      },
+    }, beforeLabels);
+
+    return () => {
+      if (instance.current !== map) return;
+      if (map.getLayer(layerId)) map.removeLayer(layerId);
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
+      for (const name of addedImages) {
+        if (map.hasImage(name)) map.removeImage(name);
+      }
+    };
+  }, [styleReady, rentColorMode, showDemoSurface, districtPrices, priceRange, buildingLocations]);
 
   // Experimental mode: color actual vector-tile building footprints while
   // leaving the ground, streets, and parks at their default basemap colors.
