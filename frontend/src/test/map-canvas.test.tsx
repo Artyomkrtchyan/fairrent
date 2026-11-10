@@ -188,7 +188,7 @@ describe("map canvas", () => {
       stroke: vi.fn(),
       fillRect: vi.fn(),
       strokeRect: vi.fn(),
-      getImageData: vi.fn(() => new ImageData(28, 30)),
+      getImageData: vi.fn(() => ({ width: 28, height: 30, data: new Uint8ClampedArray(28 * 30 * 4) })),
     };
     const contextSpy = vi.spyOn(HTMLCanvasElement.prototype, "getContext")
       .mockReturnValue(canvasContext as unknown as CanvasRenderingContext2D);
@@ -211,7 +211,7 @@ describe("map canvas", () => {
           minzoom: 7,
           maxzoom: 14,
         }),
-        "roads",
+        undefined,
       );
       expect(map.addSource).not.toHaveBeenCalledWith(
         "fairrent-preserved-ground-rent-gradient",
