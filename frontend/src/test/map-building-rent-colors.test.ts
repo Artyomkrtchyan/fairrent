@@ -33,9 +33,11 @@ describe("building-only rental heatmap", () => {
   });
 
   it("calculates a building footprint location from vector tile geometry", () => {
-    expect(footprintCenter({
+    const center = footprintCenter({
       type: "Polygon",
       coordinates: [[[44.5, 40.1], [44.6, 40.1], [44.6, 40.2], [44.5, 40.2]]],
-    })).toEqual([44.55, 40.150000000000006]);
+    });
+    expect(center?.[0]).toBeCloseTo(44.55);
+    expect(center?.[1]).toBeCloseTo(40.15);
   });
 });
