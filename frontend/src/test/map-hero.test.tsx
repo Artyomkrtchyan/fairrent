@@ -28,8 +28,10 @@ vi.mock("@/components/MapCanvas", () => ({
     camera,
     points = [],
     onOverlap,
+    rentColorMode,
   }: {
     points?: { id: string }[];
+    rentColorMode?: "buildings" | "ground";
     onOverlap?: (ids: string[]) => void;
     camera?: { zoom: number };
     onCameraChange?: (camera: {
@@ -45,6 +47,7 @@ vi.mock("@/components/MapCanvas", () => ({
       data-testid={expanded ? "expanded-map" : "embedded-map"}
       data-initial-zoom={camera?.zoom}
       data-marker-count={points.length}
+      data-rent-color-mode={rentColorMode}
     >
       Map preview
       <button onClick={() => onOverlap?.(points.map((point) => point.id))}>
@@ -95,6 +98,20 @@ afterEach(() => {
 });
 
 describe("framed map introduction", () => {
+  it("defaults to building-only colors and switches instantly to the saved ground surface", async () => {
+    render(<MapHero />);
+    const map = await screen.findByTestId("embedded-map");
+    expect(map).toHaveAttribute("data-rent-color-mode", "buildings");
+    fireEvent.change(screen.getByRole("combobox", { name: "Rent colors on" }), {
+      target: { value: "ground" },
+    });
+    expect(map).toHaveAttribute("data-rent-color-mode", "ground");
+    fireEvent.change(screen.getByRole("combobox", { name: "Rent colors on" }), {
+      target: { value: "buildings" },
+    });
+    expect(map).toHaveAttribute("data-rent-color-mode", "buildings");
+  });
+
   it("shows the complete location response before applying a map area", async () => {
     const mapLocations = Array.from({ length: 101 }, (_, index) => ({
       id: String(index),
