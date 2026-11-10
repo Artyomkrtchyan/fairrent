@@ -57,78 +57,52 @@ function insideRing(lng: number, lat: number, ring: number[][]): boolean {
   return inside;
 }
 
-/** Sample the exact spatial interpolation and green-yellow-red palette used by the ground surface. */
+/**
+ * Give a rental location and its matching building exactly the same color.
+ * Supported district medians are authoritative; the former inverse-distance
+ * surface could turn a high-rent district green near its boundary, then red
+ * when different building geometry appeared at a closer zoom.
+ *
+ * We use the same continuous green-yellow-red *palette*, but sample each
+ * district's observed median consistently instead of inventing block prices.
+ */
 export function createBuildingRentSampler(
   features: readonly DistrictGeometry[],
   prices: ReadonlyMap<string, DistrictPrice>,
   range: { minimum: number; maximum: number },
 ): (longitude: number, latitude: number) => string | null {
-  // Precompute bounding boxes so a city-wide set of vector footprints does not
-  // repeatedly scan every coordinate of every district on each map movement.
-  const city = features.flatMap((feature) => polygonsOf(feature.geometry)).map((polygon) => {
-    let west = Infinity, east = -Infinity, south = Infinity, north = -Infinity;
-    for (const point of polygon[0] ?? []) {
-      west = Math.min(west, point[0]!);
-      east = Math.max(east, point[0]!);
-      south = Math.min(south, point[1]!);
-      north = Math.max(north, point[1]!);
-    }
-    return { polygon, west, east, south, north };
-  });
-  const anchors: { lng: number; lat: number; normalized: number }[] = [];
-  for (const feature of features) {
+  const span = range.maximum - range.minimum;
+  const city = features.flatMap((feature) => {
     const price = prices.get(feature.properties.district_id);
-    if (!price) continue;
-    // Select the largest district outer ring, as with the raster surface.
-    let selected: { center: [number, number]; area: number } | undefined;
-    for (const polygon of polygonsOf(feature.geometry)) {
-      const ring = polygon[0];
-      if (!ring?.length) continue;
-      let area = 0;
-      let cx = 0;
-      let cy = 0;
-      for (let i = 0; i < ring.length; i++) {
-        const a = ring[i]!, b = ring[(i + 1) % ring.length]!;
-        const cross = a[0]! * b[1]! - b[0]! * a[1]!;
-        area += cross;
-        cx += (a[0]! + b[0]!) * cross;
-        cy += (a[1]! + b[1]!) * cross;
+    if (!price || !Number.isFinite(price.medianUsdM2)) return [];
+    const normalized = span > 0
+      ? (price.medianUsdM2 - range.minimum) / span
+      : 0.5;
+    const rentColor = rentGradientColor(normalized);
+    return polygonsOf(feature.geometry).map((polygon) => {
+      let west = Infinity, east = -Infinity, south = Infinity, north = -Infinity;
+      for (const point of polygon[0] ?? []) {
+        west = Math.min(west, point[0]!);
+        east = Math.max(east, point[0]!);
+        south = Math.min(south, point[1]!);
+        north = Math.max(north, point[1]!);
       }
-      if (Math.abs(area) > 1e-12 && (!selected || Math.abs(area) > selected.area)) {
-        selected = { center: [cx / (3 * area), cy / (3 * area)], area: Math.abs(area) };
-      }
-    }
-    if (!selected) continue;
-    const span = range.maximum - range.minimum;
-    anchors.push({
-      lng: selected.center[0],
-      lat: selected.center[1],
-      normalized: span > 0 ? Math.max(0, Math.min(1, (price.medianUsdM2 - range.minimum) / span)) : 0.5,
+      return { polygon, west, east, south, north, rentColor };
     });
-  }
-  if (!anchors.length) return () => null;
-  const meanLat = anchors.reduce((total, item) => total + item.lat, 0) / anchors.length;
-  const lonScale = Math.cos(meanLat * Math.PI / 180);
+  });
 
   return (longitude, latitude) => {
-    // Never color buildings outside the provided city district geometry.
-    if (!city.some(({ polygon, west, east, south, north }) => {
-      if (longitude < west || longitude > east || latitude < south || latitude > north) return false;
-      const exterior = polygon[0];
-      return exterior && insideRing(longitude, latitude, exterior) &&
-        !polygon.slice(1).some((hole) => insideRing(longitude, latitude, hole));
-    })) return null;
-
-    let sum = 0;
-    let weighted = 0;
-    for (const anchor of anchors) {
-      const dx = (longitude - anchor.lng) * lonScale;
-      const dy = latitude - anchor.lat;
-      const weight = 1 / (dx * dx + dy * dy + 0.000025);
-      sum += weight;
-      weighted += weight * anchor.normalized;
+    if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return null;
+    for (const district of city) {
+      if (longitude < district.west || longitude > district.east ||
+          latitude < district.south || latitude > district.north) continue;
+      const exterior = district.polygon[0];
+      if (exterior && insideRing(longitude, latitude, exterior) &&
+          !district.polygon.slice(1).some((hole) => insideRing(longitude, latitude, hole))) {
+        return district.rentColor;
+      }
     }
-    return rentGradientColor(0.5 + (weighted / sum - 0.5) * 1.35);
+    return null;
   };
 }
 
