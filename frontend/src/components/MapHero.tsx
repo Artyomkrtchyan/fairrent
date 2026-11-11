@@ -212,7 +212,7 @@ export function MapHero({
             value={rentColorMode}
             onChange={(event) => setRentColorMode(event.target.value === "ground" ? "ground" : "buildings")}
           >
-            <option value="buildings">Buildings (experiment)</option>
+            <option value="buildings">Buildings</option>
             <option value="ground">Ground (saved version)</option>
           </select>
         </label>
@@ -336,7 +336,7 @@ export function MapHero({
             aria-hidden="true"
           />
           <p>Green: lower · Yellow: middle · Red: higher (USD/month/m²).</p>
-          <p>{rentColorMode === "buildings" ? "Zoomed out: colored house symbols indicate rental locations. Zoom in for actual building footprints." : "District-level gradient shown on the ground."} Colors reflect area-level rents, not verified prices for individual homes.</p>
+          <p>{rentColorMode === "buildings" ? "Zoom in to see building footprints colored by local rents." : "District-level gradient shown on the ground."} Colors reflect area-level rents, not verified prices for individual homes.</p>
         </div>
       )}
       {showDemoSurface ? (
@@ -448,9 +448,6 @@ export function MapHero({
   const markerProps = {
     viewMode,
     rentColorMode,
-    // The citywide building visualization uses rental locations independently
-    // of the optional apartment-count dots overlay.
-    buildingLocations: points,
     points: showRentalDots && (mapLocations || bbox) ? points : [],
     clustered: mapLocations !== undefined,
     onOverlap: selectOverlap,

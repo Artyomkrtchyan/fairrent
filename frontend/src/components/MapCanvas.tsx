@@ -1,3 +1,4 @@
+import type { Feature, MultiPolygon, Polygon } from "geojson";
 import { useEffect, useRef, useState } from "react";
 import {
   Map,
@@ -17,7 +18,7 @@ import { renderSmoothRentSurface } from "@/lib/map-smooth-rent-surface";
 import { parseMapBounds, type MapBounds } from "@/lib/map-bounds";
 import type { DistrictPrice } from "@/lib/district-price-layer";
 import districtGeojson from "@/data/yerevan-districts.geojson?raw";
-import { createBuildingRentSampler, footprintCenter, nearestBuildingRentColorIndex, rentGradientColor } from "@/lib/map-building-rent-colors";
+import { createBuildingRentSampler, footprintCenter, rentGradientColor } from "@/lib/map-building-rent-colors";
 
 setWorkerUrl(mapWorkerUrl);
 
@@ -63,8 +64,6 @@ interface Props {
   bbox?: string | undefined;
   onBoundsChange?: ((bounds: MapBounds) => void) | undefined;
   points?: readonly RentalMapPoint[];
-  /** Colorful, noninteractive house symbols for zoom levels without building geometry. */
-  buildingLocations?: readonly RentalMapPoint[];
   selectedId?: string | undefined;
   onSelect?: (id: string) => void;
   clustered?: boolean;
@@ -91,7 +90,6 @@ export function MapCanvas({
   camera,
   onCameraChange,
   points = EMPTY_POINTS,
-  buildingLocations = EMPTY_POINTS,
   selectedId,
   onSelect,
   clustered = false,
@@ -265,136 +263,6 @@ export function MapCanvas({
     };
   }, [styleReady, rentColorMode, showDemoSurface, districtPrices, priceRange]);
 
-  // At citywide zoom, the basemap omits individual building polygons. Display
-  // small building-shaped symbols AT KNOWN RENTAL LOCATIONS, not a colored ground
-  // layer or fabricated footprints. At zoom >= 14, the vector footprints take
-  // over. Symbol collision keeps the overview legible and fast.
-  useEffect(() => {
-    const map = instance.current;
-    if (!map || !styleReady || rentColorMode !== "buildings" || !buildingLocations.length ||
-      (!showDemoSurface && (!districtPrices?.length || !priceRange))) return;
-
-    const registry = JSON.parse(districtGeojson) as {
-      features: Array<{
-        geometry: { type: "Polygon" | "MultiPolygon"; coordinates: unknown };
-        properties: { district_id: string; name: string };
-      }>;
-    };
-    const sampleColor: (longitude: number, latitude: number) => string | null = showDemoSurface
-      ? (longitude, latitude) => {
-          const [west, south, east, north] = DEMO_SURFACE.bounds;
-          const value = demoRentValue(
-            (longitude - west) / (east - west),
-            (north - latitude) / (north - south),
-          );
-          return value === null ? null :
-            rentGradientColor((value - DEMO_SURFACE.minimum) /
-              (DEMO_SURFACE.maximum - DEMO_SURFACE.minimum));
-        }
-      : createBuildingRentSampler(
-          registry.features,
-          new globalThis.Map((districtPrices ?? []).map((item) => [item.districtId, item])),
-          priceRange!,
-        );
-
-    const sourceId = "fairrent-citywide-building-locations";
-    const layerId = "fairrent-citywide-building-symbols";
-    const iconPrefix = "fairrent-rent-house-";
-    const shadeCount = 21;
-    const addedImages: string[] = [];
-
-    // A small silhouette with a roof and windows stays recognizable as a house
-    // even at low zoom; this is a *rental location* marker, not a roof polygon.
-    for (let shade = 0; shade < shadeCount; shade++) {
-      const name = `${iconPrefix}${shade}`;
-      if (map.hasImage(name)) continue;
-      const canvas = document.createElement("canvas");
-      canvas.width = 28;
-      canvas.height = 30;
-      const context = canvas.getContext("2d");
-      if (!context) continue;
-      context.fillStyle = rentGradientColor(shade / (shadeCount - 1));
-      context.strokeStyle = "#27344d";
-      context.lineWidth = 1.8;
-      context.beginPath();
-      context.moveTo(2, 13);
-      context.lineTo(14, 3);
-      context.lineTo(26, 13);
-      context.closePath();
-      context.fill();
-      context.stroke();
-      context.fillRect(5, 13, 18, 14);
-      context.strokeRect(5, 13, 18, 14);
-      context.fillStyle = "#f8fafc";
-      context.fillRect(10, 17, 4, 5);
-      context.fillRect(17, 17, 4, 5);
-      map.addImage(name, context.getImageData(0, 0, canvas.width, canvas.height), { pixelRatio: 2 });
-      addedImages.push(name);
-    }
-
-    // Citywide locations can exceed 16,000. One colored house per small
-    // geographic grid cell is enough at this scale; avoid sending thousands
-    // of overlapping symbols to the renderer on every data refresh.
-    const features: Array<{
-      type: "Feature";
-      geometry: { type: "Point"; coordinates: number[] };
-      properties: { shade: number };
-    }> = [];
-    const seenCells = new Set<string>();
-    const shadeCache = new globalThis.Map<string, number>();
-    const maxSymbols = 3500;
-    for (const point of buildingLocations) {
-      if (features.length >= maxSymbols) break;
-      if (!Number.isFinite(point.longitude) || !Number.isFinite(point.latitude)) continue;
-      const cell = `${Math.floor(point.longitude / 0.0004)}:${Math.floor(point.latitude / 0.0004)}`;
-      if (seenCells.has(cell)) continue;
-      const color = sampleColor(point.longitude, point.latitude);
-      if (!color) continue;
-      seenCells.add(cell);
-      let shade = shadeCache.get(color);
-      if (shade === undefined) {
-        shade = nearestBuildingRentColorIndex(color, shadeCount);
-        shadeCache.set(color, shade);
-      }
-      features.push({
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [point.longitude, point.latitude] },
-        properties: { shade },
-      });
-    }
-
-    map.addSource(sourceId, {
-      type: "geojson",
-      data: { type: "FeatureCollection", features },
-    });
-    const beforeLabels = map.getStyle().layers?.find((layer) => layer.type === "symbol")?.id;
-    map.addLayer({
-      id: layerId,
-      type: "symbol",
-      source: sourceId,
-      minzoom: 7,
-      maxzoom: 16,
-      paint: {
-        "icon-opacity": ["interpolate", ["linear"], ["zoom"], 14.8, 1, 15.8, 0],
-      },
-      layout: {
-        "icon-image": ["concat", iconPrefix, ["to-string", ["get", "shade"]]],
-        "icon-size": ["interpolate", ["linear"], ["zoom"], 9, 0.7, 12, 1.1, 14.9, 0.7],
-        "icon-allow-overlap": false,
-        "icon-padding": 0,
-      },
-    }, beforeLabels);
-
-    return () => {
-      if (instance.current !== map) return;
-      if (map.getLayer(layerId)) map.removeLayer(layerId);
-      if (map.getSource(sourceId)) map.removeSource(sourceId);
-      for (const name of addedImages) {
-        if (map.hasImage(name)) map.removeImage(name);
-      }
-    };
-  }, [styleReady, rentColorMode, showDemoSurface, districtPrices, priceRange, buildingLocations]);
-
   // Experimental mode: color actual vector-tile building footprints while
   // leaving the ground, streets, and parks at their default basemap colors.
   // This does not assign a rental price to an individual building.
@@ -403,7 +271,8 @@ export function MapCanvas({
     if (!map || !styleReady || rentColorMode !== "buildings" ||
       (!showDemoSurface && (!districtPrices?.length || !priceRange))) return;
 
-    const originalBuildingLayer = map.getStyle().layers?.find(
+    const layers = map.getStyle().layers ?? [];
+    const originalBuildingLayer = [...layers].reverse().find(
       (layer) => (layer.type === "fill-extrusion" || layer.type === "fill") &&
         layer["source-layer"] === "building",
     );
@@ -442,7 +311,7 @@ export function MapCanvas({
       type: "geojson",
       data: { type: "FeatureCollection", features: [] },
     });
-    const beforeSymbols = map.getStyle().layers?.find((layer) => layer.type === "symbol")?.id;
+    const nextLayer = layers[layers.indexOf(originalBuildingLayer) + 1]?.id;
     map.addLayer({
       id: flatId,
       type: "fill",
@@ -453,7 +322,7 @@ export function MapCanvas({
         "fill-opacity": 0.94,
         "fill-outline-color": "#334155",
       },
-    }, beforeSymbols);
+    }, nextLayer);
     map.addLayer({
       id: extrusionId,
       type: "fill-extrusion",
@@ -461,82 +330,80 @@ export function MapCanvas({
       source: sourceId,
       paint: {
         "fill-extrusion-color": ["get", "rentColor"],
-        "fill-extrusion-base": 0,
+        "fill-extrusion-base": ["get", "buildingBase"],
         "fill-extrusion-height": ["get", "buildingHeight"],
         "fill-extrusion-opacity": 0.94,
       },
-    }, beforeSymbols);
+    }, nextLayer);
 
-    // Heavy tile-to-GeoJSON conversion must NEVER run during a pan/zoom.
-    // "idle" fires after the camera settles and tiles finish loading.
-    // Keep MapLibre's native vector basemap responsive throughout movement.
-    let disposed = false;
+    // Keep the native buildings visible while coloring loaded tiles in short batches.
     let pending: number | undefined;
-    let lastUpdateKey = "";
-    let lastSourcesSignature = "";
-    const MAX_VISIBLE_BUILDINGS = 1200;
+    let needsUpdate = true;
 
-    const update = () => {
-      if (disposed || instance.current !== map || !map.getSource(vectorSource)) return;
-      if (map.getZoom() < 15 || map.isMoving()) return;
-      const bounds = map.getBounds();
-      const signature = [
-        Math.round(map.getZoom() * 3),
-        bounds.getWest().toFixed(3), bounds.getSouth().toFixed(3),
-        bounds.getEast().toFixed(3), bounds.getNorth().toFixed(3),
-      ].join(":");
-      const visible = map.querySourceFeatures(vectorSource, { sourceLayer: vectorSourceLayer });
-      const features = [];
-      const seen = new Set<string>();
-      // Filter cached/offscreen vector-tile features BEFORE geometry processing.
-      // Once a dense street has enough detail, favor smooth scrolling over
-      // synchronously converting thousands of additional buildings.
-      for (const feature of visible) {
-        if (feature.geometry.type !== "Polygon" && feature.geometry.type !== "MultiPolygon") continue;
-        const center = footprintCenter(feature.geometry);
-        if (!center) continue;
-        if (center[0] < bounds.getWest() || center[0] > bounds.getEast() ||
-            center[1] < bounds.getSouth() || center[1] > bounds.getNorth()) continue;
-        const key = feature.id === undefined
-          ? `${center[0].toFixed(5)}:${center[1].toFixed(5)}`
-          : String(feature.id);
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const color = sampleColor(center[0], center[1]);
-        if (!color) continue;
-        const rawHeight = Number(feature.properties?.["render_height"] ?? feature.properties?.["height"] ?? 10);
-        const buildingHeight = Number.isFinite(rawHeight) ? Math.max(3, Math.min(160, rawHeight)) : 10;
-        features.push({
-          type: "Feature" as const,
-          geometry: feature.geometry,
-          properties: { rentColor: color, buildingHeight },
-        });
-        if (features.length >= MAX_VISIBLE_BUILDINGS) break;
-      }
-      // A source update can itself cause another idle event. Avoid that loop,
-      // but allow genuinely new tile data at the same viewport to render.
-      const sourceSignature = `${features.length}:${features.slice(0, 4).map((item) =>
-        item.geometry.coordinates.length).join(",")}`;
-      if (signature === lastUpdateKey && sourceSignature === lastSourcesSignature) return;
-      lastUpdateKey = signature;
-      lastSourcesSignature = sourceSignature;
-      const source = map.getSource(sourceId) as GeoJSONSource | undefined;
-      if (source) void source.setData({ type: "FeatureCollection", features });
+    const cancel = () => {
+      if (pending !== undefined) window.cancelAnimationFrame(pending);
+      pending = undefined;
+    };
+
+    const invalidate = () => {
+      needsUpdate = true;
+      cancel();
     };
 
     const schedule = () => {
-      if (disposed || pending !== undefined) return;
-      pending = window.setTimeout(() => {
+      if (!needsUpdate || pending !== undefined || map.isMoving() || map.getZoom() < 15) return;
+      const candidates = map.querySourceFeatures(vectorSource, { sourceLayer: vectorSourceLayer });
+      const features: Feature<Polygon | MultiPolygon>[] = [];
+      let index = 0;
+
+      const processBatch = () => {
         pending = undefined;
-        update();
-      }, 90);
+        if (map.isMoving()) return;
+        const deadline = performance.now() + 5;
+        while (index < candidates.length && performance.now() < deadline) {
+          const feature = candidates[index++]!;
+          const geometry = feature.geometry;
+          if (geometry.type !== "Polygon" && geometry.type !== "MultiPolygon") continue;
+          const center = footprintCenter(geometry);
+          if (!center) continue;
+          const rentColor = sampleColor(...center);
+          if (!rentColor) continue;
+          const height = Number(feature.properties?.["render_height"] ?? feature.properties?.["height"] ?? 10);
+          const base = Number(feature.properties?.["render_min_height"] ?? 0);
+          features.push({
+            type: "Feature",
+            geometry,
+            properties: {
+              rentColor,
+              buildingHeight: Number.isFinite(height) ? height + 0.15 : 10,
+              buildingBase: Number.isFinite(base) ? base : 0,
+            },
+          });
+        }
+
+        if (index < candidates.length) {
+          pending = window.requestAnimationFrame(processBatch);
+          return;
+        }
+
+        needsUpdate = false;
+        const source = map.getSource(sourceId) as GeoJSONSource | undefined;
+        if (source) void source.setData({ type: "FeatureCollection", features });
+      };
+
+      pending = window.requestAnimationFrame(processBatch);
     };
+
+    const movement = map.on("movestart", invalidate);
+    const tiles = map.on("sourcedata", (event) => {
+      if (event.sourceId === vectorSource && (event.tile || event.sourceDataType === "content")) invalidate();
+    });
     const idle = map.on("idle", schedule);
-    // When the layer is installed after the map is already idle, trigger once.
-    schedule();
+    if (map.isSourceLoaded(vectorSource)) schedule();
     return () => {
-      disposed = true;
-      if (pending !== undefined) window.clearTimeout(pending);
+      cancel();
+      movement.unsubscribe();
+      tiles.unsubscribe();
       idle.unsubscribe();
       if (instance.current !== map) return;
       if (map.getLayer(extrusionId)) map.removeLayer(extrusionId);
@@ -580,7 +447,7 @@ export function MapCanvas({
       );
     }
 
-    map.setLayoutProperty(flatBuildingsId, "visibility", rentColorMode === "ground" && viewMode === "2d" ? "visible" : "none");
+    map.setLayoutProperty(flatBuildingsId, "visibility", viewMode === "2d" ? "visible" : "none");
     if (map.getLayer("fairrent-rent-building-flat")) {
       map.setLayoutProperty("fairrent-rent-building-flat", "visibility", viewMode === "2d" ? "visible" : "none");
     }
@@ -589,7 +456,7 @@ export function MapCanvas({
     }
 
     for (const layer of buildings) {
-      map.setLayoutProperty(layer.id, "visibility", rentColorMode === "ground" && viewMode === "3d" ? "visible" : "none");
+      map.setLayoutProperty(layer.id, "visibility", viewMode === "3d" ? "visible" : "none");
     }
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
