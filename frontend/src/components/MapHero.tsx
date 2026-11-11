@@ -20,8 +20,6 @@ import { hasMapCoordinates, type MapListing } from "@/lib/map-listings";
 import type { MapCamera } from "@/components/MapCanvas";
 import { useQuery } from "@tanstack/react-query";
 import { getListingDetails, getListings, type ListingMapPoint } from "@/api/listings";
-import { getMarketIndex, type MarketIndex } from "@/api/market";
-import { summarizeDistrictPrices } from "@/lib/district-price-layer";
 import { snapshotMapPrices } from "@/lib/map-listing-price-snapshot";
 
 const MapCanvas = lazy(() =>
@@ -91,66 +89,45 @@ export function MapHero({
   const [rentColorMode, setRentColorMode] = useState<"buildings" | "ground">("buildings");
   const [showRentalDots, setShowRentalDots] = useState(false);
   const [showPriceGuide, setShowPriceGuide] = useState(false);
-  const districtQuery = useQuery({
-    queryKey: ["map-district-median-prices", apiMode],
+  const snapshotQuery = useQuery({
+    queryKey: ["map-listing-rent-price-snapshot", apiMode],
     enabled: apiMode === "real" && showDistrictPrices,
     retry: false,
     staleTime: 5 * 60 * 1000,
-    queryFn: async ({ signal }): Promise<MarketIndex[]> => {
-      // Query up to 180 days of published index history, without inventing prices.\n      // Older observations are visibly labelled rather than presented as current.
-      const period_start = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000)
-        .toISOString().slice(0, 10);
-      const all: MarketIndex[] = [];
-      for (let page = 1; page <= 12; page++) {
-        const result = await getMarketIndex({ period_start, page_size: 100, page }, signal);
-        all.push(...result.items);
-        if (!result.has_more) return all;
-      }
-      throw new Error("The district price history exceeds the supported page limit.");
-    },
-  });
-  const districtSummary = useMemo(
-    () => summarizeDistrictPrices(districtQuery.data ?? []),
-    [districtQuery.data],
-  );
-  const weeklySupported = districtSummary.latest.length > 0;
-  const snapshotQuery = useQuery({
-    queryKey: ["map-listing-rent-price-snapshot", apiMode],
-    enabled: apiMode === "real" && showDistrictPrices &&
-      !districtQuery.isPending && (districtQuery.isError || !weeklySupported),
-    retry: false,
-    staleTime: 5 * 60 * 1000,
     queryFn: async ({ signal }) => {
-      const listings: Awaited<ReturnType<typeof getListings>>["items"] = [];
-      let total = 0;
-      let hasMore = false;
+      const pageSize = 100;
       const maximumPages = 15;
-      for (let page = 1; page <= maximumPages; page++) {
-        const result = await getListings(signal, {
-          page,
-          page_size: 100,
-          status: "active",
-          sort: "newest",
-        });
-        listings.push(...result.items);
-        total = result.total;
-        hasMore = result.has_more;
-        if (!result.has_more) break;
+      const concurrentPages = 5;
+      const fetchPage = (page: number) => getListings(signal, {
+        page, page_size: pageSize, status: "active", sort: "newest",
+      });
+      const first = await fetchPage(1);
+      const listings = [...first.items];
+      const lastPage = first.has_more
+        ? Math.min(maximumPages, Math.ceil(first.total / pageSize))
+        : 1;
+      let truncated = first.has_more;
+      for (let start = 2; start <= lastPage; start += concurrentPages) {
+        const batch = await Promise.all(Array.from(
+          { length: Math.min(concurrentPages, lastPage - start + 1) },
+          (_, offset) => fetchPage(start + offset),
+        ));
+        for (const page of batch) listings.push(...page.items);
+        truncated = batch.at(-1)?.has_more ?? truncated;
+        if (!truncated) break;
       }
-      return { listings, total, truncated: hasMore };
+      return { listings, truncated };
     },
   });
   const snapshotSummary = useMemo(
     () => snapshotMapPrices(snapshotQuery.data?.listings ?? []),
     [snapshotQuery.data],
   );
-  const useSnapshot = !weeklySupported && snapshotSummary.districtPrices.length > 0;
-  const activePrices = useSnapshot ? snapshotSummary.districtPrices : districtSummary.latest;
+  const activePrices = snapshotSummary.districtPrices;
   const priceRange = useMemo(() => {
-    const minimum = useSnapshot ? snapshotSummary.min : districtSummary.minimum;
-    const maximum = useSnapshot ? snapshotSummary.max : districtSummary.maximum;
+    const { min: minimum, max: maximum } = snapshotSummary;
     return minimum !== null && maximum !== null ? { minimum, maximum } : null;
-  }, [useSnapshot, snapshotSummary.min, snapshotSummary.max, districtSummary.minimum, districtSummary.maximum]);
+  }, [snapshotSummary]);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string>();
   const nearby = useInfrastructure(viewportBbox, showMetro, showUniversities);
   const places = useMemo(
@@ -352,45 +329,30 @@ export function MapHero({
         </>
       ) : !showDistrictPrices ? (
         <p className="map-demo-label">District price layer hidden</p>
-      ) : (districtQuery.isPending || snapshotQuery.isPending && !weeklySupported) ? (
+      ) : snapshotQuery.isPending ? (
         <p role="status" className="map-demo-label">
-          Loading available district pricing evidence…
+          Loading asking rents from active listings…
         </p>
       ) : !priceRange || activePrices.length === 0 ? (
         <>
           <p className="map-demo-label">District shading unavailable</p>
           <p>No district has at least five usable rent-per-m² listings in the available data.</p>
-          <p>Uncolored areas do not mean zero rent. Weekly data and active listing samples cannot be substituted with estimates.</p>
-          {(snapshotQuery.isError || districtQuery.isError) && (
-            <button type="button" className="underline" onClick={() => {
-              void districtQuery.refetch();
-              void snapshotQuery.refetch();
-            }}>Retry prices</button>
+          <p>Uncolored areas have insufficient listing data.</p>
+          {snapshotQuery.isError && (
+            <button type="button" className="underline" onClick={() => void snapshotQuery.refetch()}>Retry prices</button>
           )}
         </>
       ) : (
         <>
-          <p className="map-demo-label">{useSnapshot ? "Active listings snapshot" : "Published district medians"}</p>
+          <p className="map-demo-label">Active listings snapshot</p>
           <p>Median asking rent · USD/month/m²</p>
           <div className="map-price-ticks">
             <span>{priceRange.minimum.toFixed(2)} USD</span>
             <span>{((priceRange.minimum + priceRange.maximum) / 2).toFixed(2)} USD</span>
             <span>{priceRange.maximum.toFixed(2)} USD</span>
           </div>
-          {useSnapshot ? (
-            <>
-              <p>{activePrices.length} districts with ≥5 listings · {snapshotQuery.data?.listings.length ?? 0} sampled listings{snapshotQuery.data?.truncated ? " (partial sample)" : ""}.</p>
-              <p>Observed: {snapshotSummary.latestObservation?.slice(0, 10) ?? "unknown"}. Snapshot, not a weekly trend.</p>
-            </>
-          ) : (
-            <>
-              <p>Data week: {districtSummary.periodStart} to {districtSummary.periodEnd}</p>
-              <p>{activePrices.length} of 12 districts have supported weekly rent-per-m² data.</p>
-              {districtSummary.staleCount > 0 && <p>Warning: some source observations are stale.</p>}
-              {districtSummary.latestPublishedPeriod !== districtSummary.periodStart &&
-                <p>Most recent published week lacks sufficient data, so an older supported period is displayed.</p>}
-            </>
-          )}
+          <p>{activePrices.length} districts with ≥5 listings · {snapshotQuery.data?.listings.length ?? 0} sampled listings{snapshotQuery.data?.truncated ? " (partial sample)" : ""}.</p>
+          <p>Observed: {snapshotSummary.latestObservation?.slice(0, 10) ?? "unknown"}.</p>
           <p className="text-xs">Smooth color transitions are interpolated from district medians, not street-level estimates. Missing data is not zero.</p>
         </>
       )}
@@ -399,7 +361,7 @@ export function MapHero({
   );
   const [selectedId, setSelectedId] = useState<string>();
   const [overlappingIds, setOverlappingIds] = useState<readonly string[]>([]);
-  const selectedLocation = mapLocations?.find(({ id }) => id === selectedId);
+  const selectedLocation = selectedId === undefined ? undefined : mapLocations?.find(({ id }) => id === selectedId);
   const details = useQuery({
     queryKey: ["map-listing-detail", apiMode, selectedId],
     queryFn: ({ signal }) => getListingDetails(selectedId!, signal),
@@ -425,7 +387,7 @@ export function MapHero({
   }, []);
   const points = useMemo(
     () =>
-      mapLocations?.map((location) => ({
+      (mapLocations && !showRentalDots) ? [] : mapLocations?.map((location) => ({
         ...location,
         label: "Show rental preview",
         approximate: location.coordinate_confidence === "approximate",
@@ -440,7 +402,7 @@ export function MapHero({
             : format(listing.price_monthly_normalized),
         approximate: listing.coordinate_confidence === "approximate",
       })),
-    [mapLocations, listings, format],
+    [mapLocations, listings, format, showRentalDots],
   );
   const selected = mapLocations
     ? selectedLocation && details.data?.listing
@@ -449,7 +411,7 @@ export function MapHero({
     viewMode,
     rentColorMode,
     points: showRentalDots && (mapLocations || bbox) ? points : [],
-    clustered: mapLocations !== undefined,
+    clustered: showRentalDots && mapLocations !== undefined,
     onOverlap: selectOverlap,
     showDemoSurface,
     places,
@@ -466,7 +428,7 @@ export function MapHero({
     : failed
       ? "Rental locations unavailable."
       : mapLocations
-        ? `${points.length.toLocaleString()} rentals with usable locations.`
+        ? `${mapLocations.length.toLocaleString()} rentals with usable locations.`
         : !bbox
           ? "Rental results are also available in the catalogue below."
           : `${points.length} of ${listings.length} rentals on this results page have usable locations.${hasMore ? " More results are available in the catalogue." : ""}`;

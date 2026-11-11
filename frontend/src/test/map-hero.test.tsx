@@ -1,10 +1,18 @@
-import { cleanup, fireEvent, render as renderReact, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render as renderReact, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import fixtures from "../../../contracts/fixtures.json";
 import type { MapListing } from "@/lib/map-listings";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement, ReactNode } from "react";
 import { MapHero } from "@/components/MapHero";
+import * as listingsApi from "@/api/listings";
+import * as marketApi from "@/api/market";
+
+const state = vi.hoisted(() => ({ apiMode: "mock" }));
+vi.mock("@/api/client", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/api/client")>(),
+  get apiMode() { return state.apiMode; },
+}));
 
 function render(ui: ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
@@ -94,6 +102,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  state.apiMode = "mock";
   vi.restoreAllMocks();
 });
 
@@ -110,6 +119,21 @@ describe("framed map introduction", () => {
       target: { value: "buildings" },
     });
     expect(map).toHaveAttribute("data-rent-color-mode", "buildings");
+  });
+
+  it("loads map prices from active listings without requesting weekly data", async () => {
+    state.apiMode = "real";
+    const weekly = vi.spyOn(marketApi, "getMarketIndex");
+    const listings = vi.spyOn(listingsApi, "getListings").mockResolvedValue({
+      items: [], page: 1, page_size: 100, total: 0, has_more: false,
+    });
+    render(<MapHero />);
+
+    await waitFor(() => expect(listings).toHaveBeenCalledWith(
+      expect.any(AbortSignal),
+      { page: 1, page_size: 100, status: "active", sort: "newest" },
+    ));
+    expect(weekly).not.toHaveBeenCalled();
   });
 
   it("shows the complete location response before applying a map area", async () => {

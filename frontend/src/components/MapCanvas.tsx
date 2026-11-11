@@ -18,7 +18,7 @@ import { renderSmoothRentSurface } from "@/lib/map-smooth-rent-surface";
 import { parseMapBounds, type MapBounds } from "@/lib/map-bounds";
 import type { DistrictPrice } from "@/lib/district-price-layer";
 import districtGeojson from "@/data/yerevan-districts.geojson?raw";
-import { buildingRentPaint, footprintCenter, rentGradientColor } from "@/lib/map-building-rent-colors";
+import { createBuildingColorCache, footprintCenter, rentGradientColor } from "@/lib/map-building-rent-colors";
 
 setWorkerUrl(mapWorkerUrl);
 
@@ -369,18 +369,80 @@ export function MapCanvas({
       paint: { "fill-color": ["get", "rentColor"], "fill-opacity": 0.34 },
     }, layers.find((layer) => layer.type === "line" || layer.type === "symbol")?.id);
 
-    // The native tile worker assigns one paint color to the roof and every wall.
-    // A zero distance means the footprint intersects the district polygon.
+    // Feature state is shared by every tile fragment with the same source feature ID.
+    const sources = new globalThis.Map(
+      detailLayers.flatMap((layer) => "source" in layer
+        ? [[layer.source, { color: createBuildingColorCache(districts), painted: new Set<string | number>() }] as const]
+        : []),
+    );
     const restore = detailLayers.map((layer) => {
       const property = layer.type === "fill" ? "fill-color" : "fill-extrusion-color";
       const original = map.getPaintProperty(layer.id, property);
-      const color = buildingRentPaint(districts, typeof original === "string" ? original : "#e2e8f0");
-      map.setPaintProperty(layer.id, property, color);
+      const fallback = typeof original === "string" ? original : "#e2e8f0";
+      map.setPaintProperty(layer.id, property, ["coalesce", ["feature-state", "fairrentRentColor"], fallback]);
       return () => map.setPaintProperty(layer.id, property, original);
     });
 
+    let pending: number | undefined;
+    let frame: number | undefined;
+    let refresh = false;
+    const schedule = () => {
+      refresh = true;
+      if (pending !== undefined || frame !== undefined || !sources.size ||
+          (detailZoom !== undefined && map.getZoom() < detailZoom)) return;
+      pending = window.setTimeout(() => {
+        pending = undefined;
+        refresh = false;
+        const batches = [...sources].map(([source, state]) => ({
+          source,
+          ...state,
+          features: map.querySourceFeatures(source, { sourceLayer: "building" }),
+          index: 0,
+        }));
+        const applyBatch = () => {
+          frame = undefined;
+          const deadline = performance.now() + 4;
+          for (const batch of batches) {
+            while (batch.index < batch.features.length) {
+              if (performance.now() >= deadline) {
+                frame = window.requestAnimationFrame(applyBatch);
+                return;
+              }
+              const feature = batch.features[batch.index++]!;
+              const id = feature.id;
+              if (id === undefined) continue;
+              const color = batch.color(id, () => feature.geometry);
+              if (color) {
+                batch.painted.add(id);
+                map.setFeatureState(
+                  { source: batch.source, sourceLayer: "building", id },
+                  { fairrentRentColor: color },
+                );
+              }
+            }
+          }
+          if (refresh) schedule();
+        };
+        frame = window.requestAnimationFrame(applyBatch);
+      }, 48);
+    };
+    const tileLoad = sources.size ? map.on("sourcedata", (event) => {
+      if (sources.has(event.sourceId) && (event.tile || event.sourceDataType === "content")) schedule();
+    }) : undefined;
+    const movement = sources.size ? map.on("moveend", schedule) : undefined;
+    schedule();
+
     return () => {
+      if (pending !== undefined) window.clearTimeout(pending);
+      if (frame !== undefined) window.cancelAnimationFrame(frame);
+      tileLoad?.unsubscribe();
+      movement?.unsubscribe();
       if (instance.current !== map) return;
+      for (const [source, { painted }] of sources) {
+        for (const id of painted) {
+          map.removeFeatureState({ source, sourceLayer: "building", id }, "fairrentRentColor");
+        }
+      }
       restore.forEach((reset) => reset());
       if (map.getLayer(overviewId)) map.removeLayer(overviewId);
       if (map.getSource(overviewId)) map.removeSource(overviewId);
