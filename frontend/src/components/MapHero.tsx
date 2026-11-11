@@ -336,7 +336,7 @@ export function MapHero({
             aria-hidden="true"
           />
           <p>Green: lower · Yellow: middle · Red: higher (USD/month/m²).</p>
-          <p>{rentColorMode === "buildings" ? "Zoom in to see building footprints colored by local rents." : "District-level gradient shown on the ground."} Colors reflect area-level rents, not verified prices for individual homes.</p>
+          <p>{rentColorMode === "buildings" ? "District colors at city scale carry over to building footprints as you zoom in." : "District-level gradient shown on the ground."} Colors reflect area-level rents, not verified prices for individual homes.</p>
         </div>
       )}
       {showDemoSurface ? (
