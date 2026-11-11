@@ -1,4 +1,4 @@
-import type { Feature, MultiPolygon, Polygon } from "geojson";
+import type { FeatureCollection, MultiPolygon, Polygon } from "geojson";
 import { useEffect, useRef, useState } from "react";
 import {
   Map,
@@ -18,7 +18,7 @@ import { renderSmoothRentSurface } from "@/lib/map-smooth-rent-surface";
 import { parseMapBounds, type MapBounds } from "@/lib/map-bounds";
 import type { DistrictPrice } from "@/lib/district-price-layer";
 import districtGeojson from "@/data/yerevan-districts.geojson?raw";
-import { createBuildingRentSampler, footprintCenter, rentGradientColor } from "@/lib/map-building-rent-colors";
+import { buildingRentPaint, footprintCenter, rentGradientColor } from "@/lib/map-building-rent-colors";
 
 setWorkerUrl(mapWorkerUrl);
 
@@ -83,7 +83,7 @@ export function MapCanvas({
   onSelectPlace,
   onPickCoordinate,
   pickedCoordinate,
-  showDemoSurface = false,
+  showDemoSurface: requestedDemoSurface = false,
   bbox,
   onBoundsChange,
   expanded = false,
@@ -109,6 +109,7 @@ export function MapCanvas({
   useEffect(() => {
     boundsCallback.current = onBoundsChange;
   }, [onBoundsChange]);
+  const showDemoSurface = requestedDemoSurface && apiMode === "mock";
   const [styleReady, setStyleReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -213,8 +214,7 @@ export function MapCanvas({
     if (camera) instance.current?.jumpTo(camera);
   }, [camera]);
 
-  // One-click comparison and rollback to the preserved, city-clipped ground
-  // surface. The building-only experiment is the default, never both at once.
+  // The ground mode keeps its continuous, city-clipped rent surface.
   useEffect(() => {
     const map = instance.current;
     if (!map || !styleReady || rentColorMode !== "ground") return;
@@ -263,155 +263,6 @@ export function MapCanvas({
     };
   }, [styleReady, rentColorMode, showDemoSurface, districtPrices, priceRange]);
 
-  // Experimental mode: color actual vector-tile building footprints while
-  // leaving the ground, streets, and parks at their default basemap colors.
-  // This does not assign a rental price to an individual building.
-  useEffect(() => {
-    const map = instance.current;
-    if (!map || !styleReady || rentColorMode !== "buildings" ||
-      (!showDemoSurface && (!districtPrices?.length || !priceRange))) return;
-
-    const layers = map.getStyle().layers ?? [];
-    const originalBuildingLayer = [...layers].reverse().find(
-      (layer) => (layer.type === "fill-extrusion" || layer.type === "fill") &&
-        layer["source-layer"] === "building",
-    );
-    if (!originalBuildingLayer || !("source" in originalBuildingLayer)) return;
-    const vectorSource = originalBuildingLayer.source;
-    const vectorSourceLayer = "building";
-    const sourceId = "fairrent-rent-building-footprints";
-    const flatId = "fairrent-rent-building-flat";
-    const extrusionId = "fairrent-rent-building-3d";
-    const registry = JSON.parse(districtGeojson) as {
-      features: Array<{
-        geometry: { type: "Polygon" | "MultiPolygon"; coordinates: unknown };
-        properties: { district_id: string; name: string };
-      }>;
-    };
-
-    const sampleColor: (longitude: number, latitude: number) => string | null = showDemoSurface
-      ? (longitude, latitude) => {
-          const [west, south, east, north] = DEMO_SURFACE.bounds;
-          const observed = demoRentValue(
-            (longitude - west) / (east - west),
-            (north - latitude) / (north - south),
-          );
-          return observed === null
-            ? null
-            : rentGradientColor((observed - DEMO_SURFACE.minimum) /
-                (DEMO_SURFACE.maximum - DEMO_SURFACE.minimum));
-        }
-      : createBuildingRentSampler(
-          registry.features,
-          new globalThis.Map((districtPrices ?? []).map((item) => [item.districtId, item])),
-          priceRange!,
-        );
-
-    map.addSource(sourceId, {
-      type: "geojson",
-      data: { type: "FeatureCollection", features: [] },
-    });
-    const nextLayer = layers[layers.indexOf(originalBuildingLayer) + 1]?.id;
-    map.addLayer({
-      id: flatId,
-      type: "fill",
-      minzoom: 15,
-      source: sourceId,
-      paint: {
-        "fill-color": ["get", "rentColor"],
-        "fill-opacity": 0.94,
-        "fill-outline-color": "#334155",
-      },
-    }, nextLayer);
-    map.addLayer({
-      id: extrusionId,
-      type: "fill-extrusion",
-      minzoom: 15,
-      source: sourceId,
-      paint: {
-        "fill-extrusion-color": ["get", "rentColor"],
-        "fill-extrusion-base": ["get", "buildingBase"],
-        "fill-extrusion-height": ["get", "buildingHeight"],
-        "fill-extrusion-opacity": 0.94,
-      },
-    }, nextLayer);
-
-    // Keep the native buildings visible while coloring loaded tiles in short batches.
-    let pending: number | undefined;
-    let needsUpdate = true;
-
-    const cancel = () => {
-      if (pending !== undefined) window.cancelAnimationFrame(pending);
-      pending = undefined;
-    };
-
-    const invalidate = () => {
-      needsUpdate = true;
-      cancel();
-    };
-
-    const schedule = () => {
-      if (!needsUpdate || pending !== undefined || map.isMoving() || map.getZoom() < 15) return;
-      const candidates = map.querySourceFeatures(vectorSource, { sourceLayer: vectorSourceLayer });
-      const features: Feature<Polygon | MultiPolygon>[] = [];
-      let index = 0;
-
-      const processBatch = () => {
-        pending = undefined;
-        if (map.isMoving()) return;
-        const deadline = performance.now() + 5;
-        while (index < candidates.length && performance.now() < deadline) {
-          const feature = candidates[index++]!;
-          const geometry = feature.geometry;
-          if (geometry.type !== "Polygon" && geometry.type !== "MultiPolygon") continue;
-          const center = footprintCenter(geometry);
-          if (!center) continue;
-          const rentColor = sampleColor(...center);
-          if (!rentColor) continue;
-          const height = Number(feature.properties?.["render_height"] ?? feature.properties?.["height"] ?? 10);
-          const base = Number(feature.properties?.["render_min_height"] ?? 0);
-          features.push({
-            type: "Feature",
-            geometry,
-            properties: {
-              rentColor,
-              buildingHeight: Number.isFinite(height) ? height + 0.15 : 10,
-              buildingBase: Number.isFinite(base) ? base : 0,
-            },
-          });
-        }
-
-        if (index < candidates.length) {
-          pending = window.requestAnimationFrame(processBatch);
-          return;
-        }
-
-        needsUpdate = false;
-        const source = map.getSource(sourceId) as GeoJSONSource | undefined;
-        if (source) void source.setData({ type: "FeatureCollection", features });
-      };
-
-      pending = window.requestAnimationFrame(processBatch);
-    };
-
-    const movement = map.on("movestart", invalidate);
-    const tiles = map.on("sourcedata", (event) => {
-      if (event.sourceId === vectorSource && (event.tile || event.sourceDataType === "content")) invalidate();
-    });
-    const idle = map.on("idle", schedule);
-    if (map.isSourceLoaded(vectorSource)) schedule();
-    return () => {
-      cancel();
-      movement.unsubscribe();
-      tiles.unsubscribe();
-      idle.unsubscribe();
-      if (instance.current !== map) return;
-      if (map.getLayer(extrusionId)) map.removeLayer(extrusionId);
-      if (map.getLayer(flatId)) map.removeLayer(flatId);
-      if (map.getSource(sourceId)) map.removeSource(sourceId);
-    };
-  }, [styleReady, districtPrices, priceRange, showDemoSurface, rentColorMode]);
-
   useEffect(() => {
     const map = instance.current;
     if (!map || !styleReady) return;
@@ -448,13 +299,6 @@ export function MapCanvas({
     }
 
     map.setLayoutProperty(flatBuildingsId, "visibility", viewMode === "2d" ? "visible" : "none");
-    if (map.getLayer("fairrent-rent-building-flat")) {
-      map.setLayoutProperty("fairrent-rent-building-flat", "visibility", viewMode === "2d" ? "visible" : "none");
-    }
-    if (map.getLayer("fairrent-rent-building-3d")) {
-      map.setLayoutProperty("fairrent-rent-building-3d", "visibility", viewMode === "3d" ? "visible" : "none");
-    }
-
     for (const layer of buildings) {
       map.setLayoutProperty(layer.id, "visibility", viewMode === "3d" ? "visible" : "none");
     }
@@ -466,7 +310,82 @@ export function MapCanvas({
       ...(viewMode === "3d" ? { zoom: Math.max(map.getZoom(), 15) } : {}),
       duration: reducedMotion ? 0 : 600,
     });
-  }, [viewMode, styleReady, districtPrices, priceRange, showDemoSurface, rentColorMode]);
+  }, [viewMode, styleReady]);
+
+  useEffect(() => {
+    const map = instance.current;
+    if (!map || !styleReady || rentColorMode !== "buildings" ||
+        (!showDemoSurface && (!districtPrices?.length || !priceRange))) return;
+
+    const registry = JSON.parse(districtGeojson) as FeatureCollection<
+      Polygon | MultiPolygon,
+      { district_id: string }
+    >;
+    const prices = new globalThis.Map(districtPrices?.map((item) => [item.districtId, item]));
+    const districts = registry.features.flatMap((feature) => {
+      let value: number | null;
+      if (showDemoSurface) {
+        const center = footprintCenter(feature.geometry);
+        if (!center) return [];
+        const [west, south, east, north] = DEMO_SURFACE.bounds;
+        const observed = demoRentValue(
+          (center[0] - west) / (east - west),
+          (north - center[1]) / (north - south),
+        );
+        value = observed === null ? 0.5 :
+          (observed - DEMO_SURFACE.minimum) / (DEMO_SURFACE.maximum - DEMO_SURFACE.minimum);
+      } else {
+        const median = prices.get(feature.properties.district_id)?.medianUsdM2;
+        if (median === undefined || !Number.isFinite(median) || !priceRange) return [];
+        const span = priceRange.maximum - priceRange.minimum;
+        value = span > 0 ? (median - priceRange.minimum) / span : 0.5;
+      }
+      return [{ ...feature, properties: { rentColor: rentGradientColor(value) } }];
+    });
+    if (!districts.length) return;
+
+    const layers = map.getStyle().layers ?? [];
+    const buildingLayers = layers.filter((layer) =>
+      (layer.type === "fill" || layer.type === "fill-extrusion") &&
+      layer["source-layer"] === "building",
+    );
+    const flatLayer = buildingLayers.find((layer) => layer.id === "fairrent-flat-buildings");
+    const extrusionLayers = buildingLayers.filter((layer) => layer.type === "fill-extrusion");
+    const detailLayers = [...(flatLayer ? [flatLayer] : []), ...extrusionLayers];
+    const detailZoom = detailLayers.length
+      ? Math.min(...detailLayers.map((layer) => layer.minzoom ?? 14))
+      : undefined;
+
+    const overviewId = "fairrent-rent-district-overview";
+    map.addSource(overviewId, {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: districts },
+    });
+    map.addLayer({
+      id: overviewId,
+      type: "fill",
+      source: overviewId,
+      ...(detailZoom === undefined ? {} : { maxzoom: detailZoom }),
+      paint: { "fill-color": ["get", "rentColor"], "fill-opacity": 0.34 },
+    }, layers.find((layer) => layer.type === "line" || layer.type === "symbol")?.id);
+
+    // The native tile worker assigns one paint color to the roof and every wall.
+    // A zero distance means the footprint intersects the district polygon.
+    const restore = detailLayers.map((layer) => {
+      const property = layer.type === "fill" ? "fill-color" : "fill-extrusion-color";
+      const original = map.getPaintProperty(layer.id, property);
+      const color = buildingRentPaint(districts, typeof original === "string" ? original : "#e2e8f0");
+      map.setPaintProperty(layer.id, property, color);
+      return () => map.setPaintProperty(layer.id, property, original);
+    });
+
+    return () => {
+      if (instance.current !== map) return;
+      restore.forEach((reset) => reset());
+      if (map.getLayer(overviewId)) map.removeLayer(overviewId);
+      if (map.getSource(overviewId)) map.removeSource(overviewId);
+    };
+  }, [styleReady, districtPrices, priceRange, showDemoSurface, rentColorMode]);
 
   useEffect(() => {
     const bounds = parseMapBounds(bbox);

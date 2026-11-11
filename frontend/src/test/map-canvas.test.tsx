@@ -29,7 +29,7 @@ vi.mock("@/api/client", () => ({
   },
 }));
 vi.mock("@/lib/map-demo-surface", () => ({
-  DEMO_SURFACE: { bounds: [44.44, 40.11, 44.6, 40.24] },
+  DEMO_SURFACE: { bounds: [44.44, 40.11, 44.6, 40.24], minimum: 6, maximum: 24 },
   demoSurfaceImage: () => "data:image/png;base64,test-only",
   demoRentValue: () => 12,
 }));
@@ -175,10 +175,14 @@ describe("map canvas", () => {
     expect(map.removeLayer).toHaveBeenCalledOnce();
     expect(map.removeSource).toHaveBeenCalledOnce();
   });
-  it("omits citywide house glyphs and still offers the ground gradient", () => {
+  it("shows district colors at city scale without house glyphs", () => {
     const view = render(<MapCanvas showDemoSurface />);
     const map = state.maps[0]!;
     act(() => map.handlers["load"]?.());
+    expect(map.addLayer).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "fairrent-rent-district-overview", type: "fill" }),
+      "roads",
+    );
     expect(map.addImage).not.toHaveBeenCalled();
     expect(map.addLayer).not.toHaveBeenCalledWith(
       expect.objectContaining({ type: "symbol" }),

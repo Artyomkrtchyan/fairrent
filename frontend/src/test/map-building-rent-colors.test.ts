@@ -1,60 +1,54 @@
+import { createExpression, type ICanonicalTileID } from "@maplibre/maplibre-gl-style-spec";
 import { describe, expect, it } from "vitest";
-import {
-  createBuildingRentSampler,
-  footprintCenter,
-  rentGradientColor,
-} from "@/lib/map-building-rent-colors";
-import type { DistrictPrice } from "@/lib/district-price-layer";
+import { buildingRentPaint, footprintCenter, rentGradientColor } from "@/lib/map-building-rent-colors";
 
-describe("building-only rental heatmap", () => {
-  it("uses the existing vivid green-yellow-red palette", () => {
+describe("native building rent colors", () => {
+  it("uses the green-yellow-red palette", () => {
     expect(rentGradientColor(0)).toBe("#22c55e");
     expect(rentGradientColor(0.5)).toBe("#facc15");
     expect(rentGradientColor(1)).toBe("#ef4444");
   });
 
-  it("samples only buildings inside supported city polygons", () => {
-    const features = [
-      {
-        properties: { district_id: "test" },
-        geometry: {
-          type: "Polygon" as const,
-          coordinates: [[[44.4, 40.1], [44.6, 40.1], [44.6, 40.3], [44.4, 40.3], [44.4, 40.1]]],
-        },
-      },
-    ];
-    const prices = new Map<string, DistrictPrice>([[
-      "test",
-      { districtId: "test", medianUsdM2: 12, areaSampleCount: 5, periodStart: "2026-11-01", periodEnd: "2026-11-07", stale: false },
-    ]]);
-    const color = createBuildingRentSampler(features, prices, { minimum: 12, maximum: 12 });
-    expect(color(44.5, 40.2)).toBe("#facc15");
-    expect(color(44.7, 40.2)).toBeNull();
-  });
-
-  it("keeps low- and high-zoom rental colors identical in expensive districts", () => {
-    const features = [
-      { properties: { district_id: "kentron" }, geometry: {
+  it("evaluates polygon colors consistently at different tile zooms", () => {
+    const district = {
+      geometry: {
         type: "Polygon" as const,
         coordinates: [[[44.48, 40.16], [44.54, 40.16], [44.54, 40.20], [44.48, 40.20], [44.48, 40.16]]],
-      }},
-      { properties: { district_id: "other" }, geometry: {
-        type: "Polygon" as const,
-        coordinates: [[[44.55, 40.16], [44.60, 40.16], [44.60, 40.20], [44.55, 40.20], [44.55, 40.16]]],
-      }},
-    ];
-    const prices = new Map<string, DistrictPrice>([
-      ["kentron", { districtId: "kentron", medianUsdM2: 19.25, areaSampleCount: 608, periodStart: "2026-11-01", periodEnd: "2026-11-07", stale: false }],
-      ["other", { districtId: "other", medianUsdM2: 10, areaSampleCount: 40, periodStart: "2026-11-01", periodEnd: "2026-11-07", stale: false }],
-    ]);
-    const sample = createBuildingRentSampler(features, prices, { minimum: 10, maximum: 19.25 });
-    // House indicators and polygon fills use the same sampler regardless of zoom.
-    expect(sample(44.51, 40.18)).toBe("#ef4444");
-    expect(sample(44.53, 40.19)).toBe("#ef4444");
-    expect(sample(44.57, 40.18)).toBe("#22c55e");
+      },
+      properties: { rentColor: "#ef4444" },
+    };
+    const parsed = createExpression(buildingRentPaint([district], "#e2e8f0"), "layers[0].paint.fill-extrusion-color");
+    if (parsed.result === "error") throw new Error(JSON.stringify(parsed.value));
+
+    const expression = parsed.value;
+
+    function evaluate(z: number, longitude: number, latitude: number) {
+      const scale = 2 ** z;
+      const worldX = (lng: number) => (lng + 180) / 360 * scale;
+      const worldY = (lat: number) =>
+        (1 - Math.asinh(Math.tan(lat * Math.PI / 180)) / Math.PI) / 2 * scale;
+      const x = Math.floor(worldX(longitude));
+      const y = Math.floor(worldY(latitude));
+      const point = (lng: number, lat: number) => ({
+        x: Math.round((worldX(lng) - x) * 8192),
+        y: Math.round((worldY(lat) - y) * 8192),
+      });
+      const a = point(longitude, latitude);
+      const b = point(longitude + 0.0001, latitude + 0.0001);
+      return expression.evaluate(
+        { zoom: z },
+        { type: 3, properties: {}, geometry: [[a, { x: b.x, y: a.y }, b, { x: a.x, y: b.y }, a]] },
+        {},
+        { x, y, z } as ICanonicalTileID,
+      );
+    }
+
+    expect(evaluate(14, 44.51, 40.18)).toBe("#ef4444");
+    expect(evaluate(16, 44.51, 40.18)).toBe("#ef4444");
+    expect(evaluate(14, 44.56, 40.18)).toBe("#e2e8f0");
   });
 
-  it("calculates a building footprint location from vector tile geometry", () => {
+  it("calculates a representative point for a demo district", () => {
     const center = footprintCenter({
       type: "Polygon",
       coordinates: [[[44.5, 40.1], [44.6, 40.1], [44.6, 40.2], [44.5, 40.2]]],
