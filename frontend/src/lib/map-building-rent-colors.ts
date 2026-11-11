@@ -1,5 +1,4 @@
-import type { MultiPolygon, Polygon } from "geojson";
-import type { ExpressionSpecification } from "maplibre-gl";
+import type { Geometry, MultiPolygon, Polygon } from "geojson";
 
 type BuildingPolygon = number[][][];
 type BuildingGeometry = Polygon | MultiPolygon;
@@ -41,28 +40,48 @@ export function footprintCenter(geometry: BuildingGeometry): [number, number] | 
   return count ? [longitude / count, latitude / count] : null;
 }
 
-/** Reject distant districts before evaluating their polygon edges. */
-export function buildingRentPaint(
-  districts: readonly { geometry: BuildingGeometry; properties: { rentColor: string } }[],
-  fallback: string,
-): ExpressionSpecification {
-  const cases = districts.flatMap(({ geometry, properties }) => {
-    const center = footprintCenter(geometry);
-    if (!center) return [];
-    let radius = 0;
-    for (const polygon of polygonsOf(geometry)) {
-      for (const [longitude, latitude] of polygon[0] ?? []) {
-        radius = Math.max(radius, Math.hypot(longitude! - center[0], latitude! - center[1]));
-      }
+function insideRing(longitude: number, latitude: number, ring: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [x, y] = ring[i]!;
+    const [previousX, previousY] = ring[j]!;
+    if ((y! > latitude) !== (previousY! > latitude) &&
+        longitude < x! + (previousX! - x!) * (latitude - y!) / (previousY! - y!)) {
+      inside = !inside;
     }
-    return [
-      [
-        "all",
-        ["<=", ["distance", { type: "Point", coordinates: center }], radius * 112_000 + 100],
-        ["==", ["distance", geometry], 0],
-      ],
-      properties.rentColor,
-    ];
-  });
-  return ["case", ...cases, fallback] as ExpressionSpecification;
+  }
+  return inside;
+}
+
+export function createBuildingColorCache(
+  districts: readonly { geometry: BuildingGeometry; properties: { rentColor: string } }[],
+) {
+  const polygons = districts.flatMap(({ geometry, properties }) =>
+    polygonsOf(geometry).flatMap(([outer, ...holes]) => {
+      if (!outer?.length) return [];
+      const longitude = outer.map((point) => point[0]!);
+      const latitude = outer.map((point) => point[1]!);
+      return [{
+        outer, holes, rentColor: properties.rentColor,
+        west: Math.min(...longitude), east: Math.max(...longitude),
+        south: Math.min(...latitude), north: Math.max(...latitude),
+      }];
+    }),
+  );
+  const assigned = new Set<string>();
+  return (id: string | number, readGeometry: () => Geometry): string | undefined => {
+    const key = String(id);
+    if (assigned.has(key)) return undefined;
+    assigned.add(key);
+    const geometry = readGeometry();
+    if (geometry.type !== "Polygon" && geometry.type !== "MultiPolygon") return undefined;
+    const center = footprintCenter(geometry);
+    if (!center) return undefined;
+    const [longitude, latitude] = center;
+    return polygons.find(({ west, east, south, north, outer, holes }) =>
+      longitude >= west && longitude <= east && latitude >= south && latitude <= north &&
+      insideRing(longitude, latitude, outer) &&
+      !holes.some((hole) => insideRing(longitude, latitude, hole)),
+    )?.rentColor;
+  };
 }

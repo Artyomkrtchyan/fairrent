@@ -1,6 +1,5 @@
-import { createExpression, type ICanonicalTileID } from "@maplibre/maplibre-gl-style-spec";
-import { describe, expect, it } from "vitest";
-import { buildingRentPaint, footprintCenter, rentGradientColor } from "@/lib/map-building-rent-colors";
+import { describe, expect, it, vi } from "vitest";
+import { createBuildingColorCache, footprintCenter, rentGradientColor } from "@/lib/map-building-rent-colors";
 
 describe("native building rent colors", () => {
   it("uses the green-yellow-red palette", () => {
@@ -9,43 +8,23 @@ describe("native building rent colors", () => {
     expect(rentGradientColor(1)).toBe("#ef4444");
   });
 
-  it("evaluates polygon colors consistently at different tile zooms", () => {
-    const district = {
-      geometry: {
-        type: "Polygon" as const,
-        coordinates: [[[44.48, 40.16], [44.54, 40.16], [44.54, 40.20], [44.48, 40.20], [44.48, 40.16]]],
-      },
-      properties: { rentColor: "#ef4444" },
-    };
-    const parsed = createExpression(buildingRentPaint([district], "#e2e8f0"), "layers[0].paint.fill-extrusion-color");
-    if (parsed.result === "error") throw new Error(JSON.stringify(parsed.value));
+  it("keeps one color per feature ID across tile fragments", () => {
+    const polygon = (west: number, east: number) => ({
+      type: "Polygon" as const,
+      coordinates: [[[west, 40.16], [east, 40.16], [east, 40.20], [west, 40.20], [west, 40.16]]],
+    });
+    const color = createBuildingColorCache([
+      { geometry: polygon(44.48, 44.54), properties: { rentColor: "#ef4444" } },
+      { geometry: polygon(44.54, 44.60), properties: { rentColor: "#facc15" } },
+    ]);
+    const firstFragment = () => polygon(44.52, 44.54);
+    const nextFragment = vi.fn(() => polygon(44.54, 44.56));
 
-    const expression = parsed.value;
-
-    function evaluate(z: number, longitude: number, latitude: number) {
-      const scale = 2 ** z;
-      const worldX = (lng: number) => (lng + 180) / 360 * scale;
-      const worldY = (lat: number) =>
-        (1 - Math.asinh(Math.tan(lat * Math.PI / 180)) / Math.PI) / 2 * scale;
-      const x = Math.floor(worldX(longitude));
-      const y = Math.floor(worldY(latitude));
-      const point = (lng: number, lat: number) => ({
-        x: Math.round((worldX(lng) - x) * 8192),
-        y: Math.round((worldY(lat) - y) * 8192),
-      });
-      const a = point(longitude, latitude);
-      const b = point(longitude + 0.0001, latitude + 0.0001);
-      return expression.evaluate(
-        { zoom: z },
-        { type: 3, properties: {}, geometry: [[a, { x: b.x, y: a.y }, b, { x: a.x, y: b.y }, a]] },
-        {},
-        { x, y, z } as ICanonicalTileID,
-      );
-    }
-
-    expect(evaluate(14, 44.51, 40.18)).toBe("#ef4444");
-    expect(evaluate(16, 44.51, 40.18)).toBe("#ef4444");
-    expect(evaluate(14, 44.56, 40.18)).toBe("#e2e8f0");
+    expect(color(123, firstFragment)).toBe("#ef4444");
+    expect(color("123", nextFragment)).toBeUndefined();
+    expect(nextFragment).not.toHaveBeenCalled();
+    expect(color(124, nextFragment)).toBe("#facc15");
+    expect(color(125, () => polygon(44.62, 44.65))).toBeUndefined();
   });
 
   it("calculates a representative point for a demo district", () => {
