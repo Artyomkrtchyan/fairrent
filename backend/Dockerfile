@@ -33,6 +33,8 @@ CMD ["python", "-m", "ml.verify_package"]
 
 # Last stage = default build target.
 FROM base AS api
+# API does not require root: use a numeric unprivileged identity at runtime.
+USER 65532:65532
 EXPOSE 8000
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
