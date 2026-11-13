@@ -62,6 +62,17 @@ No genuine credentials were used as fixtures, and no cloud credentials were adde
 - **Security CI result:** failure due to genuine remaining dependency/container findings. **No waiver was issued**, and do not merge as green.
 - Review requested from Artyom on [PR #88](https://github.com/Artyomkrtchyan/fairrent/pull/88) for backend runtime/user/package disposition, action reference pinning and approval.
 
+## Confirmed remediation experiments — November 13, 2026
+
+[Security CI run 13](https://github.com/Artyomkrtchyan/fairrent/actions/runs/43495357452) confirmed:
+- **Python 3.12 + Pillow 13.0.0:** pip-audit reported no known vulnerabilities and ML tests yielded **89 passed, 6 skipped**.
+- **Python 3.12 + SoupSieve 4.1:** pip-audit reported no known vulnerabilities and reviewer unit tests yielded **19 passed**.
+- **Python 3.10 scans still fail:** backend-development resolves SoupSieve 2.10 (3 advisories); ML training resolves Pillow 12.3.0 (42 advisories). These failures are genuine and intentionally remain gating.
+- **Backend image Trivy still fails:** separate remediation of OS and Python package issues is required.
+- **Component CI passed** for the same head commit.
+
+**Migration decision needed:** Owners must coordinate a compatible Python 3.12 transition in the ML and backend development environments, including runtime Docker images where the affected packages are installed, after complete component/integration testing. Experiment jobs do not update deployed software. Do not change audit interpreter alone or suppress advisories to claim remediation.
+
 ## Outstanding acceptance and handoff
 - First GitHub Actions run examined: 3 security jobs passed, 2 failed; the Python audit now uses four independent matrix children. Verify the newest runs and archive results.
 - Reproduce a CI-level synthetic negative control in an isolated throwaway branch/fixture without committing fake keys to main; record expected failure.
