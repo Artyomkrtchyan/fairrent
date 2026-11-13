@@ -1,25 +1,12 @@
 import type { getListingDetails } from "@/api/listings";
 import { apiMode } from "@/api/client";
 import { formatListingRent } from "@/lib/listing-rent";
+import { safeExternalUrl } from "@/lib/safe-external-url";
 
 type Listing = Awaited<ReturnType<typeof getListingDetails>>["listing"];
 
-function safeSourceUrl(value: string): string | null {
-  try {
-    const url = new URL(value);
-
-    if ((url.protocol !== "https:" && url.protocol !== "http:") || url.username || url.password) {
-      return null;
-    }
-
-    return url.href;
-  } catch {
-    return null;
-  }
-}
-
 export function ListingSource({ listing }: { listing: Listing }) {
-  const sourceUrl = safeSourceUrl(listing.source_url);
+  const sourceUrl = safeExternalUrl(listing.source_url);
 
   const originalPrice =
     listing.price_original !== null && listing.currency_original !== null
