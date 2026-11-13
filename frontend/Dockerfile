@@ -23,6 +23,7 @@ FROM build AS verification
 RUN VITE_API_MODE=mock npm test && npm run lint
 
 FROM ${NGINX_IMAGE} AS runtime
+RUN apk upgrade --no-cache
 COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /workspace/frontend/dist/ /usr/share/nginx/html/
 RUN nginx -t
