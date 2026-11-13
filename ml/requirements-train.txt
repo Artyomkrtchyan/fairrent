@@ -5,3 +5,4 @@ scikit-learn>=1.5
 rdflib>=7.0
 jsonschema>=4.20
 matplotlib>=3.8
+pillow==13.0.0
