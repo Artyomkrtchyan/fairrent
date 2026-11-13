@@ -107,7 +107,7 @@ jobs:
           python-version: "3.12"
       - name: Install proposed development dependency set
         run: |
-          python -m pip install -r backend/requirements-dev.txt "soupsieve>=4.0.0" pip-audit
+          python -m pip install -r backend/requirements-dev.txt -r ml/requirements-train.txt "soupsieve>=4.0.0" "Pillow>=13.0.0" pip-audit
           python -m pip check
           python -c "import bs4, soupsieve; print('soupsieve', soupsieve.__version__)"
       - name: Audit proposed environment
