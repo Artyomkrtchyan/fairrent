@@ -51,6 +51,17 @@ No genuine credentials were used as fixtures, and no cloud credentials were adde
 - Added CI synthetic-secret positive control using a temporary test-only regex and a separate frontend static-root runtime smoke test. These changes require hosted CI validation.
 - No unapproved backend/ML dependency or deployment changes were made, and no exceptions granted.
 
+## Verification update — 2026-11-13
+
+- [Component CI run 263](https://github.com/Artyomkrtchyan/fairrent/actions/runs/43491403002) passed, including backend/frontend tests, Docker build, infrastructure checks, contracts and browser smoke.
+- [Security CI run 9](https://github.com/Artyomkrtchyan/fairrent/actions/runs/43491402951): Gitleaks with synthetic control, frontend npm, frontend Docker image including runtime smoke, backend runtime and contracts audits all passed.
+- **ML upgrade feasibility:** Python 3.12 + Pillow 13.0.0 passed pip-audit with no known findings and **89 ML tests passed, 6 skipped** in run 9. This is a proven experimental environment, **not** a migration of the deployed Python 3.10 runtime.
+- **ML runtime Python 3.10 audit:** still fails on the older resolved Pillow. Migration requires ML/component-owner approval and compatibility review.
+- **Backend development requirements:** now resolve soupsieve 2.10, reporting three advisories (CVE-2026-126190, CVE-2026-126193, CVE-2026-126191), with fix versions 4.0.0/3.0.2 as reported by pip-audit; retest after the owner approves an appropriate compatible version.
+- **Backend container:** corrected the security build context to repo root, matching the updated backend Dockerfile. Trivy still reports Debian 13.7 HIGH findings (51 OS HIGH in scan output, plus vulnerable setuptools vendored packages). Needs backend-owner remediation and retest; severity gate remains enforced.
+- **Security CI result:** failure due to genuine remaining dependency/container findings. **No waiver was issued**, and do not merge as green.
+- Review requested from Artyom on [PR #88](https://github.com/Artyomkrtchyan/fairrent/pull/88) for backend runtime/user/package disposition, action reference pinning and approval.
+
 ## Outstanding acceptance and handoff
 - First GitHub Actions run examined: 3 security jobs passed, 2 failed; the Python audit now uses four independent matrix children. Verify the newest runs and archive results.
 - Reproduce a CI-level synthetic negative control in an isolated throwaway branch/fixture without committing fake keys to main; record expected failure.
