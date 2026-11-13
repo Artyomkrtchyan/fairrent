@@ -121,7 +121,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Build backend Docker image
-        run: docker build -t fairrent-backend:security ./backend
+        run: docker build -f backend/Dockerfile -t fairrent-backend:security .
       - name: Scan backend image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
