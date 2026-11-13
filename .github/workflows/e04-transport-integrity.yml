@@ -18,9 +18,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          openssl s_client -connect fairrent.online:443 -servername fairrent.online \
+          if ! timeout 20 openssl s_client -connect fairrent.online:443 -servername fairrent.online \
             -verify_hostname fairrent.online -verify_return_error \
-            </dev/null > "$RUNNER_TEMP/tls-check.txt" 2>&1
+            </dev/null > "$RUNNER_TEMP/tls-check.txt" 2>&1; then
+            tail -n 25 "$RUNNER_TEMP/tls-check.txt"
+            echo "TLS handshake or certificate verification failed; owner must investigate." >&2
+            exit 1
+          fi
           openssl x509 -in <(openssl s_client -connect fairrent.online:443 \
             -servername fairrent.online </dev/null 2>/dev/null) \
             -noout -subject -issuer -dates
