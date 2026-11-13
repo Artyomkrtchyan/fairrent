@@ -7,6 +7,7 @@ import { Money, PageHeader, RateNote } from "@/components/ui-bits";
 import { ReviewerSession } from "@/components/ReviewerSession";
 import { ReviewDecisionForm } from "@/components/ReviewDecisionForm";
 import { useReviewerSession } from "@/lib/reviewer-session";
+import { safeExternalUrl } from "@/lib/safe-external-url";
 
 export const Route = createFileRoute("/reviews/$id")({
   validateSearch: (search: Record<string, unknown>): { listing?: string } => {
@@ -68,6 +69,7 @@ export function ReviewCaseContent({
     enabled: apiMode === "mock" || !!session.access,
   });
   const review = query.data;
+  const sourceUrl = review ? safeExternalUrl(review.listing.source_url) : null;
   return (
     <main className="mx-auto max-w-4xl space-y-5 px-4 py-8 sm:px-6">
       <Link to="/reviews" className="text-sm font-semibold text-primary">
@@ -109,14 +111,20 @@ export function ReviewCaseContent({
                 <Money usd={review.listing.price_monthly_normalized} suffix="/month" />
               )}
             </p>
-            <a
-              href={review.listing.source_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm font-semibold text-primary underline"
-            >
-              Original listing
-            </a>
+            {sourceUrl ? (
+              <a
+                href={sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-semibold text-primary underline"
+              >
+                Original listing
+              </a>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No usable source link was supplied.
+              </p>
+            )}
             <h3 className="font-semibold">Signal evidence</h3>
             {review.signals.length === 0 ? (
               <p>No signals recorded.</p>
