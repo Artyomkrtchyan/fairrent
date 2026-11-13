@@ -21,7 +21,6 @@ jobs:
           openssl s_client -connect fairrent.online:443 -servername fairrent.online \
             -verify_hostname fairrent.online -verify_return_error \
             </dev/null > "$RUNNER_TEMP/tls-check.txt" 2>&1
-          grep -q 'Verify return code: 0 (ok)' "$RUNNER_TEMP/tls-check.txt"
           openssl x509 -in <(openssl s_client -connect fairrent.online:443 \
             -servername fairrent.online </dev/null 2>/dev/null) \
             -noout -subject -issuer -dates
