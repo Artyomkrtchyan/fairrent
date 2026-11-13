@@ -44,7 +44,7 @@ jobs:
           set -euo pipefail
           curl --fail --silent --show-error --location --max-time 25 \
             https://fairrent.online/ --output "$RUNNER_TEMP/home.html"
-          if grep -Eiq '<(script|img|link)[^>]+(src|href)=["'\'' ]*http://' "$RUNNER_TEMP/home.html"; then
+          if grep -Eiq '<(script|img|link)[^>]+(src|href)=[^>]*http://' "$RUNNER_TEMP/home.html"; then
             echo "Initial HTML includes an insecure HTTP resource" >&2
             exit 1
           fi
