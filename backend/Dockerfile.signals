@@ -10,4 +10,6 @@ COPY backend/sql/ ./backend/sql/
 COPY ml/inference.py ml/ontology_rules.py ml/intervals.py ml/attributions.py ml/train_compare.py ml/baseline.py ml/market_stats.py ./ml/
 COPY data_pipeline/__init__.py data_pipeline/geography.py ./data_pipeline/
 COPY contracts/openapi.json ./contracts/openapi.json
+# Signal generation does not require root privileges.
+USER 65532:65532
 CMD ["python", "-m", "backend.generate_signals"]
