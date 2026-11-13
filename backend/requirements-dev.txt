@@ -5,6 +5,7 @@ jsonschema==4.26.0
 SQLAlchemy==2.0.55
 GeoAlchemy2==0.20.0
 beautifulsoup4==4.15.0
+soupsieve==4.1
 tenacity==9.2.1
 httpx==0.28.1
 alembic==1.20.0
