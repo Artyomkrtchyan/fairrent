@@ -39,6 +39,16 @@ Existing implementation references: `backend/reviewer_auth.py` (opaque bearer to
 7. Inspect browser DevTools while using the reviewer UI, checking unauthorized errors and logout handling. Record screenshots without credentials or private listing details.
 8. Record evidence and outcomes in the matrix below. Every failed check requires a GitHub issue or explicit documented owner acceptance before release.
 
+## Automated evidence recorded (2026-11-13)
+
+- [Component CI run 263](https://github.com/Artyomkrtchyan/fairrent/actions/runs/43491403002) **passed**, including the backend test job (and its existing reviewer authorization and database tests), frontend checks and Chromium browser smoke. This is a CI result on the E02 security branch, **not** a staging authorization test or a production approval.
+- Existing `backend/tests/test_reviews.py` covers absent/malformed/duplicate credentials, viewer-role denial, invalid query and update bodies, version conflicts, fail-closed database errors and safe API error responses.
+- Existing `backend/tests/test_reviews_postgres.py` covers test session issuance/revocation/expiry, decision history, UTC timestamps, concurrency (exactly one committed decision), SQL input parameterization and transactional rollback after a forced audit constraint error.
+- Existing `frontend/src/test/reviewer-integration.test.tsx` covers session handling, failed writes, current-version updates and UI evidence. These are synthetic automated checks.
+- The E02 Security CI still has unresolved HIGH findings and dependency advisories; **E05-01 remains open**. Staging-specific E05-02–E05-09 and a human incident tabletop are **not yet executed**, regardless of passing component tests.
+
+These records separate automated coverage from deployment acceptance. Do not mark the checklist rows `Completed` without the specified staging evidence and owner sign-off.
+
 ## Incident response runbook
 
 **Triggers:** suspected reviewer token exposure; unexpected review updates; repeated 401/403 anomalies; secrets found in CI or log output; altered audit history; suspected data access outside intended scope; backend compromise.
