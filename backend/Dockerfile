@@ -1,7 +1,10 @@
 # Build from the repository root (the ML package and A05 registry live outside backend/):
 #   docker build -f backend/Dockerfile -t fairrent-api .                      # API image (default target)
 #   docker build -f backend/Dockerfile --target verify -t fairrent-api-verify .   # B07 verification
-FROM python:3.10-slim AS base
+FROM python:3.12-slim AS base
+# Keep OS patches current at image build time; scan output remains a release gate.
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
