@@ -11,10 +11,10 @@ Owner: Mane (verification). Infrastructure/IAM owner: Artyom. Model/data artifac
 ## Results
 | Verification | Evidence | Status |
 | --- | --- | --- |
-| Valid public TLS certificate, chain and hostname | E04 GitHub Actions transport job | Pending first CI run |
-| HTTP redirect to HTTPS | E04 GitHub Actions transport job | Pending first CI run |
-| Initial HTML static mixed-content indication | E04 GitHub Actions transport job | Pending first CI run; cannot rule out dynamic/browser mixed content |
-| Synthetic SHA-256 tampering rejected | E04 GitHub Actions integrity-negative-control | Pending first CI run |
+| Valid public TLS certificate, chain and hostname | [E04 CI run](https://github.com/Artyomkrtchyan/fairrent/actions/runs/43492720400): DNS failure before TLS (No address associated with hostname) | BLOCKED: confirm correct hostname/DNS with Artyom |
+| HTTP redirect to HTTPS | E04 transport job | Not reached: DNS prerequisite failed |
+| Initial HTML static mixed-content indication | E04 transport job | Not reached; cannot rule out dynamic/browser mixed content |
+| Synthetic SHA-256 tampering rejected | [E04 CI run](https://github.com/Artyomkrtchyan/fairrent/actions/runs/43492720400): passed | Verified synthetic-only negative control |
 | Production B07 model/dataset manifest integrity | Trusted manifest, published image digest, serving loader logs | Owner verification pending |
 | Database least-privilege and private boundaries | Artyom-controlled security-group and SQL role evidence | Owner verification pending |
 | Sensitive application logs and exports | Sanitized example and agreed redaction/retention rules | Owner verification pending |
@@ -25,3 +25,7 @@ Owner: Mane (verification). Infrastructure/IAM owner: Artyom. Model/data artifac
 3. With the model owner, use an **approved synthetic artifact** and trusted manifest to show actual model-loading code rejects a modified file, without copying production files or credentials.
 4. Ask backend/deployment owner to verify production DB grants, RDS ingress boundaries and whether API/CloudWatch logs include sensitive request bodies, authorization headers, unredacted location/contact data or secrets. Record sanitized evidence and retention.
 5. Document owner sign-off, remediation, and re-test results before closing E04. No claim of complete transport/asset security is made by a synthetic negative control alone.
+
+## Transport blocker — November 13, 2026
+
+From a GitHub-hosted runner, `openssl s_client` failed to resolve `fairrent.online` (OpenSSL `BIO_lookup_ex`: *No address associated with hostname*). This is a **DNS/reachability or hostname issue**, not evidence of an invalid certificate: no TLS handshake occurred. Infrastructure owner must confirm the correct hostname or restore DNS, then rerun certificate, redirect and mixed-content checks. No DNS/AWS changes were made in this branch.
