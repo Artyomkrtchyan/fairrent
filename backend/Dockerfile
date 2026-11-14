@@ -31,10 +31,14 @@ RUN pip install --no-cache-dir "jsonschema>=4.20"
 ENV FAIRRENT_MODEL_PACKAGE=/package PYTHONDONTWRITEBYTECODE=1
 CMD ["python", "-m", "ml.verify_package"]
 
-# Last stage = default build target.
-FROM base AS api
-# API does not require root: use a numeric unprivileged identity at runtime.
-USER 65532:65532
+# Last stage = default build target. Experiment: minimal runtime without apt and shell.
+# Keep Python/site-packages from the tested builder while reducing OS packages.
+FROM gcr.io/distroless/base-debian13:nonroot AS api
+COPY --from=base /usr/local /usr/local
+COPY --from=base /app /app
+WORKDIR /app
+ENV PATH=/usr/local/bin:/usr/bin:/bin
+ENV PYTHONDONTWRITEBYTECODE=1
 EXPOSE 8000
-
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+USER 65532:65532
+CMD ["/usr/local/bin/python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
