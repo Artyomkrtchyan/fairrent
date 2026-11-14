@@ -5,7 +5,7 @@ FROM python:3.12-slim AS base
 # Keep OS patches current at image build time; scan output remains a release gate.
 RUN apt-get update && apt-get upgrade -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
-RUN apt-get update && apt-get purge -y --auto-remove libsqlite3-0 libncursesw6 libudev1 \
+RUN apt-get update && apt-get purge -y libsqlite3-0 libncursesw6 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
