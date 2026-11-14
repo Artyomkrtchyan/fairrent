@@ -1,4 +1,6 @@
-FROM python:3.10-slim
+FROM python:3.12-slim
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY backend/requirements.txt backend/requirements-signals.txt ./backend/
 COPY ml/requirements.txt ml/requirements-inference.txt ./ml/
@@ -8,4 +10,6 @@ COPY backend/sql/ ./backend/sql/
 COPY ml/inference.py ml/ontology_rules.py ml/intervals.py ml/attributions.py ml/train_compare.py ml/baseline.py ml/market_stats.py ./ml/
 COPY data_pipeline/__init__.py data_pipeline/geography.py ./data_pipeline/
 COPY contracts/openapi.json ./contracts/openapi.json
+# Signal generation does not require root privileges.
+USER 65532:65532
 CMD ["python", "-m", "backend.generate_signals"]

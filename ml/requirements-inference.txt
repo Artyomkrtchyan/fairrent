@@ -1,5 +1,7 @@
 # B07 runtime dependencies of ml.inference (what the backend image needs in addition to its own).
-# Python 3.10 compatible. scikit-learn supplies the B09 cohort index.
+# Python 3.12 compatible. scikit-learn supplies the B09 cohort index.
+# Pillow 13 removes previously flagged image-library vulnerabilities.
 -r requirements.txt
 catboost>=1.2.5
 scikit-learn>=1.5
+pillow==13.0.0
