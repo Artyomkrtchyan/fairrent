@@ -62,6 +62,31 @@ jobs:
           echo "No obvious insecure script/image/stylesheet URL in initial HTML."
           echo "This does not replace browser mixed-content testing."
 
+  tls-validation-negative-control:
+    name: Verify certificate hostname checks fail closed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate trusted fixture and reject wrong hostname
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/e04-tls"
+          cd "$RUNNER_TEMP/e04-tls"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout fixture.key -out fixture.crt \
+            -subj "/CN=e04.example.test" \
+            -addext "subjectAltName=DNS:e04.example.test" >/dev/null 2>&1
+          openssl verify -CAfile fixture.crt \
+            -verify_hostname e04.example.test fixture.crt
+          if openssl verify -CAfile fixture.crt \
+            -verify_hostname wrong.example.test fixture.crt; then
+            echo "A certificate for the wrong hostname was accepted" >&2
+            exit 1
+          fi
+          echo "Synthetic certificate validation rejected the incorrect hostname."
+          echo "This test does NOT validate the live FairRent certificate."
+
   integrity-negative-control:
     name: Reject tampered synthetic artifact
     runs-on: ubuntu-latest
