@@ -79,6 +79,9 @@ jobs:
       - name: Build API image
         run: docker build -f backend/Dockerfile --target api --tag fairrent-api:ci-${{ github.sha }} .
 
+      - name: Diagnose shared libraries inside minimal API runtime
+        run: |
+          docker run --rm fairrent-api:ci-${{ github.sha }} python -c "import glob,ctypes; f=glob.glob('/usr/local/lib/python3.12/site-packages/numpy/_core/_multiarray_umath*.so')[0]; print('Loading', f); ctypes.CDLL(f)"
       - name: Check the B07 inference runtime imports in the API image
         run: docker run --rm fairrent-api:ci-${{ github.sha }} python -c "from ml import inference; print(inference.INFERENCE_INTERFACE_VERSION)"
 
