@@ -36,6 +36,7 @@ CMD ["python", "-m", "ml.verify_package"]
 # Last stage = default build target.
 FROM base AS api
 # API does not require root: use a numeric unprivileged identity at runtime.
+# OS package minimization is an experiment until verified by security and component CI.
 USER 65532:65532
 EXPOSE 8000
 
