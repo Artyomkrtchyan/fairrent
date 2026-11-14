@@ -1,3 +1,14 @@
+
+## Server intentionally offline — November 14, 2026
+
+The team confirmed that the server was deliberately turned off and the public link is not currently active. The earlier DNS failure was therefore not sufficient evidence of an application or TLS configuration defect.
+
+Offline CI now independently verifies the committed Terraform ALB HTTPS certificate/redirect configuration and checks synthetic certificate hostname rejection and SHA-256 artifact tampering. The workflow separately records that live deployment verification is not executed. **This is offline-configuration acceptance only**, not proof that live TLS or DNS is currently functioning.
+
+- [Offline E04 verification run](https://github.com/Artyomkrtchyan/fairrent/actions/runs/43630648329): four jobs passed; live HTTPS job skipped as intended.
+- To exercise live TLS, restart the approved server, restore or confirm public DNS, ensure the ACM certificate is correct, then set GitHub Actions repository variable `FAIRRENT_E04_LIVE_ENABLED=true` or manually dispatch E04 with `verify_live=true`. The live job is then required to pass, and cannot be silently ignored.
+- If the deployed hostname differs from `fairrent.online`, set `FAIRRENT_PUBLIC_HOSTNAME` to the correct approved host (hostname only). Do not guess the load balancer URL.
+- The live acceptance evidence and owner sign-off remain pending while the deployment is offline.
 # E04 — Transport and artifact integrity verification
 
 Owner: Mane (verification). Infrastructure/IAM owner: Artyom. Model/data artifact owner: ML/data team. Related: #50.
