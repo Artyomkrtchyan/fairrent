@@ -4,13 +4,62 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      verify_live:
+        description: 'Run live HTTPS checks against an active public deployment'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
 
 jobs:
+  offline-transport-configuration:
+    name: Verify HTTPS/redirect configuration offline
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Inspect Terraform ALB HTTPS and HTTP redirect policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          config=infra/terraform/alb/lb.tf
+          grep -Fq 'resource "aws_lb_listener" "https"' "$config"
+          grep -Fq 'certificate_arn = var.certificate_arn' "$config"
+          grep -Fq 'ssl_policy      = "ELBSecurityPolicy-TLS13-1-2-2021-06"' "$config"
+          grep -Fq 'resource "aws_lb_listener" "http"' "$config"
+          grep -Fq 'status_code = "HTTP_301"' "$config"
+          grep -Fq 'protocol    = "HTTPS"' "$config"
+          echo "Configured ALB TLS and HTTP redirect controls present."
+          echo "This does not establish that a currently running public server enforces them."
+
+  deployment-verification-status:
+    name: Record live-verification requirement
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      LIVE_FLAG: ${{ vars.FAIRRENT_E04_LIVE_ENABLED }}
+      MANUAL_LIVE: ${{ inputs.verify_live }}
+    steps:
+      - name: Document current verification scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$LIVE_FLAG" == "true" || "$MANUAL_LIVE" == "true" ]]; then
+            echo "Live verification was requested: the separate transport job MUST pass." | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Deployment inactive: live DNS/TLS/redirect verification intentionally NOT EXECUTED." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "Passing offline tests is NOT E04 deployed acceptance. Enable FAIRRENT_E04_LIVE_ENABLED=true or manually run with verify_live=true after reopening the server." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
   transport:
-    name: Check FairRent HTTPS certificate and redirect
+    name: Check FairRent HTTPS certificate and redirect (active deployments only)
+    if: ${{ vars.FAIRRENT_E04_LIVE_ENABLED == 'true' || inputs.verify_live == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
