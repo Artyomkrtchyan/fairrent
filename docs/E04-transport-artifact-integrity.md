@@ -29,3 +29,14 @@ Owner: Mane (verification). Infrastructure/IAM owner: Artyom. Model/data artifac
 ## Transport blocker — November 13, 2026
 
 From a GitHub-hosted runner, `openssl s_client` failed to resolve `fairrent.online` (OpenSSL `BIO_lookup_ex`: *No address associated with hostname*). This is a **DNS/reachability or hostname issue**, not evidence of an invalid certificate: no TLS handshake occurred. Infrastructure owner must confirm the correct hostname or restore DNS, then rerun certificate, redirect and mixed-content checks. No DNS/AWS changes were made in this branch.
+
+## DNS recovery and CI hostname configuration — November 14, 2026
+
+The E04 HTTPS test requires a publicly resolvable public hostname. GitHub Actions reported a DNS lookup failure for fairrent.online before it could attempt TLS.
+
+1. Infrastructure owner: confirm the current public hostname and DNS provider/registrar. If fairrent.online remains the target, inspect nameservers, A/AAAA/ALIAS records, DNSSEC and domain registration. Obtain the real ALB target via the authorized Terraform command: `terraform output -raw alb_dns_name`. Never guess the ALB address.
+2. If the deployment moved to a different public hostname, set the GitHub Actions repository variable `FAIRRENT_PUBLIC_HOSTNAME` to that exact hostname, without https:// or a path. Ensure the ACM certificate covers it. E04 defaults to fairrent.online if the variable is not set.
+3. Rerun the E04 workflow. The DNS prerequisite, TLS chain and hostname check, HTTP redirect and initial HTML checks must all pass. Check browser DevTools separately for dynamic mixed content.
+4. Record verified public hostname, UTC time, workflow URL, deployment digest and infrastructure owner sign-off.
+
+No domain, DNS, IAM, AWS or Terraform deployment settings were changed here. Failed public DNS must not be silently interpreted as an HTTPS security success.
