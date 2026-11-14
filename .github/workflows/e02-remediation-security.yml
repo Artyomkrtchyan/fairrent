@@ -147,7 +147,7 @@ jobs:
         run: docker build -f backend/Dockerfile -t fairrent-backend:security .
       - name: Verify API runs without root privileges
         run: |
-          test "$(docker run --rm --entrypoint id fairrent-backend:security -u)" = "65532"
+          test "$(docker run --rm --entrypoint /usr/local/bin/python fairrent-backend:security -c 'import os; print(os.getuid())')" = "65532"
       - name: Scan backend image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
