@@ -1,13 +1,49 @@
-# E02 — Security scanning and findings
+# E02 — Security verification and remediation evidence
 
-## Final isolated E02 verification — November 14, 2026
+Issue: #48 · PR: #136 · Evidence updated: 2026-11-15
 
-**The final remediation branch `security/E02-python312-remediation` supersedes the earlier draft scanner branch.** All ten security jobs and all Component CI jobs passed with the distroless Python 3.12 backend image, pinned Pillow 13 and SoupSieve 4.1, non-root API/worker, patched Nginx, and the existing backend/ML/frontend test suites. See [E02 Security CI](https://github.com/Artyomkrtchyan/fairrent/actions/runs/43591264815) and [Component CI](https://github.com/Artyomkrtchyan/fairrent/actions/runs/43591264797); the independent experimental image also passed [Security CI](https://github.com/Artyomkrtchyan/fairrent/actions/runs/43590714521) and [Component CI](https://github.com/Artyomkrtchyan/fairrent/actions/runs/43590714484).
+## Current assessment
 
-The distroless image contains the required libffi, libstdc++ and libgcc runtime shared libraries. The previous Debian slim image's 47 HIGH OS findings are not concealed by ignored CVEs; the application was rebuilt using a smaller supported runtime and rescanned successfully. A later explicit HTTP /health startup smoke step was added and must remain green on the canonical PR run.
+**Implementation and automated verification: passed on the E02 PR branch.**
+**Merge, production rollout and issue closure: not completed.** Code-owner review of the runtime change and CI trust settings is still required.
 
-**Release disposition:** CI passing is not permission to deploy. Backend owner must approve Python 3.12 compatibility, API and B06 image changes, and container lifecycle behavior. No AWS or deployed state changed, and no security findings were waived. Earlier failed-run sections below are historical records, not the latest release status.
+The current PR supersedes closed, unmerged scanner-only PR #88 and experimental PR #138. The old investigations below are **historical**, not currently failing checks.
 
+| Original acceptance requirement | Evidence / disposition |
+| --- | --- |
+| Secrets, dependency and container scanning | Canonical `.github/workflows/security-ci.yml`: Gitleaks, four pip-audit targets, npm audit, backend/frontend Trivy. All ten security jobs passed. |
+| Harmless synthetic detection and severity handling | Gitleaks synthetic positive control deliberately detects test-only text; redacted results; HIGH/CRITICAL image findings fail CI, with no exception/ignore list applied. The synthetic detection is scoped to its test rule, not a blanket guarantee about all secrets. |
+| CI tokens, untrusted inputs, action references, artifact access | Security workflow has `contents: read`, checkout `persist-credentials: false`, runs on `pull_request` rather than `pull_request_target`, contains no cloud credentials or artifact upload, and redacts scanner findings. Actions currently use mutable version tags, not immutable SHA pins: **remaining code-owner review item**, not described as fixed. |
+| Container privilege, packages, port review | API distroless runtime uses UID 65532, `EXPOSE 8000` (metadata only); backend B06 signal worker is non-root. Backend library set was reduced after dependency/import tests; frontend Alpine packages were upgraded and Nginx starts/responds in CI. The frontend runtime still serves port 80; its root/runtime privilege model should be included in owner sign-off rather than claimed remediated. |
+| Vulnerability remediation and retest | Python 3.12, Pillow 13.0.0 and SoupSieve 4.1 resolve the previously failing Python audits in CI. Minimal backend image and patched frontend image both pass HIGH/CRITICAL Trivy with the failure gate enabled. There are no known active security exceptions in this PR. |
+
+## Green runs on the submitted PR
+
+- [Security CI](https://github.com/Artyomkrtchyan/fairrent/actions/runs/43591646906): **success**, all ten jobs (including backend/frontend image vulnerability scans and synthetic Gitleaks fixture).
+- [Component CI](https://github.com/Artyomkrtchyan/fairrent/actions/runs/43591646908): **success**, backend/frontend tests, Chromium browser smoke, contracts, infrastructure and Docker builds, including runtime checks.
+- A separate [HTTP /health container smoke run](https://github.com/Artyomkrtchyan/fairrent/actions/runs/43591055158) also passed on the same tested image approach, before consolidation.
+- None of these runs deploys to AWS from a pull-request branch.
+
+## Security review and merge gate
+
+Before merging PR #136, an authorized reviewer should explicitly confirm:
+
+- [ ] The Python 3.12 API/B06 signal-worker and distroless runtime are supported by the deployment and operational recovery procedures (including debugging without a shell).
+- [ ] The remaining version-tagged GitHub Actions references have an approved policy (prefer pinning to reviewed full commit SHAs); verify repository branch protections, default token permissions and artifact access/retention rules.
+- [ ] API/frontend published ports and runtime users match the intended ALB/host configuration; no new privilege or exposure was introduced.
+- [ ] The final diff is reviewed and the required CI checks remain green on the merge candidate.
+
+**No reviewed acceptance or merge approval is claimed here.** The task's scanning and remediation deliverables are demonstrated, while the original requirement to review workflow trust/access with the CI owner remains an explicit acceptance action.
+
+## Severity and exception policy
+
+HIGH/CRITICAL findings fail the security workflow and require component-owner triage and a verified fix or narrowly documented temporary acceptance. Any exception must specify package/CVE, image digest, exploitability, compensating controls, approver, date, expiry and retest evidence; no blanket ignores. Moderate and low findings are recorded for prioritized maintenance. Never add live credentials to fixtures or logs.
+
+## Historical investigation log (superseded)
+
+The records below describe earlier versions and failing experiments. They are preserved for audit history and should not be mistaken for the current PR status.
+
+---
 
 Date: 2026-11-02. Scope: FairRent secret scanning, dependency auditing, container images, and GitHub Actions review. Related issue: #48.
 
