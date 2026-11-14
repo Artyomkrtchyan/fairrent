@@ -35,6 +35,8 @@ CMD ["python", "-m", "ml.verify_package"]
 # Keep Python/site-packages from the tested builder while reducing OS packages.
 FROM gcr.io/distroless/base-debian13:nonroot AS api
 COPY --from=base /usr/local /usr/local
+# Python ctypes depends on libffi; retain this minimal shared library only.
+COPY --from=base /usr/lib/x86_64-linux-gnu/libffi.so.8 /usr/lib/x86_64-linux-gnu/libffi.so.8
 COPY --from=base /app /app
 WORKDIR /app
 ENV PATH=/usr/local/bin:/usr/bin:/bin
