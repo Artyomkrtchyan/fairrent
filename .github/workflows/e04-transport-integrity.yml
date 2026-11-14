@@ -13,20 +13,28 @@ jobs:
     name: Check FairRent HTTPS certificate and redirect
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      E04_HOST: ${{ vars.FAIRRENT_PUBLIC_HOSTNAME || 'fairrent.online' }}
     steps:
+      - name: Verify DNS and hostname
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$E04_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || { echo 'Invalid configured hostname' >&2; exit 1; }
+          getent ahostsv4 "$E04_HOST" || { echo "DNS missing for $E04_HOST: restore DNS or set FAIRRENT_PUBLIC_HOSTNAME to the approved deployed host." >&2; exit 1; }
       - name: Check certificate chain and hostname
         shell: bash
         run: |
           set -euo pipefail
-          if ! timeout 20 openssl s_client -connect fairrent.online:443 -servername fairrent.online \
-            -verify_hostname fairrent.online -verify_return_error \
+          if ! timeout 20 openssl s_client -connect $E04_HOST:443 -servername "$E04_HOST" \
+            -verify_hostname "$E04_HOST" -verify_return_error \
             </dev/null > "$RUNNER_TEMP/tls-check.txt" 2>&1; then
             tail -n 25 "$RUNNER_TEMP/tls-check.txt"
             echo "TLS handshake or certificate verification failed; owner must investigate." >&2
             exit 1
           fi
-          openssl x509 -in <(openssl s_client -connect fairrent.online:443 \
-            -servername fairrent.online </dev/null 2>/dev/null) \
+          openssl x509 -in <(openssl s_client -connect $E04_HOST:443 \
+            -servername "$E04_HOST" </dev/null 2>/dev/null) \
             -noout -subject -issuer -dates
       - name: Verify HTTP redirects to HTTPS
         shell: bash
@@ -34,19 +42,19 @@ jobs:
           set -euo pipefail
           target=$(curl --fail --silent --show-error --location \
             --max-time 25 --output /dev/null --write-out '%{url_effective}' \
-            http://fairrent.online/)
-          case "$target" in
-            https://fairrent.online|https://fairrent.online/*)
-              echo "HTTP redirect target is HTTPS on fairrent.online"
-              ;;
-            *) echo "Unexpected HTTP redirect target: $target" >&2; exit 1 ;;
-          esac
+            http://$E04_HOST/)
+          if [[ "$target" != "https://$E04_HOST" && "$target" != "https://$E04_HOST/"* ]]; then
+            echo "Unexpected HTTP redirect target: $target" >&2
+            exit 1
+          fi
+          echo "HTTP redirect target is HTTPS on $E04_HOST"
+
       - name: Check initial HTML for obvious insecure resource references
         shell: bash
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --location --max-time 25 \
-            https://fairrent.online/ --output "$RUNNER_TEMP/home.html"
+            https://$E04_HOST/ --output "$RUNNER_TEMP/home.html"
           if grep -Eiq '<(script|img|link)[^>]+(src|href)=[^>]*http://' "$RUNNER_TEMP/home.html"; then
             echo "Initial HTML includes an insecure HTTP resource" >&2
             exit 1
