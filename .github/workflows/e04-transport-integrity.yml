@@ -1,0 +1,157 @@
+name: E04 Transport and Integrity Verification
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      verify_live:
+        description: 'Run live HTTPS checks against an active public deployment'
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  offline-transport-configuration:
+    name: Verify HTTPS/redirect configuration offline
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Inspect Terraform ALB HTTPS and HTTP redirect policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          config=infra/terraform/alb/lb.tf
+          grep -Fq 'resource "aws_lb_listener" "https"' "$config"
+          grep -Fq 'certificate_arn = var.certificate_arn' "$config"
+          grep -Fq 'ssl_policy      = "ELBSecurityPolicy-TLS13-1-2-2021-06"' "$config"
+          grep -Fq 'resource "aws_lb_listener" "http"' "$config"
+          grep -Fq 'status_code = "HTTP_301"' "$config"
+          grep -Fq 'protocol    = "HTTPS"' "$config"
+          echo "Configured ALB TLS and HTTP redirect controls present."
+          echo "This does not establish that a currently running public server enforces them."
+
+  deployment-verification-status:
+    name: Record live-verification requirement
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      LIVE_FLAG: ${{ vars.FAIRRENT_E04_LIVE_ENABLED }}
+      MANUAL_LIVE: ${{ inputs.verify_live }}
+    steps:
+      - name: Document current verification scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$LIVE_FLAG" == "true" || "$MANUAL_LIVE" == "true" ]]; then
+            echo "Live verification was requested: the separate transport job MUST pass." | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Deployment inactive: live DNS/TLS/redirect verification intentionally NOT EXECUTED." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "Passing offline tests is NOT E04 deployed acceptance. Enable FAIRRENT_E04_LIVE_ENABLED=true or manually run with verify_live=true after reopening the server." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
+
+  transport:
+    name: Check FairRent HTTPS certificate and redirect (active deployments only)
+    if: ${{ vars.FAIRRENT_E04_LIVE_ENABLED == 'true' || inputs.verify_live == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      E04_HOST: ${{ vars.FAIRRENT_PUBLIC_HOSTNAME || 'fairrent.online' }}
+    steps:
+      - name: Verify DNS and hostname
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$E04_HOST" =~ ^[A-Za-z0-9.-]+$ ]] || { echo 'Invalid configured hostname' >&2; exit 1; }
+          getent ahostsv4 "$E04_HOST" || { echo "DNS missing for $E04_HOST: restore DNS or set FAIRRENT_PUBLIC_HOSTNAME to the approved deployed host." >&2; exit 1; }
+      - name: Check certificate chain and hostname
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! timeout 20 openssl s_client -connect $E04_HOST:443 -servername "$E04_HOST" \
+            -verify_hostname "$E04_HOST" -verify_return_error \
+            </dev/null > "$RUNNER_TEMP/tls-check.txt" 2>&1; then
+            tail -n 25 "$RUNNER_TEMP/tls-check.txt"
+            echo "TLS handshake or certificate verification failed; owner must investigate." >&2
+            exit 1
+          fi
+          openssl x509 -in <(openssl s_client -connect $E04_HOST:443 \
+            -servername "$E04_HOST" </dev/null 2>/dev/null) \
+            -noout -subject -issuer -dates
+      - name: Verify HTTP redirects to HTTPS
+        shell: bash
+        run: |
+          set -euo pipefail
+          target=$(curl --fail --silent --show-error --location \
+            --max-time 25 --output /dev/null --write-out '%{url_effective}' \
+            http://$E04_HOST/)
+          if [[ "$target" != "https://$E04_HOST" && "$target" != "https://$E04_HOST/"* ]]; then
+            echo "Unexpected HTTP redirect target: $target" >&2
+            exit 1
+          fi
+          echo "HTTP redirect target is HTTPS on $E04_HOST"
+
+      - name: Check initial HTML for obvious insecure resource references
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --max-time 25 \
+            https://$E04_HOST/ --output "$RUNNER_TEMP/home.html"
+          if grep -Eiq '<(script|img|link)[^>]+(src|href)=[^>]*http://' "$RUNNER_TEMP/home.html"; then
+            echo "Initial HTML includes an insecure HTTP resource" >&2
+            exit 1
+          fi
+          echo "No obvious insecure script/image/stylesheet URL in initial HTML."
+          echo "This does not replace browser mixed-content testing."
+
+  tls-validation-negative-control:
+    name: Verify certificate hostname checks fail closed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate trusted fixture and reject wrong hostname
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/e04-tls"
+          cd "$RUNNER_TEMP/e04-tls"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout fixture.key -out fixture.crt \
+            -subj "/CN=e04.example.test" \
+            -addext "subjectAltName=DNS:e04.example.test" >/dev/null 2>&1
+          openssl verify -CAfile fixture.crt \
+            -verify_hostname e04.example.test fixture.crt
+          if openssl verify -CAfile fixture.crt \
+            -verify_hostname wrong.example.test fixture.crt; then
+            echo "A certificate for the wrong hostname was accepted" >&2
+            exit 1
+          fi
+          echo "Synthetic certificate validation rejected the incorrect hostname."
+          echo "This test does NOT validate the live FairRent certificate."
+
+  integrity-negative-control:
+    name: Reject tampered synthetic artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify digest success and fail-closed tampering
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/e04"
+          printf '%s' 'synthetic model v1' > "$RUNNER_TEMP/e04/model.bin"
+          (cd "$RUNNER_TEMP/e04" && sha256sum model.bin > manifest.sha256)
+          (cd "$RUNNER_TEMP/e04" && sha256sum --check manifest.sha256)
+          printf '%s' 'tampered' >> "$RUNNER_TEMP/e04/model.bin"
+          if (cd "$RUNNER_TEMP/e04" && sha256sum --check manifest.sha256); then
+            echo "Tampered artifact was incorrectly accepted" >&2
+            exit 1
+          fi
+          echo "Tampered synthetic artifact correctly rejected."
