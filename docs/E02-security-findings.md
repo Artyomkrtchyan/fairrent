@@ -13,7 +13,7 @@ The current PR supersedes closed, unmerged scanner-only PR #88 and experimental 
 | --- | --- |
 | Secrets, dependency and container scanning | Canonical `.github/workflows/security-ci.yml`: Gitleaks, four pip-audit targets, npm audit, backend/frontend Trivy. All ten security jobs passed. |
 | Harmless synthetic detection and severity handling | Gitleaks synthetic positive control deliberately detects test-only text; redacted results; HIGH/CRITICAL image findings fail CI, with no exception/ignore list applied. The synthetic detection is scoped to its test rule, not a blanket guarantee about all secrets. |
-| CI tokens, untrusted inputs, action references, artifact access | Security workflow has `contents: read`, checkout `persist-credentials: false`, runs on `pull_request` rather than `pull_request_target`, contains no cloud credentials or artifact upload, and redacts scanner findings. Actions currently use mutable version tags, not immutable SHA pins: **remaining code-owner review item**, not described as fixed. |
+| CI tokens, untrusted inputs, action references, artifact access | Security workflow has `contents: read`, checkout `persist-credentials: false`, runs on `pull_request` rather than `pull_request_target`, contains no cloud credentials or artifact upload, and redacts scanner findings. Security workflow actions are now pinned to immutable full commit SHAs verified against the prior v6/v7/v0.36.0 tags; repository ruleset/default-token policy and artifact access still require code-owner review. |
 | Container privilege, packages, port review | API distroless runtime uses UID 65532, `EXPOSE 8000` (metadata only); backend B06 signal worker is non-root. Backend library set was reduced after dependency/import tests; frontend Alpine packages were upgraded and Nginx starts/responds in CI. The frontend runtime still serves port 80; its root/runtime privilege model should be included in owner sign-off rather than claimed remediated. |
 | Vulnerability remediation and retest | Python 3.12, Pillow 13.0.0 and SoupSieve 4.1 resolve the previously failing Python audits in CI. Minimal backend image and patched frontend image both pass HIGH/CRITICAL Trivy with the failure gate enabled. There are no known active security exceptions in this PR. |
 
@@ -29,7 +29,7 @@ The current PR supersedes closed, unmerged scanner-only PR #88 and experimental 
 Before merging PR #136, an authorized reviewer should explicitly confirm:
 
 - [ ] The Python 3.12 API/B06 signal-worker and distroless runtime are supported by the deployment and operational recovery procedures (including debugging without a shell).
-- [ ] The remaining version-tagged GitHub Actions references have an approved policy (prefer pinning to reviewed full commit SHAs); verify repository branch protections, default token permissions and artifact access/retention rules.
+- [ ] Review the newly SHA-pinned security actions against the team's update policy; verify repository branch protections, default token permissions and artifact access/retention rules.
 - [ ] API/frontend published ports and runtime users match the intended ALB/host configuration; no new privilege or exposure was introduced.
 - [ ] The final diff is reviewed and the required CI checks remain green on the merge candidate.
 
