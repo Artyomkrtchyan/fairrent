@@ -38,6 +38,7 @@ COPY --from=base /usr/local /usr/local
 # Python ctypes depends on libffi; retain this minimal shared library only.
 COPY --from=base /usr/lib/x86_64-linux-gnu/libffi.so.8 /usr/lib/x86_64-linux-gnu/libffi.so.8
 COPY --from=base /usr/lib/x86_64-linux-gnu/libstdc++.so.6 /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+COPY --from=base /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
 COPY --from=base /app /app
 WORKDIR /app
 ENV PATH=/usr/local/bin:/usr/bin:/bin
