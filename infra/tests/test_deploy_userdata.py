@@ -47,6 +47,22 @@ class ReleaseTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'16 KiB'):
                 deploy.build_user_data(IMAGES,bootstrap_directory=directory)
 
+    def test_configured_b07_package_reaches_only_the_backend(self):
+        model = {"version": "v1.0.0-b07", "checksum_sha256": "b" * 64}
+        payload = base64.b64decode(deploy.build_user_data(IMAGES, b07_package=model))
+        config = json.loads(payload.decode().split("\n", 1)[1])
+        release = next(entry["content"] for entry in config["write_files"]
+                       if entry["path"] == "/opt/fairrent/release.py")
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            for name in IMAGES:
+                (directory / (name + ".json")).write_text("{}")
+            release = release.replace("Path('/etc/fairrent')", "Path(" + repr(temporary) + ")")
+            with patch("subprocess.run"):
+                exec(compile(release, "release.py", "exec"), {})
+            self.assertEqual(json.loads((directory / "backend.json").read_text())["b07_package"], model)
+            self.assertNotIn("b07_package", json.loads((directory / "frontend.json").read_text()))
+
 
 if __name__=='__main__':
     unittest.main()

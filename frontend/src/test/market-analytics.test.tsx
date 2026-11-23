@@ -2,12 +2,10 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fixtures from "../../../contracts/fixtures.json";
-import { getMarketIndex, type MarketIndexPage } from "@/api/market";
+import { getListings } from "@/api/listings";
 import { MarketAnalytics } from "@/routes/analytics";
 
-vi.mock("@/api/market", () => ({
-  getMarketIndex: vi.fn(),
-}));
+vi.mock("@/api/listings", () => ({ getListings: vi.fn() }));
 
 vi.mock("@/lib/prefs", () => ({
   usePrefs: () => ({
@@ -16,9 +14,10 @@ vi.mock("@/lib/prefs", () => ({
   }),
 }));
 
-// Test accessible values and controls without requiring browser chart dimensions.
 vi.mock("recharts", () => ({
   ResponsiveContainer: () => null,
+  Bar: () => null,
+  BarChart: () => null,
   CartesianGrid: () => null,
   Line: () => null,
   LineChart: () => null,
@@ -27,186 +26,100 @@ vi.mock("recharts", () => ({
   YAxis: () => null,
 }));
 
-const response = fixtures["market-index"].value as MarketIndexPage;
-const empty = fixtures["market-empty"].value as MarketIndexPage;
-
 function renderPage() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   });
-
   render(
     <QueryClientProvider client={client}>
       <MarketAnalytics />
     </QueryClientProvider>,
   );
-
-  fireEvent.click(screen.getByRole("button", { name: /^table$/i }));
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(getMarketIndex).mockResolvedValue(response);
+  vi.mocked(getListings).mockResolvedValue(
+    fixtures.listings.value as Awaited<ReturnType<typeof getListings>>,
+  );
 });
 
 afterEach(cleanup);
 
 describe("market analytics page", () => {
-  it("displays the API median and changes measure without changing the source data", async () => {
+  it("shows the current listings snapshot without a weekly history selector", async () => {
     renderPage();
+    expect(screen.getByRole("heading", { name: "Market analytics" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Current listing snapshot" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Published weekly history" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Weekly median asking rent")).not.toBeInTheDocument();
+    expect(await screen.findByText("600.00 USD")).toBeInTheDocument();
+  });
+
+  it("keeps the current listing snapshot table functional", async () => {
+    renderPage();
+    await screen.findByText("600.00 USD");
+    fireEvent.click(screen.getByRole("button", { name: /^table$/i }));
     const table = await screen.findByRole("table");
-
-    expect(within(table).getByText("600.00 USD")).toBeInTheDocument();
-    expect(within(table).getByText("3")).toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText("Measure"), {
-      target: { value: "m2" },
+    expect(within(table).getByText("Kentron")).toBeInTheDocument();
+  });
+  it("loads every page within the API's 100-listing limit", async () => {
+    const original = fixtures.listings.value.items[0]!;
+    vi.mocked(getListings).mockImplementation(async (_signal, options) => {
+      const page = options?.page ?? 1;
+      const count = page === 4 ? 1 : 100;
+      return {
+        ...fixtures.listings.value,
+        page,
+        page_size: 100,
+        total: 301,
+        has_more: page < 4,
+        items: Array.from({ length: count }, (_, index) => ({
+          ...original,
+          id: `00000000-0000-4000-8000-${String((page - 1) * 100 + index).padStart(12, "0")}`,
+          external_id: `analytics-${page}-${index}`,
+          property_id: `analytics-property-${page}-${index}`,
+          dedup_group_id: null,
+        })),
+      } as Awaited<ReturnType<typeof getListings>>;
     });
-
-    expect(within(table).getByText("12.00 USD")).toBeInTheDocument();
-    expect(within(table).getByRole("caption")).toHaveTextContent("USD/month/m²");
+    renderPage();
+    expect(await screen.findByText(/Loaded 301 of 301 active listing rows/)).toBeInTheDocument();
+    expect(vi.mocked(getListings).mock.calls.map(([, options]) => options?.page).sort((a, b) => Number(a) - Number(b))).toEqual([1, 2, 3, 4]);
+    expect(vi.mocked(getListings).mock.calls.every(([, options]) => options?.page_size === 100)).toBe(true);
   });
 
-  it("keeps missing per-area values separate from monthly values and counts", async () => {
-    const record = {
-      ...response.items[0]!,
-      sample_count: 8,
-      area_sample_count: 2,
-      median_usd_m2: null,
-    };
-
-    vi.mocked(getMarketIndex).mockResolvedValue({
-      ...response,
-      items: [record],
+  it("updates chart metrics from real batches before the full snapshot finishes", async () => {
+    const original = fixtures.listings.value.items[0]!;
+    let releaseNextBatch: (() => void) | undefined;
+    const nextBatch = new Promise<void>((resolve) => { releaseNextBatch = resolve; });
+    vi.mocked(getListings).mockImplementation(async (_signal, options) => {
+      const page = options?.page ?? 1;
+      if (page > 1) await nextBatch;
+      const count = page === 3 ? 1 : 100;
+      return {
+        ...fixtures.listings.value,
+        page,
+        page_size: 100,
+        total: 201,
+        has_more: page < 3,
+        items: Array.from({ length: count }, (_, index) => ({
+          ...original,
+          id: `00000000-0000-4000-8000-${String((page - 1) * 100 + index).padStart(12, "0")}`,
+          external_id: `live-${page}-${index}`,
+          property_id: `live-property-${page}-${index}`,
+          dedup_group_id: null,
+        })),
+      } as Awaited<ReturnType<typeof getListings>>;
     });
 
     renderPage();
-    const table = await screen.findByRole("table");
-
-    expect(within(table).getByText("600.00 USD")).toBeInTheDocument();
-    expect(within(table).getByText("8")).toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText("Measure"), {
-      target: { value: "m2" },
-    });
-
-    expect(within(table).getByText("Unavailable")).toBeInTheDocument();
-    expect(within(table).getByText("2")).toBeInTheDocument();
-    expect(within(table).queryByText("0.00 USD")).not.toBeInTheDocument();
+    expect(await screen.findByText(/100 of 201 loaded/)).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Listing analysis progress" })).toHaveAttribute("value", "100");
+    expect(screen.getByText("100", { selector: "p" })).toBeInTheDocument();
+    releaseNextBatch?.();
+    expect(await screen.findByText(/Loaded 201 of 201 active listing rows/)).toBeInTheDocument();
+    expect(screen.queryByText(/Updating charts from real listings/)).not.toBeInTheDocument();
   });
 
-  it("applies a neighborhood selection and shows an empty response honestly", async () => {
-    renderPage();
-    await screen.findByRole("table");
-    vi.mocked(getMarketIndex).mockResolvedValue(empty);
-
-    fireEvent.change(screen.getByLabelText("Neighborhood"), {
-      target: { value: "arabkir" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
-
-    expect(
-      await screen.findByText("No published weekly data for this selection."),
-    ).toBeInTheDocument();
-
-    expect(getMarketIndex).toHaveBeenLastCalledWith(
-      expect.objectContaining({ district_id: "arabkir", page: 1 }),
-      expect.anything(),
-    );
-  });
-
-  it("rejects reversed dates before requesting another response", async () => {
-    renderPage();
-    await screen.findByRole("table");
-    const calls = vi.mocked(getMarketIndex).mock.calls.length;
-
-    fireEvent.change(screen.getByLabelText("Week starting from"), {
-      target: { value: "2026-10-26" },
-    });
-    fireEvent.change(screen.getByLabelText("Week starting through"), {
-      target: { value: "2026-10-12" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
-
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "The start date must not be after the end date.",
-    );
-    expect(getMarketIndex).toHaveBeenCalledTimes(calls);
-  });
-
-  it("shows API failures and recovers through Retry without demo fallback", async () => {
-    vi.mocked(getMarketIndex).mockRejectedValue(new Error("API offline"));
-    renderPage();
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("Could not load market analytics.");
-    expect(screen.queryByRole("table")).not.toBeInTheDocument();
-
-    vi.mocked(getMarketIndex).mockResolvedValue(response);
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-
-    const table = await screen.findByRole("table");
-    expect(within(table).getByText("600.00 USD")).toBeInTheDocument();
-  });
-
-  it("preserves loaded weeks when the next page fails and retries that page", async () => {
-    const firstPage: MarketIndexPage = {
-      ...response,
-      page_size: 1,
-      total: 2,
-      has_more: true,
-      available_to: "2026-10-19",
-    };
-
-    const secondPage: MarketIndexPage = {
-      ...firstPage,
-      page: 2,
-      has_more: false,
-      items: [
-        {
-          ...response.items[0]!,
-          period_start: "2026-10-19",
-          period_end: "2026-10-25",
-          median_usd_month: 700,
-          median_usd_m2: 14,
-          data_as_of: "2026-10-24T08:00:00Z",
-          freshness: {
-            ...response.items[0]!.freshness,
-            data_as_of: "2026-10-24T08:00:00Z",
-          },
-        },
-      ],
-    };
-
-    vi.mocked(getMarketIndex)
-      .mockResolvedValueOnce(firstPage)
-      .mockRejectedValueOnce(new Error("Next page unavailable"))
-      .mockResolvedValueOnce(secondPage);
-
-    renderPage();
-    const table = await screen.findByRole("table");
-
-    expect(within(table).getByText("600.00 USD")).toBeInTheDocument();
-
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Load more weeks",
-      }),
-    );
-
-    await screen.findByRole("alert");
-    expect(within(table).getByText("600.00 USD")).toBeInTheDocument();
-    expect(screen.getByText("1 of 2 weekly records loaded.")).toBeInTheDocument();
-
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Retry loading more weeks",
-      }),
-    );
-
-    expect(await within(table).findByText("700.00 USD")).toBeInTheDocument();
-    expect(within(table).getByText("600.00 USD")).toBeInTheDocument();
-    expect(within(table).getAllByRole("row")).toHaveLength(3);
-
-    expect(vi.mocked(getMarketIndex).mock.calls.map(([query]) => query?.page)).toEqual([1, 2, 2]);
-  });
 });

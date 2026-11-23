@@ -1,0 +1,27 @@
+[
+  {
+    "id": "RUNBOOK-001",
+    "title": "Synthetic demo apartment with coordinates",
+    "price": 700,
+    "currency": "USD",
+    "period": "month",
+    "lat": 40.1792,
+    "lon": 44.5151,
+    "url": "https://example.invalid/item/RUNBOOK-001",
+    "district": "Kentron",
+    "area_sqm": 55,
+    "rooms_count": 2,
+    "floor": 5,
+    "total_floors": 9,
+    "description": "Synthetic runbook record; not a real listing."
+  },
+  {
+    "id": "RUNBOOK-002",
+    "title": "Synthetic demo apartment with unknown location",
+    "price": 500,
+    "currency": "USD",
+    "period": "month",
+    "url": "https://example.invalid/item/RUNBOOK-002",
+    "description": "Synthetic incomplete record; missing coordinates are intentional."
+  }
+]

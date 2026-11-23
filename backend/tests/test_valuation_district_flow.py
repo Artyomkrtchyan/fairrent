@@ -18,7 +18,7 @@ NOW = datetime(2026, 10, 23, 12, tzinfo=timezone.utc)
 def test_canonical_district_and_consistent_cohort_reach_model_and_audit(monkeypatch, subject):
     records = [SimpleNamespace(id=UUID(int=i), latitude=40.18, longitude=44.51,
         price_monthly_normalized=price, area_sqm=50, rooms=2, district_id='stale-label',
-        last_seen_at=NOW-timedelta(days=1), dedup_group_id=None)
+        last_seen_at=NOW-timedelta(days=1), dedup_group_id=None, status='active')
         for i, price in enumerate([500, 600, 700, 5000], 1)]
     class Registry:
         version = 'district-snapshot:checksum'

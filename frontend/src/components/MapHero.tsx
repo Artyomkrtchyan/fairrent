@@ -10,7 +10,7 @@ import {
   type MouseEvent,
   type KeyboardEvent,
 } from "react";
-import { ArrowDown, Expand, MapPin, X } from "lucide-react";
+import { ArrowDown, Expand, Info, MapPin, X } from "lucide-react";
 import { parseMapBounds, serializeMapBounds, type MapBounds } from "@/lib/map-bounds";
 import { useInfrastructure, hasInfrastructureCoordinates } from "@/api/infrastructure";
 import { Link } from "@tanstack/react-router";
@@ -19,7 +19,8 @@ import { apiMode } from "@/api/client";
 import { hasMapCoordinates, type MapListing } from "@/lib/map-listings";
 import type { MapCamera } from "@/components/MapCanvas";
 import { useQuery } from "@tanstack/react-query";
-import { getListingDetails, type ListingMapPoint } from "@/api/listings";
+import { getListingDetails, getListings, type ListingMapPoint } from "@/api/listings";
+import { snapshotMapPrices } from "@/lib/map-listing-price-snapshot";
 
 const MapCanvas = lazy(() =>
   import("@/components/MapCanvas").then((module) => ({ default: module.MapCanvas })),
@@ -84,6 +85,49 @@ export function MapHero({
   const validArea = parseMapBounds(viewportBbox);
   const [showMetro, setShowMetro] = useState(false);
   const [showUniversities, setShowUniversities] = useState(false);
+  const [showDistrictPrices, setShowDistrictPrices] = useState(true);
+  const [rentColorMode, setRentColorMode] = useState<"buildings" | "ground">("buildings");
+  const [showRentalDots, setShowRentalDots] = useState(false);
+  const [showPriceGuide, setShowPriceGuide] = useState(false);
+  const snapshotQuery = useQuery({
+    queryKey: ["map-listing-rent-price-snapshot", apiMode],
+    enabled: apiMode === "real" && showDistrictPrices,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async ({ signal }) => {
+      const pageSize = 100;
+      const maximumPages = 15;
+      const concurrentPages = 5;
+      const fetchPage = (page: number) => getListings(signal, {
+        page, page_size: pageSize, status: "active", sort: "newest",
+      });
+      const first = await fetchPage(1);
+      const listings = [...first.items];
+      const lastPage = first.has_more
+        ? Math.min(maximumPages, Math.ceil(first.total / pageSize))
+        : 1;
+      let truncated = first.has_more;
+      for (let start = 2; start <= lastPage; start += concurrentPages) {
+        const batch = await Promise.all(Array.from(
+          { length: Math.min(concurrentPages, lastPage - start + 1) },
+          (_, offset) => fetchPage(start + offset),
+        ));
+        for (const page of batch) listings.push(...page.items);
+        truncated = batch.at(-1)?.has_more ?? truncated;
+        if (!truncated) break;
+      }
+      return { listings, truncated };
+    },
+  });
+  const snapshotSummary = useMemo(
+    () => snapshotMapPrices(snapshotQuery.data?.listings ?? []),
+    [snapshotQuery.data],
+  );
+  const activePrices = snapshotSummary.districtPrices;
+  const priceRange = useMemo(() => {
+    const { min: minimum, max: maximum } = snapshotSummary;
+    return minimum !== null && maximum !== null ? { minimum, maximum } : null;
+  }, [snapshotSummary]);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string>();
   const nearby = useInfrastructure(viewportBbox, showMetro, showUniversities);
   const places = useMemo(
@@ -118,6 +162,38 @@ export function MapHero({
         />{" "}
         <span className="map-layer-symbol">U</span> Universities
       </label>
+      <label>
+        <input
+          type="checkbox"
+          checked={showRentalDots}
+          onChange={(event) => setShowRentalDots(event.target.checked)}
+        />{" "}
+        Apartment dots
+      </label>
+      {apiMode === "real" && (
+        <label>
+          <input
+            type="checkbox"
+            checked={showDistrictPrices}
+            onChange={(event) => setShowDistrictPrices(event.target.checked)}
+          />{" "}
+          District rent prices
+        </label>
+      )}
+      {(showDemoSurface || showDistrictPrices) && (
+        <label>
+          Color on
+          <select
+            aria-label="Rent colors on"
+            className="rounded border bg-card px-2 py-1 text-xs"
+            value={rentColorMode}
+            onChange={(event) => setRentColorMode(event.target.value === "ground" ? "ground" : "buildings")}
+          >
+            <option value="buildings">Buildings</option>
+            <option value="ground">Ground (saved version)</option>
+          </select>
+        </label>
+      )}
       {showNearby && (
         <span role="status" className="map-nearby-status">
           {!validArea
@@ -161,6 +237,7 @@ export function MapHero({
       </button>
       <h3>{selectedPlace.name}</h3>
       <p>{selectedPlace.type === "metro" ? "Metro station" : "University"}</p>
+      <p>Approximate reference location.</p>
       {apiMode === "mock" && <p>Demo location</p>}
     </section>
   );
@@ -191,7 +268,10 @@ export function MapHero({
         className="map-expand-button map-search-button"
         disabled={pending || !validArea || viewportBbox === bbox}
         onClick={() => {
-          if (viewportBbox && validArea) onSearchArea(viewportBbox);
+          if (viewportBbox && validArea) {
+            setShowRentalDots(true);
+            onSearchArea(viewportBbox);
+          }
         }}
       >
         {pending ? "Searching…" : "Search this area"}
@@ -211,32 +291,77 @@ export function MapHero({
         : bbox
           ? "Rental dots show your searched area."
           : "Search this area to show available rentals.";
-  const gradientLegend = (
-    <aside className="map-price-legend" aria-label="Area rent colour legend">
-      <p className="map-demo-label">
-        {showDemoSurface ? "Demo data" : "Area price layer unavailable"}
-      </p>
-      {showDemoSurface && (
+  const gradientLegend = (showDemoSurface || showDistrictPrices) && (
+    <div className="map-price-guide-control">
+      <button
+        type="button"
+        className="map-price-guide-toggle"
+        aria-label={showPriceGuide ? "Close district rent price guide" : "Open district rent price guide"}
+        aria-expanded={showPriceGuide}
+        onClick={() => setShowPriceGuide((value) => !value)}
+        title="District rent price guide"
+      >
+        <Info size={18} aria-hidden="true" />
+      </button>
+      {showPriceGuide && <aside className="map-price-legend" aria-label="Area rent colour legend">
+      {!showDemoSurface && showDistrictPrices && (
+        <div className="mb-2">
+          <h3>District rent price guide</h3>
+          <div
+            className="map-price-ramp"
+            style={{ background: "linear-gradient(to right, #22c55e 0%, #facc15 50%, #ef4444 100%)" }}
+            aria-hidden="true"
+          />
+          <p>Green: lower · Yellow: middle · Red: higher (USD/month/m²).</p>
+          <p>{rentColorMode === "buildings" ? "District colors at city scale carry over to building footprints as you zoom in." : "District-level gradient shown on the ground."} Colors reflect area-level rents, not verified prices for individual homes.</p>
+        </div>
+      )}
+      {showDemoSurface ? (
         <>
+          <p className="map-demo-label">Demo data</p>
           <h3>Monthly asking rent / m²</h3>
           <div className="map-price-ramp" aria-hidden="true" />
           <div className="map-price-ticks">
-            <span>6</span>
-            <span>12</span>
-            <span>18</span>
-            <span>24</span>
+            <span>6</span><span>12</span><span>18</span><span>24</span>
           </div>
           <p>USD / m² / month</p>
-          <p>
-            <span className="map-no-data-key" /> No data
-          </p>
+          <p><span className="map-no-data-key" /> No data</p>
+        </>
+      ) : !showDistrictPrices ? (
+        <p className="map-demo-label">District price layer hidden</p>
+      ) : snapshotQuery.isPending ? (
+        <p role="status" className="map-demo-label">
+          Loading asking rents from active listings…
+        </p>
+      ) : !priceRange || activePrices.length === 0 ? (
+        <>
+          <p className="map-demo-label">District shading unavailable</p>
+          <p>No district has at least five usable rent-per-m² listings in the available data.</p>
+          <p>Uncolored areas have insufficient listing data.</p>
+          {snapshotQuery.isError && (
+            <button type="button" className="underline" onClick={() => void snapshotQuery.refetch()}>Retry prices</button>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="map-demo-label">Active listings snapshot</p>
+          <p>Median asking rent · USD/month/m²</p>
+          <div className="map-price-ticks">
+            <span>{priceRange.minimum.toFixed(2)} USD</span>
+            <span>{((priceRange.minimum + priceRange.maximum) / 2).toFixed(2)} USD</span>
+            <span>{priceRange.maximum.toFixed(2)} USD</span>
+          </div>
+          <p>{activePrices.length} districts with ≥5 listings · {snapshotQuery.data?.listings.length ?? 0} sampled listings{snapshotQuery.data?.truncated ? " (partial sample)" : ""}.</p>
+          <p>Observed: {snapshotSummary.latestObservation?.slice(0, 10) ?? "unknown"}.</p>
+          <p className="text-xs">Smooth color transitions are interpolated from district medians, not street-level estimates. Missing data is not zero.</p>
         </>
       )}
-    </aside>
+      </aside>}
+    </div>
   );
   const [selectedId, setSelectedId] = useState<string>();
   const [overlappingIds, setOverlappingIds] = useState<readonly string[]>([]);
-  const selectedLocation = mapLocations?.find(({ id }) => id === selectedId);
+  const selectedLocation = selectedId === undefined ? undefined : mapLocations?.find(({ id }) => id === selectedId);
   const details = useQuery({
     queryKey: ["map-listing-detail", apiMode, selectedId],
     queryFn: ({ signal }) => getListingDetails(selectedId!, signal),
@@ -254,13 +379,15 @@ export function MapHero({
     setSelectedId(undefined);
   }, []);
   const selectOverlap = useCallback((ids: string[]) => {
-    setSelectedId(undefined);
+    // Several rentals may share approximate coordinates. Preview the first one
+    // immediately instead of forcing users through an anonymous numbered list.
+    setSelectedId(ids[0]);
     setSelectedPlaceId(undefined);
     setOverlappingIds(ids);
   }, []);
   const points = useMemo(
     () =>
-      mapLocations?.map((location) => ({
+      (mapLocations && !showRentalDots) ? [] : mapLocations?.map((location) => ({
         ...location,
         label: "Show rental preview",
         approximate: location.coordinate_confidence === "approximate",
@@ -275,18 +402,21 @@ export function MapHero({
             : format(listing.price_monthly_normalized),
         approximate: listing.coordinate_confidence === "approximate",
       })),
-    [mapLocations, listings, format],
+    [mapLocations, listings, format, showRentalDots],
   );
   const selected = mapLocations
     ? selectedLocation && details.data?.listing
     : listings.find((listing) => listing.id === selectedId && hasMapCoordinates(listing));
   const markerProps = {
     viewMode,
-    points: mapLocations || bbox ? points : [],
-    clustered: mapLocations !== undefined,
+    rentColorMode,
+    points: showRentalDots && (mapLocations || bbox) ? points : [],
+    clustered: showRentalDots && mapLocations !== undefined,
     onOverlap: selectOverlap,
     showDemoSurface,
     places,
+    districtPrices: !showDemoSurface && showDistrictPrices ? activePrices : undefined,
+    priceRange: !showDemoSurface && showDistrictPrices ? priceRange : null,
     selectedPlaceId,
     onSelectPlace: selectPlace,
     selectedId,
@@ -298,33 +428,19 @@ export function MapHero({
     : failed
       ? "Rental locations unavailable."
       : mapLocations
-        ? `${points.length.toLocaleString()} rentals with usable locations.`
+        ? `${mapLocations.length.toLocaleString()} rentals with usable locations.`
         : !bbox
           ? "Rental results are also available in the catalogue below."
           : `${points.length} of ${listings.length} rentals on this results page have usable locations.${hasMore ? " More results are available in the catalogue." : ""}`;
-  const overlap = overlappingIds.length > 0 &&
-    overlappingIds.every((id) => mapLocations?.some((location) => location.id === id)) && (
-      <section className="rental-map-preview" aria-label="Rentals at this location">
-        <button
-          type="button"
-          className="rental-preview-close"
-          aria-label="Close rental choices"
-          onClick={() => setOverlappingIds([])}
-        >
-          <X size={18} />
-        </button>
-        <h3>{overlappingIds.length} rentals at this location</h3>
-        <ul className="max-h-48 overflow-y-auto">
-          {overlappingIds.map((id, index) => (
-            <li key={id}>
-              <button type="button" onClick={() => selectRental(id)}>
-                View rental {index + 1}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
-    );
+  const overlappingPosition =
+    selectedId === undefined ? -1 : overlappingIds.indexOf(selectedId);
+  const hasOtherRentals = overlappingIds.length > 1 && overlappingPosition >= 0;
+  const navigateOverlap = (direction: -1 | 1) => {
+    if (!hasOtherRentals) return;
+    const nextIndex =
+      (overlappingPosition + direction + overlappingIds.length) % overlappingIds.length;
+    setSelectedId(overlappingIds[nextIndex]);
+  };
   const detailsStatus = selectedLocation && (details.isPending || details.isError) && (
     <section className="rental-map-preview" role="status">
       {details.isPending ? "Loading rental preview…" : "Rental preview unavailable."}
@@ -341,10 +457,38 @@ export function MapHero({
         type="button"
         className="rental-preview-close"
         aria-label="Close rental preview"
-        onClick={() => setSelectedId(undefined)}
+        onClick={() => {
+          setSelectedId(undefined);
+          setOverlappingIds([]);
+        }}
       >
         <X size={18} />
       </button>
+      {hasOtherRentals && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+          <span className="font-semibold">
+            Rental {overlappingPosition + 1} of {overlappingIds.length} at this location
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="rounded-md border px-2 py-1"
+              aria-label="Previous rental at this location"
+              onClick={() => navigateOverlap(-1)}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              className="rounded-md border px-2 py-1"
+              aria-label="Next rental at this location"
+              onClick={() => navigateOverlap(1)}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
       <h3>{selected.title || "Apartment in Yerevan"}</h3>
       <p className="rental-preview-price">
         {selected.price_monthly_normalized === null
@@ -368,6 +512,7 @@ export function MapHero({
     </section>
   );
   const [expanded, setExpanded] = useState(false);
+  const [fullscreenReady, setFullscreenReady] = useState(false);
   const [expandedCamera, setExpandedCamera] = useState(INITIAL_CAMERA);
   const [returnedCamera, setReturnedCamera] = useState(INITIAL_CAMERA);
   const latestCamera = useRef(INITIAL_CAMERA);
@@ -382,6 +527,7 @@ export function MapHero({
 
   function closeMap() {
     setReturnedCamera(latestCamera.current);
+    setFullscreenReady(false);
     setExpanded(false);
   }
 
@@ -393,6 +539,8 @@ export function MapHero({
     const previousOverflow = document.body.style.overflow;
     modal.showModal();
     document.body.style.overflow = "hidden";
+    // Mount MapLibre only after the native dialog has a measurable viewport.
+    setFullscreenReady(true);
 
     return () => {
       if (modal.open) modal.close();
@@ -486,7 +634,7 @@ export function MapHero({
           </div>
 
           <div className="rental-map-stage">
-            <Suspense
+            {!expanded && <Suspense
               fallback={
                 <div className="map-canvas">
                   <p role="status" className="map-notice map-notice-loading">
@@ -503,9 +651,9 @@ export function MapHero({
                 }}
                 {...markerProps}
               />
-            </Suspense>
+            </Suspense>}
             {!expanded && gradientLegend}
-            {!expanded && (placePreview || overlap || preview || detailsStatus)}
+            {!expanded && (placePreview || preview || detailsStatus)}
           </div>
           <p className="rental-map-coverage" role="status">
             {areaStatus} {coverage}
@@ -562,17 +710,17 @@ export function MapHero({
                   </p>
                 }
               >
-                <MapCanvas
+                {fullscreenReady ? <MapCanvas
                   expanded
                   onBoundsChange={setViewport}
                   camera={expandedCamera}
                   onCameraChange={rememberCamera}
                   {...markerProps}
                   bbox={undefined}
-                />
+                /> : <p role="status" className="p-5">Preparing the expanded map…</p>}
               </Suspense>
               {gradientLegend}
-              {placePreview || overlap || preview || detailsStatus}
+              {placePreview || preview || detailsStatus}
               <p className="rental-map-coverage rental-map-coverage-expanded" role="status">
                 {areaStatus} {coverage}
                 {failed && onRetry && (

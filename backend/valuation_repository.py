@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 import psycopg
 from psycopg.types.json import Jsonb
+from ml.market_stats import MAX_WINDOW_DAYS
 
 try:
     from .listing_models import ListingData
@@ -25,9 +26,8 @@ class ValuationRepository:
         return psycopg.connect(connect_timeout=3)
 
     def candidates(self, connection, query, now):
-        _, _, start = period(now, query.window_days)
-        # B03's maximum comparable age remains 60 days even for a 90-day query.
-        start = max(start, now - timedelta(days=60))
+        # Keep the indexed candidate bound aligned with B09's local-date window.
+        _, _, start = period(now, min(query.window_days, MAX_WINDOW_DAYS))
         rows = connection.execute('''
             SELECT document FROM api_listing_projection
             WHERE status = 'active' AND latitude IS NOT NULL AND longitude IS NOT NULL

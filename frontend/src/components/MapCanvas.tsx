@@ -1,3 +1,4 @@
+import type { FeatureCollection, MultiPolygon, Polygon } from "geojson";
 import { useEffect, useRef, useState } from "react";
 import {
   Map,
@@ -12,8 +13,12 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 import type { InfrastructurePoint } from "@/api/infrastructure";
 import { apiMode } from "@/api/client";
-import { DEMO_SURFACE, demoSurfaceImage } from "@/lib/map-demo-surface";
+import { DEMO_SURFACE, demoRentValue, demoSurfaceImage } from "@/lib/map-demo-surface";
+import { renderSmoothRentSurface } from "@/lib/map-smooth-rent-surface";
 import { parseMapBounds, type MapBounds } from "@/lib/map-bounds";
+import type { DistrictPrice } from "@/lib/district-price-layer";
+import districtGeojson from "@/data/yerevan-districts.geojson?raw";
+import { createBuildingColorCache, footprintCenter, rentGradientColor } from "@/lib/map-building-rent-colors";
 
 setWorkerUrl(mapWorkerUrl);
 
@@ -47,9 +52,14 @@ const DEFAULT_CAMERA: MapCamera = {
 
 interface Props {
   viewMode?: "2d" | "3d";
+  rentColorMode?: "buildings" | "ground";
   places?: readonly InfrastructurePoint[];
+  districtPrices?: readonly DistrictPrice[] | undefined;
+  priceRange?: { minimum: number; maximum: number } | null;
   selectedPlaceId?: string | undefined;
   onSelectPlace?: (id: string) => void;
+  onPickCoordinate?: (latitude: number, longitude: number) => void;
+  pickedCoordinate?: { latitude: number; longitude: number } | null;
   showDemoSurface?: boolean;
   bbox?: string | undefined;
   onBoundsChange?: ((bounds: MapBounds) => void) | undefined;
@@ -65,10 +75,15 @@ interface Props {
 
 export function MapCanvas({
   viewMode = "2d",
+  rentColorMode = "buildings",
   places = EMPTY_PLACES,
+  districtPrices,
+  priceRange,
   selectedPlaceId,
   onSelectPlace,
-  showDemoSurface = false,
+  onPickCoordinate,
+  pickedCoordinate,
+  showDemoSurface: requestedDemoSurface = false,
   bbox,
   onBoundsChange,
   expanded = false,
@@ -87,9 +102,14 @@ export function MapCanvas({
   const initialOptions = useRef({ expanded, camera: camera ?? DEFAULT_CAMERA });
   const cameraCallback = useRef(onCameraChange);
   const boundsCallback = useRef(onBoundsChange);
+  const pickCallback = useRef(onPickCoordinate);
+  useEffect(() => {
+    pickCallback.current = onPickCoordinate;
+  }, [onPickCoordinate]);
   useEffect(() => {
     boundsCallback.current = onBoundsChange;
   }, [onBoundsChange]);
+  const showDemoSurface = requestedDemoSurface && apiMode === "mock";
   const [styleReady, setStyleReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,6 +149,10 @@ export function MapCanvas({
       map.addControl(new AttributionControl({ compact: true }), "bottom-right");
 
       const activeMap = map;
+      map.on("click", (event) => {
+        if (!disposed) pickCallback.current?.(event.lngLat.lat, event.lngLat.lng);
+      });
+
       map.on("moveend", () => {
         if (disposed) return;
         const bounds = activeMap.getBounds();
@@ -187,42 +211,57 @@ export function MapCanvas({
   }, []);
 
   useEffect(() => {
-    const map = instance.current;
-    if (!map || !styleReady || apiMode !== "mock" || !showDemoSurface) return;
-    const [west, south, east, north] = DEMO_SURFACE.bounds;
-    const id = "fairrent-synthetic-rent-surface";
-    map.addSource(id, {
-      type: "image",
-      url: demoSurfaceImage(),
-      coordinates: [
-        [west, north],
-        [east, north],
-        [east, south],
-        [west, south],
-      ],
-    });
-    const before = map
-      .getStyle()
-      .layers?.find((layer) => layer.type === "line" || layer.type === "symbol")?.id;
-    map.addLayer(
-      {
-        id,
-        type: "raster",
-        source: id,
-        paint: { "raster-opacity": 0.8, "raster-fade-duration": 0 },
-      },
-      before,
-    );
-    return () => {
-      if (instance.current !== map) return;
-      if (map.getLayer(id)) map.removeLayer(id);
-      if (map.getSource(id)) map.removeSource(id);
-    };
-  }, [styleReady, showDemoSurface]);
-
-  useEffect(() => {
     if (camera) instance.current?.jumpTo(camera);
   }, [camera]);
+
+  // The ground mode keeps its continuous, city-clipped rent surface.
+  useEffect(() => {
+    const map = instance.current;
+    if (!map || !styleReady || rentColorMode !== "ground") return;
+
+    const name = "fairrent-preserved-ground-rent-gradient";
+    let bounds: readonly [number, number, number, number];
+    let url: string;
+    if (showDemoSurface) {
+      bounds = DEMO_SURFACE.bounds;
+      url = demoSurfaceImage();
+    } else {
+      if (!districtPrices?.length || !priceRange) return;
+      const registry = JSON.parse(districtGeojson) as {
+        features: Array<{
+          geometry: { type: "Polygon" | "MultiPolygon"; coordinates: unknown };
+          properties: { district_id: string; name: string };
+        }>;
+      };
+      const surface = renderSmoothRentSurface(
+        registry.features,
+        new globalThis.Map(districtPrices.map((item) => [item.districtId, item])),
+        priceRange,
+      );
+      bounds = surface.bounds;
+      url = surface.url;
+    }
+    const [west, south, east, north] = bounds;
+    map.addSource(name, {
+      type: "image",
+      url,
+      coordinates: [[west, north], [east, north], [east, south], [west, south]],
+    });
+    const before = map.getStyle().layers?.find((layer) =>
+      showDemoSurface ? (layer.type === "line" || layer.type === "symbol") : layer.type === "symbol",
+    )?.id;
+    map.addLayer({
+      id: name,
+      type: "raster",
+      source: name,
+      paint: { "raster-opacity": showDemoSurface ? 0.8 : 0.9, "raster-fade-duration": 0 },
+    }, before);
+    return () => {
+      if (instance.current !== map) return;
+      if (map.getLayer(name)) map.removeLayer(name);
+      if (map.getSource(name)) map.removeSource(name);
+    };
+  }, [styleReady, rentColorMode, showDemoSurface, districtPrices, priceRange]);
 
   useEffect(() => {
     const map = instance.current;
@@ -260,7 +299,6 @@ export function MapCanvas({
     }
 
     map.setLayoutProperty(flatBuildingsId, "visibility", viewMode === "2d" ? "visible" : "none");
-
     for (const layer of buildings) {
       map.setLayoutProperty(layer.id, "visibility", viewMode === "3d" ? "visible" : "none");
     }
@@ -273,6 +311,143 @@ export function MapCanvas({
       duration: reducedMotion ? 0 : 600,
     });
   }, [viewMode, styleReady]);
+
+  useEffect(() => {
+    const map = instance.current;
+    if (!map || !styleReady || rentColorMode !== "buildings" ||
+        (!showDemoSurface && (!districtPrices?.length || !priceRange))) return;
+
+    const registry = JSON.parse(districtGeojson) as FeatureCollection<
+      Polygon | MultiPolygon,
+      { district_id: string }
+    >;
+    const prices = new globalThis.Map(districtPrices?.map((item) => [item.districtId, item]));
+    const districts = registry.features.flatMap((feature) => {
+      let value: number | null;
+      if (showDemoSurface) {
+        const center = footprintCenter(feature.geometry);
+        if (!center) return [];
+        const [west, south, east, north] = DEMO_SURFACE.bounds;
+        const observed = demoRentValue(
+          (center[0] - west) / (east - west),
+          (north - center[1]) / (north - south),
+        );
+        value = observed === null ? 0.5 :
+          (observed - DEMO_SURFACE.minimum) / (DEMO_SURFACE.maximum - DEMO_SURFACE.minimum);
+      } else {
+        const median = prices.get(feature.properties.district_id)?.medianUsdM2;
+        if (median === undefined || !Number.isFinite(median) || !priceRange) return [];
+        const span = priceRange.maximum - priceRange.minimum;
+        value = span > 0 ? (median - priceRange.minimum) / span : 0.5;
+      }
+      return [{ ...feature, properties: { rentColor: rentGradientColor(value) } }];
+    });
+    if (!districts.length) return;
+
+    const layers = map.getStyle().layers ?? [];
+    const buildingLayers = layers.filter((layer) =>
+      (layer.type === "fill" || layer.type === "fill-extrusion") &&
+      layer["source-layer"] === "building",
+    );
+    const flatLayer = buildingLayers.find((layer) => layer.id === "fairrent-flat-buildings");
+    const extrusionLayers = buildingLayers.filter((layer) => layer.type === "fill-extrusion");
+    const detailLayers = [...(flatLayer ? [flatLayer] : []), ...extrusionLayers];
+    const detailZoom = detailLayers.length
+      ? Math.min(...detailLayers.map((layer) => layer.minzoom ?? 14))
+      : undefined;
+
+    const overviewId = "fairrent-rent-district-overview";
+    map.addSource(overviewId, {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: districts },
+    });
+    map.addLayer({
+      id: overviewId,
+      type: "fill",
+      source: overviewId,
+      ...(detailZoom === undefined ? {} : { maxzoom: detailZoom }),
+      paint: { "fill-color": ["get", "rentColor"], "fill-opacity": 0.34 },
+    }, layers.find((layer) => layer.type === "line" || layer.type === "symbol")?.id);
+
+    // Feature state is shared by every tile fragment with the same source feature ID.
+    const sources = new globalThis.Map(
+      detailLayers.flatMap((layer) => "source" in layer
+        ? [[layer.source, { color: createBuildingColorCache(districts), painted: new Set<string | number>() }] as const]
+        : []),
+    );
+    const restore = detailLayers.map((layer) => {
+      const property = layer.type === "fill" ? "fill-color" : "fill-extrusion-color";
+      const original = map.getPaintProperty(layer.id, property);
+      const fallback = typeof original === "string" ? original : "#e2e8f0";
+      map.setPaintProperty(layer.id, property, ["coalesce", ["feature-state", "fairrentRentColor"], fallback]);
+      return () => map.setPaintProperty(layer.id, property, original);
+    });
+
+    let pending: number | undefined;
+    let frame: number | undefined;
+    let refresh = false;
+    const schedule = () => {
+      refresh = true;
+      if (pending !== undefined || frame !== undefined || !sources.size ||
+          (detailZoom !== undefined && map.getZoom() < detailZoom)) return;
+      pending = window.setTimeout(() => {
+        pending = undefined;
+        refresh = false;
+        const batches = [...sources].map(([source, state]) => ({
+          source,
+          ...state,
+          features: map.querySourceFeatures(source, { sourceLayer: "building" }),
+          index: 0,
+        }));
+        const applyBatch = () => {
+          frame = undefined;
+          const deadline = performance.now() + 4;
+          for (const batch of batches) {
+            while (batch.index < batch.features.length) {
+              if (performance.now() >= deadline) {
+                frame = window.requestAnimationFrame(applyBatch);
+                return;
+              }
+              const feature = batch.features[batch.index++]!;
+              const id = feature.id;
+              if (id === undefined) continue;
+              const color = batch.color(id, () => feature.geometry);
+              if (color) {
+                batch.painted.add(id);
+                map.setFeatureState(
+                  { source: batch.source, sourceLayer: "building", id },
+                  { fairrentRentColor: color },
+                );
+              }
+            }
+          }
+          if (refresh) schedule();
+        };
+        frame = window.requestAnimationFrame(applyBatch);
+      }, 48);
+    };
+    const tileLoad = sources.size ? map.on("sourcedata", (event) => {
+      if (sources.has(event.sourceId) && (event.tile || event.sourceDataType === "content")) schedule();
+    }) : undefined;
+    const movement = sources.size ? map.on("moveend", schedule) : undefined;
+    schedule();
+
+    return () => {
+      if (pending !== undefined) window.clearTimeout(pending);
+      if (frame !== undefined) window.cancelAnimationFrame(frame);
+      tileLoad?.unsubscribe();
+      movement?.unsubscribe();
+      if (instance.current !== map) return;
+      for (const [source, { painted }] of sources) {
+        for (const id of painted) {
+          map.removeFeatureState({ source, sourceLayer: "building", id }, "fairrentRentColor");
+        }
+      }
+      restore.forEach((reset) => reset());
+      if (map.getLayer(overviewId)) map.removeLayer(overviewId);
+      if (map.getSource(overviewId)) map.removeSource(overviewId);
+    };
+  }, [styleReady, districtPrices, priceRange, showDemoSurface, rentColorMode]);
 
   useEffect(() => {
     const bounds = parseMapBounds(bbox);
@@ -312,7 +487,7 @@ export function MapCanvas({
       type: "circle",
       filter: ["has", "point_count"],
       paint: {
-        "circle-color": "#0f766e",
+        "circle-color": "#294aaf",
         "circle-radius": ["step", ["get", "point_count"], 15, 100, 20, 1000, 25],
         "circle-stroke-color": "#fff",
         "circle-stroke-width": 2,
@@ -332,7 +507,7 @@ export function MapCanvas({
       type: "circle",
       filter: ["!", ["has", "point_count"]],
       paint: {
-        "circle-color": "#0f766e",
+        "circle-color": "#294aaf",
         "circle-radius": 6,
         "circle-stroke-color": "#fff",
         "circle-stroke-width": 2,
@@ -395,6 +570,20 @@ export function MapCanvas({
       markerButtons.current = [];
     };
   }, [clustered, points, onSelect]);
+
+  useEffect(() => {
+    const map = instance.current;
+    if (!map || !pickedCoordinate) return;
+    const marker = document.createElement("div");
+    marker.className = "rental-map-marker";
+    marker.title = "Selected assessment location";
+    marker.setAttribute("role", "img");
+    marker.setAttribute("aria-label", "Selected assessment location");
+    const point = new Marker({ element: marker, anchor: "center" })
+      .setLngLat([pickedCoordinate.longitude, pickedCoordinate.latitude])
+      .addTo(map);
+    return () => { point.remove(); };
+  }, [pickedCoordinate]);
 
   useEffect(() => {
     const map = instance.current;

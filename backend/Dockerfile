@@ -13,7 +13,7 @@ COPY backend/*.py ./
 COPY backend/sql/ ./sql/
 
 # B07 inference runtime: only the modules ml.inference imports, plus the A05 geography registry (no database code).
-COPY ml/inference.py ml/intervals.py ml/ontology_rules.py ml/attributions.py ml/train_compare.py ml/baseline.py ml/verify_package.py ./ml/
+COPY ml/inference.py ml/intervals.py ml/ontology_rules.py ml/attributions.py ml/train_compare.py ml/baseline.py ml/market_stats.py ml/verify_package.py ./ml/
 COPY ml/examples/ ./ml/examples/
 COPY data_pipeline/__init__.py data_pipeline/geography.py ./data_pipeline/
 COPY contracts/openapi.json ./contracts/openapi.json

@@ -1,7 +1,10 @@
 import json
+import re
+from pathlib import Path
 
 import click
 from sqlalchemy import create_engine
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
@@ -34,6 +37,41 @@ def load_records(path: str) -> list:
         if "id" not in rec and "external_id" in rec:
             rec["id"] = rec["external_id"]
     return records
+
+
+def _is_disposable_database(database_name: str | None) -> bool:
+    tokens = set(re.split(r"[^a-z0-9]+", (database_name or "").casefold()))
+    return bool(tokens & {"test", "demo"})
+
+
+def run_recovery_demo(session, source_name: str = "recovery-demo") -> dict:
+    """Persist the A08 initial/repeat/change/failure/recovery sequence for inspection."""
+    initial_path = Path(__file__).with_name("recovery_demo_initial.json")
+    changed_path = Path(__file__).with_name("recovery_demo_price_change.json")
+
+    def import_snapshot(path):
+        records = load_records(str(path))
+        pipeline = ListingPipeline(delay=0)
+        try:
+            run_row = start_run(session, source_name, {"file": path.name, "demo": True})
+            saved = ingest(records, pipeline, session, source_name, run_id=run_row.id)
+            finish_run(session, run_row, crawl_complete=None, stats={
+                "listings_seen": len(records), "listings_saved": saved,
+                "listings_quarantined": len(pipeline.quarantine_log)})
+            return run_row
+        finally:
+            pipeline.close()
+
+    runs = {
+        "initial": import_snapshot(initial_path),
+        "repeat": import_snapshot(initial_path),
+        "price_change": import_snapshot(changed_path),
+    }
+    failed = start_run(session, source_name, {"demo_failure": "synthetic source outage"})
+    runs["failed"] = finish_run(
+        session, failed, crawl_complete=True, error="synthetic source outage")
+    runs["recovery"] = import_snapshot(changed_path)
+    return runs
 
 
 def ingest(items, pipeline: ListingPipeline, session, source: str, run_id=None) -> int:
@@ -164,6 +202,39 @@ def import_file(path, source_name):
     finally:
         session.close()
         pipeline.close()
+
+
+@cli.command("demo-recovery")
+def demo_recovery():
+    """Persist the synthetic A08 recovery sequence in a disposable test/demo database."""
+    try:
+        database_url = get_database_url()
+        url = make_url(database_url)
+    except (RuntimeError, ValueError) as e:
+        raise click.ClickException(str(e))
+    if not _is_disposable_database(url.database):
+        raise click.ClickException(
+            "Refusing to write demo records unless the database name contains a separate "
+            "'test' or 'demo' token. Use a disposable database."
+        )
+
+    engine = create_engine(url, pool_pre_ping=True)
+    try:
+        with sessionmaker(bind=engine)() as session:
+            runs = run_recovery_demo(session)
+            summaries = [
+                (label, run_row.id, run_row.status, run_row.is_complete,
+                 run_row.listings_saved, run_row.listings_deactivated)
+                for label, run_row in runs.items()
+            ]
+        for label, run_id, status, is_complete, saved, deactivated in summaries:
+            click.echo(f"{label}: run_id={run_id}, status={status}, "
+                       f"complete={is_complete}, saved={saved}, deactivated={deactivated}")
+        click.echo("Audit rows retained under source 'recovery-demo'.")
+    except Exception as e:
+        raise click.ClickException(f"Recovery demo failed: {e!r}") from e
+    finally:
+        engine.dispose()
 
 
 if __name__ == "__main__":

@@ -1,10 +1,18 @@
-import { cleanup, fireEvent, render as renderReact, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render as renderReact, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import fixtures from "../../../contracts/fixtures.json";
 import type { MapListing } from "@/lib/map-listings";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { MapHero } from "@/components/MapHero";
+import * as listingsApi from "@/api/listings";
+import * as marketApi from "@/api/market";
+
+const state = vi.hoisted(() => ({ apiMode: "mock" }));
+vi.mock("@/api/client", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/api/client")>(),
+  get apiMode() { return state.apiMode; },
+}));
 
 function render(ui: ReactElement) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
@@ -15,7 +23,10 @@ function render(ui: ReactElement) {
   });
 }
 
-vi.mock("@/lib/prefs", () => ({ usePrefs: () => ({ format: (value: number) => `$${value}` }) }));
+vi.mock("@/lib/prefs", () => ({ usePrefs: () => ({ format: (value: number) => `${value}` }) }));
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children }: { children: ReactNode }) => <a href="/listings/example">{children}</a>,
+}));
 
 vi.mock("@/components/MapCanvas", () => ({
   MapCanvas: ({
@@ -24,8 +35,12 @@ vi.mock("@/components/MapCanvas", () => ({
     onCameraChange,
     camera,
     points = [],
+    onOverlap,
+    rentColorMode,
   }: {
     points?: { id: string }[];
+    rentColorMode?: "buildings" | "ground";
+    onOverlap?: (ids: string[]) => void;
     camera?: { zoom: number };
     onCameraChange?: (camera: {
       center: [number, number];
@@ -40,8 +55,12 @@ vi.mock("@/components/MapCanvas", () => ({
       data-testid={expanded ? "expanded-map" : "embedded-map"}
       data-initial-zoom={camera?.zoom}
       data-marker-count={points.length}
+      data-rent-color-mode={rentColorMode}
     >
       Map preview
+      <button onClick={() => onOverlap?.(points.map((point) => point.id))}>
+        Select overlapping rentals
+      </button>
       <button
         onClick={() => {
           onCameraChange?.({ center: [44.55, 40.15], zoom: 15, pitch: 0, bearing: 0 });
@@ -83,10 +102,40 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  state.apiMode = "mock";
   vi.restoreAllMocks();
 });
 
 describe("framed map introduction", () => {
+  it("defaults to building-only colors and switches instantly to the saved ground surface", async () => {
+    render(<MapHero />);
+    const map = await screen.findByTestId("embedded-map");
+    expect(map).toHaveAttribute("data-rent-color-mode", "buildings");
+    fireEvent.change(screen.getByRole("combobox", { name: "Rent colors on" }), {
+      target: { value: "ground" },
+    });
+    expect(map).toHaveAttribute("data-rent-color-mode", "ground");
+    fireEvent.change(screen.getByRole("combobox", { name: "Rent colors on" }), {
+      target: { value: "buildings" },
+    });
+    expect(map).toHaveAttribute("data-rent-color-mode", "buildings");
+  });
+
+  it("loads map prices from active listings without requesting weekly data", async () => {
+    state.apiMode = "real";
+    const weekly = vi.spyOn(marketApi, "getMarketIndex");
+    const listings = vi.spyOn(listingsApi, "getListings").mockResolvedValue({
+      items: [], page: 1, page_size: 100, total: 0, has_more: false,
+    });
+    render(<MapHero />);
+
+    await waitFor(() => expect(listings).toHaveBeenCalledWith(
+      expect.any(AbortSignal),
+      { page: 1, page_size: 100, status: "active", sort: "newest" },
+    ));
+    expect(weekly).not.toHaveBeenCalled();
+  });
+
   it("shows the complete location response before applying a map area", async () => {
     const mapLocations = Array.from({ length: 101 }, (_, index) => ({
       id: String(index),
@@ -95,8 +144,33 @@ describe("framed map introduction", () => {
       coordinate_confidence: "exact" as const,
     }));
     render(<MapHero mapLocations={mapLocations} />);
-    expect(await screen.findByTestId("embedded-map")).toHaveAttribute("data-marker-count", "101");
+    expect(await screen.findByTestId("embedded-map")).toHaveAttribute("data-marker-count", "0");
+    expect(screen.getByRole("checkbox", { name: /Metro/ })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Universities/ })).not.toBeChecked();
+    fireEvent.click(screen.getByLabelText("Apartment dots"));
+    expect(screen.getByTestId("embedded-map")).toHaveAttribute("data-marker-count", "101");
     expect(screen.getByText(/101 rentals with usable locations/)).toBeInTheDocument();
+  });
+
+  it("shows the first rental details immediately when multiple points overlap", async () => {
+    const first = fixtures.listings.value.items[0] as MapListing;
+    const second = { ...first, id: "second-rental", title: "Second apartment" };
+    render(<MapHero listings={[first, second]} bbox="44.5,40.1,44.6,40.2" />);
+    fireEvent.click(screen.getByLabelText("Apartment dots"));
+    fireEvent.click(await screen.findByRole("button", { name: "Select overlapping rentals" }));
+    const preview = screen.getByRole("region", { name: "Selected rental" });
+    expect(within(preview).getByText("Rental 1 of 2 at this location")).toBeInTheDocument();
+    expect(within(preview).getByText(first.title!)).toBeInTheDocument();
+    expect(within(preview).getByText(/rooms/)).toBeInTheDocument();
+    expect(within(preview).getByText("View details →")).toBeInTheDocument();
+    expect(screen.queryByText("View rental 1")).not.toBeInTheDocument();
+
+    fireEvent.click(within(preview).getByRole("button", { name: "Next rental at this location" }));
+    expect(within(preview).getByText("Rental 2 of 2 at this location")).toBeInTheDocument();
+    expect(within(preview).getByText("Second apartment")).toBeInTheDocument();
+
+    fireEvent.click(within(preview).getByRole("button", { name: "Previous rental at this location" }));
+    expect(within(preview).getByText("Rental 1 of 2 at this location")).toBeInTheDocument();
   });
 
   it("offers Clear area in both toolbars only when an area is applied", async () => {
@@ -114,21 +188,32 @@ describe("framed map introduction", () => {
     expect(onClearArea).toHaveBeenCalledTimes(2);
   });
 
-  it("shows the synthetic legend first, adds dots only for an area search and keeps the legend on clear", async () => {
+  it("keeps optional layers off and opens the rent guide only on request", async () => {
     const listings = fixtures.listings.value.items as MapListing[];
-    const view = render(<MapHero listings={listings} onSearchArea={vi.fn()} />);
+    const searchArea = vi.fn();
+    const view = render(<MapHero listings={listings} onSearchArea={searchArea} />);
     const map = await screen.findByTestId("embedded-map");
     expect(map).toHaveAttribute("data-marker-count", "0");
+    expect(screen.getByRole("checkbox", { name: /Metro/ })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Universities/ })).not.toBeChecked();
+    expect(screen.queryByLabelText("Area rent colour legend")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open district rent price guide" }));
     expect(screen.getByLabelText("Area rent colour legend")).toHaveTextContent("Demo data");
     expect(screen.getByLabelText("Area rent colour legend")).toHaveTextContent("USD / m² / month");
+    fireEvent.click(screen.getByRole("button", { name: "Close district rent price guide" }));
+    expect(screen.queryByLabelText("Area rent colour legend")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Move map in test" }));
+    fireEvent.click(screen.getByRole("button", { name: "Search this area" }));
+    expect(searchArea).toHaveBeenCalledWith("44.5,40.1,44.6,40.2");
     view.rerender(
-      <MapHero bbox="44.5,40.1,44.6,40.2" listings={listings} onSearchArea={vi.fn()} />,
+      <MapHero bbox="44.5,40.1,44.6,40.2" listings={listings} onSearchArea={searchArea} />,
     );
     expect(map).toHaveAttribute("data-marker-count", "1");
-    expect(screen.getByLabelText("Area rent colour legend")).toBeInTheDocument();
-    view.rerender(<MapHero listings={listings} onSearchArea={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText("Apartment dots"));
     expect(map).toHaveAttribute("data-marker-count", "0");
-    expect(screen.getByLabelText("Area rent colour legend")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Apartment dots"));
+    expect(map).toHaveAttribute("data-marker-count", "1");
   });
 
   it("does not feed fullscreen movement back into the controlled camera", async () => {
@@ -137,6 +222,7 @@ describe("framed map introduction", () => {
     fireEvent.click(screen.getByRole("button", { name: "Expand map" }));
     const dialog = screen.getByRole("dialog");
     const map = within(dialog).getByTestId("expanded-map");
+    expect(screen.queryByTestId("embedded-map")).not.toBeInTheDocument();
     expect(map).toHaveAttribute("data-initial-zoom", "13");
     fireEvent.click(within(dialog).getByRole("button", { name: "Move map in test" }));
     expect(map).toHaveAttribute("data-initial-zoom", "13");

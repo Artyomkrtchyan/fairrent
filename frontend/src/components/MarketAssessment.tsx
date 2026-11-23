@@ -1,6 +1,8 @@
 import type { getListingDetails } from "@/api/listings";
 import { apiMode } from "@/api/client";
 import { Money, RateNote } from "@/components/ui-bits";
+import { ListingRent } from "@/components/ListingRent";
+import type { ListingPrice } from "@/lib/listing-rent";
 
 import { ValuationFactors } from "@/components/ValuationFactors";
 
@@ -8,6 +10,7 @@ type DetailResponse = Awaited<ReturnType<typeof getListingDetails>>;
 
 interface Props {
   askingUsd?: number | null;
+  listingPrice?: ListingPrice;
   estimate: DetailResponse["estimate"];
 }
 
@@ -25,7 +28,7 @@ const statusColors = {
   insufficient_data: "bg-neutral-soft text-neutral",
 };
 
-export function MarketAssessment({ askingUsd, estimate }: Props) {
+export function MarketAssessment({ askingUsd, listingPrice, estimate }: Props) {
   const assessment = estimate?.valuation_assessment;
 
   const isAreaReference = estimate?.kind === "area_reference";
@@ -88,20 +91,26 @@ export function MarketAssessment({ askingUsd, estimate }: Props) {
         </p>
       </div>
 
-      <div className="space-y-5 p-5">
+      <div className="grid gap-5 p-5 lg:grid-cols-2 lg:items-start">
         {apiMode === "mock" && (
-          <p className="rounded-md border p-3 text-xs">
+          <p className="rounded-md border p-3 text-xs lg:col-span-2">
             Synthetic example. These figures do not demonstrate real model accuracy.
           </p>
         )}
 
-        <dl className="grid gap-4 sm:grid-cols-2">
+        <dl className="grid gap-4 sm:grid-cols-2 lg:col-span-2">
           {askingUsd !== undefined && (
             <div className="rounded-lg bg-muted p-4">
               <dt className="text-sm text-muted-foreground">Asking rent</dt>
 
               <dd className="mt-2 text-xl font-bold text-heading">
-                {askingUsd === null ? "Not available" : <Money usd={askingUsd} suffix="/ month" />}
+                {listingPrice ? (
+                  <ListingRent listing={listingPrice} suffix="/ month" />
+                ) : askingUsd === null ? (
+                  "Not available"
+                ) : (
+                  <Money usd={askingUsd} suffix="/ month" />
+                )}
               </dd>
             </div>
           )}
@@ -121,18 +130,18 @@ export function MarketAssessment({ askingUsd, estimate }: Props) {
           </div>
         </dl>
 
-        <RateNote />
+        <div className="lg:col-span-2"><RateNote /></div>
 
         {askingUsd !== undefined && (
           <span
-            className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${statusColors[status]}`}
+            className={`inline-block w-fit rounded-full px-3 py-1 text-xs font-semibold lg:col-span-2 ${statusColors[status]}`}
           >
             {statusLabels[status]}
           </span>
         )}
 
         {isAreaReference && (
-          <p className="rounded-md border p-3 text-sm">
+          <p className="rounded-md border p-3 text-sm lg:col-span-2">
             This describes the area, not a prediction for this particular apartment.
           </p>
         )}
@@ -197,7 +206,7 @@ export function MarketAssessment({ askingUsd, estimate }: Props) {
               </p>
             )}
 
-            <details className="rounded-lg border p-4 text-sm">
+            <details className="rounded-lg border p-4 text-sm lg:col-span-2">
               <summary className="cursor-pointer font-semibold">Model and data details</summary>
 
               <dl className="mt-3 space-y-3 break-words">

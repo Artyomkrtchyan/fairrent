@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -9,6 +9,13 @@ import { Valuation } from "@/routes/valuation";
 
 vi.mock("@/api/valuations", () => ({ requestValuation: vi.fn() }));
 vi.mock("@/api/client", () => ({ apiMode: "real" }));
+vi.mock("@/components/MapCanvas", () => ({
+  MapCanvas: ({ onPickCoordinate }: { onPickCoordinate?: (lat: number, lng: number) => void }) => (
+    <button type="button" onClick={() => onPickCoordinate?.(40.181234, 44.512345)}>
+      Choose coordinate on map
+    </button>
+  ),
+}));
 vi.mock("@/components/ui-bits", () => ({
   Money: ({ usd }: { usd: number }) => <span>{usd} USD</span>,
   PageHeader: ({ title }: { title: string }) => <h1>{title}</h1>,
@@ -54,7 +61,7 @@ describe("location assessment form", () => {
         window_days: 30,
       },
     ]);
-    expect(screen.getByText("Monthly rent standard deviation")).toBeInTheDocument();
+    expect(screen.getByText(/Monthly rent standard deviation/)).toBeInTheDocument();
   });
 
   it("uses the area reference returned for coordinates alone", async () => {
@@ -84,6 +91,27 @@ describe("location assessment form", () => {
     expect(screen.getByText("Area reference rent").nextElementSibling).toHaveTextContent(
       "Not available",
     );
+  });
+
+  it("uses a clicked map coordinate for the next request", async () => {
+    request.mockResolvedValue(fixtures["area-reference"].value as Result);
+    renderForm();
+    fireEvent.click(await screen.findByRole("button", { name: "Choose coordinate on map" }));
+    submit();
+
+    await waitFor(() => expect(request.mock.calls[0]?.[0]).toEqual(expect.objectContaining({
+      latitude: 40.181234,
+      longitude: 44.512345,
+    })));
+  });
+
+  it("requires positive area for a rooms-based property assessment", () => {
+    renderForm();
+    fireEvent.change(screen.getByLabelText("Rooms"), { target: { value: "2" } });
+    submit();
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter floor area");
+    expect(request).not.toHaveBeenCalled();
   });
 
   it("displays API errors without a synthetic result", async () => {

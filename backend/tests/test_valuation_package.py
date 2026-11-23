@@ -21,7 +21,7 @@ def api(package, world, monkeypatch):
     inference._DEFAULT.update(package=None, error=None, path=None)
     records = [SimpleNamespace(id=UUID(int=i), latitude=40.18, longitude=44.51,
         price_monthly_normalized=price, area_sqm=50, rooms=2, district_id='kentron',
-        last_seen_at=NOW-timedelta(days=1), dedup_group_id=None)
+        last_seen_at=NOW-timedelta(days=1), dedup_group_id=None, status='active')
         for i, price in enumerate([500, 600, 700], 1)]
     class Connection:
         def execute(self, command):
@@ -125,7 +125,8 @@ def test_source_cutoff_controls_freshness_and_outside_package_coverage(api):
     assert response.status_code == 200, response.text
     result = response.json()
     assert result['freshness']['is_stale'] is True
-    assert result['observed_market_statistics']['data_freshness_days'] == 61
+    assert result['observed_market_statistics']['data_freshness_days'] is None
+    assert result['observed_market_statistics']['comparables_count'] == 0
     assert result['valuation_assessment']['estimated_price_usd'] is None
     assert repository.saved[-1][1]['inference_provenance']['abstention_reason'] == 'insufficient_observed_data'
     previous_saves = len(repository.saved)

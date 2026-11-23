@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
     jumpTo: ReturnType<typeof vi.fn>;
     addSource: ReturnType<typeof vi.fn>;
     addLayer: ReturnType<typeof vi.fn>;
+    addImage: ReturnType<typeof vi.fn>;
     removeSource: ReturnType<typeof vi.fn>;
     removeLayer: ReturnType<typeof vi.fn>;
   }[],
@@ -28,8 +29,9 @@ vi.mock("@/api/client", () => ({
   },
 }));
 vi.mock("@/lib/map-demo-surface", () => ({
-  DEMO_SURFACE: { bounds: [44.44, 40.11, 44.6, 40.24] },
+  DEMO_SURFACE: { bounds: [44.44, 40.11, 44.6, 40.24], minimum: 6, maximum: 24 },
   demoSurfaceImage: () => "data:image/png;base64,test-only",
+  demoRentValue: () => 12,
 }));
 
 vi.mock("maplibre-gl", () => ({
@@ -60,6 +62,9 @@ vi.mock("maplibre-gl", () => ({
     resize = vi.fn();
     addSource = vi.fn();
     addLayer = vi.fn();
+    addImage = vi.fn();
+    removeImage = vi.fn();
+    hasImage = vi.fn(() => false);
     removeSource = vi.fn();
     removeLayer = vi.fn();
     getStyle() {
@@ -156,20 +161,41 @@ describe("map canvas", () => {
     expect(marker.remove).toHaveBeenCalledOnce();
   });
 
-  it("adds the synthetic raster below roads after style load and cleans up on disable", () => {
-    const view = render(<MapCanvas showDemoSurface />);
+  it("restores the saved synthetic ground raster on demand and cleans up on disable", () => {
+    const view = render(<MapCanvas showDemoSurface rentColorMode="ground" />);
     const map = state.maps[0]!;
     expect(map.addSource).not.toHaveBeenCalled();
     act(() => map.handlers["load"]?.());
     expect(map.addSource).toHaveBeenCalledWith(
-      "fairrent-synthetic-rent-surface",
+      "fairrent-preserved-ground-rent-gradient",
       expect.objectContaining({ type: "image" }),
     );
     expect(map.addLayer).toHaveBeenCalledWith(expect.objectContaining({ type: "raster" }), "roads");
-    view.rerender(<MapCanvas showDemoSurface={false} />);
+    view.rerender(<MapCanvas showDemoSurface={false} rentColorMode="ground" />);
     expect(map.removeLayer).toHaveBeenCalledOnce();
     expect(map.removeSource).toHaveBeenCalledOnce();
   });
+  it("shows district colors at city scale without house glyphs", () => {
+    const view = render(<MapCanvas showDemoSurface />);
+    const map = state.maps[0]!;
+    act(() => map.handlers["load"]?.());
+    expect(map.addLayer).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "fairrent-rent-district-overview", type: "fill" }),
+      "roads",
+    );
+    expect(map.addImage).not.toHaveBeenCalled();
+    expect(map.addLayer).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: "symbol" }),
+      expect.anything(),
+    );
+
+    view.rerender(<MapCanvas showDemoSurface rentColorMode="ground" />);
+    expect(map.addSource).toHaveBeenCalledWith(
+      "fairrent-preserved-ground-rent-gradient",
+      expect.objectContaining({ type: "image" }),
+    );
+  });
+
   it("never adds synthetic market colours in real API mode", () => {
     state.mode = "real";
     render(<MapCanvas showDemoSurface />);

@@ -15,6 +15,65 @@ from backend.signal_repository import reconcile_signals
 from backend.tests.test_listing_postgres import database, validate_contract
 
 
+def test_resume_commits_results_and_cursor_together(database, contradictory, monkeypatch):
+    import backend.generate_signals as producer
+    from psycopg.types.json import Jsonb
+    from uuid import UUID
+
+    with database() as connection:
+        migrate(connection, with_checkpoints=True)
+        for i in (1, 2, 3):
+            record = contradictory.model_copy(update={"id": UUID(int=i), "external_id": f"resume-{i}"})
+            publish_listing(connection, record)
+        connection.execute("DELETE FROM api_listing_projection WHERE id=%s", (contradictory.id,))
+
+    original = producer.generate
+    calls = []
+
+    def fail_second_batch(connection, **kwargs):
+        calls.append(kwargs["after_id"])
+        summary = original(connection, **kwargs)
+        if len(calls) == 2:
+            raise RuntimeError("simulated process interruption before checkpoint")
+        return summary
+
+    monkeypatch.setattr(producer, "generate", fail_second_batch)
+    with database() as connection:
+        connection.autocommit = True
+        with pytest.raises(RuntimeError, match="interruption"):
+            producer.generate_resumable(connection, batch_size=1)
+    with database() as connection:
+        cursor, counts = connection.execute(
+            "SELECT last_listing_id, counts FROM api_signal_checkpoints").fetchone()
+        assert cursor == UUID(int=1)
+        assert counts["evaluated"] == 1
+        assert connection.execute("SELECT count(DISTINCT listing_id) FROM api_listing_signals").fetchone()[0] == 1
+        assert connection.execute("SELECT count(*) FROM api_review_queue").fetchone()[0] == 1
+
+    monkeypatch.setattr(producer, "generate", original)
+    with database() as connection:
+        connection.autocommit = True
+        summary = producer.generate_resumable(connection, batch_size=1)
+    assert summary["evaluated"] == 3
+    with database() as connection:
+        assert connection.execute("SELECT count(*) FROM api_review_queue").fetchone()[0] == 3
+        assert connection.execute("SELECT completed FROM api_signal_checkpoints").fetchone()[0]
+    with database() as connection:
+        connection.autocommit = True
+        assert producer.generate_resumable(connection, batch_size=1)["evaluated"] == 3
+
+    # Changed inputs must invalidate the cursor, even if the run was completed.
+    with database() as connection:
+        document = connection.execute(
+            "SELECT document FROM api_listing_projection WHERE id=%s", (UUID(int=1),)).fetchone()[0]
+        document["title"] = "Updated source observation"
+        connection.execute("UPDATE api_listing_projection SET document=%s WHERE id=%s",
+                           (Jsonb(document), UUID(int=1)))
+    with database() as connection:
+        connection.autocommit = True
+        assert producer.generate_resumable(connection, batch_size=1)["evaluated"] == 3
+
+
 @pytest.fixture
 def contradictory(database, listing_document):
     record = ListingData.model_validate({**listing_document, "title": "2 rooms, Kentron, 65 m2",
